@@ -46,6 +46,7 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build   # what CI runs
 
 ## Git
 
-- Small commits on `main`.
+- New work goes on its own branch off an up-to-date `main` (`feat/<short-name>`, `fix/<short-name>`, `chore/<short-name>`), never directly on `main`.
+- Small commits on that branch. The maintainer reviews and merges into `main`; agents never merge or push to `main` themselves.
 - Commit messages: a short summary line (≤ 72 characters), then a few terse bullets of what changed. No phase or milestone numbers, no testing notes or background, no attribution lines.
 - Internal planning lives in `docs/`, which is gitignored; don't reference it from committed files.
