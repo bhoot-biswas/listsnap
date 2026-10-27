@@ -1,8 +1,10 @@
 import "server-only";
 import { StepError } from "./run-step";
-import { crop, photoCheck, whiteMain, type Box } from "@/server/image-ops";
+import { crop, dimensions, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
+import { maskCutout } from "@/server/image-ops/cutout";
 import { readMedia, saveMedia } from "@/server/media/store";
 import { meta } from "@/server/providers";
+import type { SegmentInstance } from "@/server/providers/types";
 import type { WorkspaceScope } from "@/server/db/scope";
 import type { GroupResult, PlanResult, SegmentResult } from "@/lib/schemas/pipeline";
 
@@ -18,6 +20,7 @@ export interface JobStepContext {
 
 /** Shop-display photos can hold 25–49 items; only the largest are offered. */
 export const MAX_ITEMS = 12;
+const MIN_SCORE = 0.3;
 
 async function firstPhoto(ctx: JobStepContext) {
   const [photo] = await ctx.ws.photos(ctx.jobId);
@@ -45,7 +48,8 @@ export async function planStep(ctx: JobStepContext): Promise<PlanResult> {
 /**
  * SAM with the planned phrase, then Spark's alternatives (the agentic retry). If none
  * finds anything, the whole photo becomes the one item, so the seller still gets a
- * listing. Cutouts and the photo check are made here too, in one short request.
+ * listing. Cutouts and the photo check are made here too, in one short request: a
+ * transparent PNG from SAM's mask (studio scenes composite it) and the white main image.
  * Multi-angle jobs (several photos of one product) arrive in Phase 5; until then only
  * the first photo is segmented.
  */
@@ -54,11 +58,14 @@ export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
   const { photo, data } = await firstPhoto(ctx);
   const phrases = [plan.sam_phrase, ...plan.alt_phrases].filter(Boolean).slice(0, 3);
   const tried: string[] = [];
-  let found: { box: Box; score: number | null }[] = [];
+  let found: SegmentInstance[] = [];
   let phrase = plan.sam_phrase;
   for (const p of phrases) {
     tried.push(p);
-    found = await meta().segment(call(ctx, "segment"), data, p);
+    // a faint match is usually something next to the product, not the product
+    found = (await meta().segment(call(ctx, "segment"), data, p)).filter(
+      (f) => f.score === null || f.score >= MIN_SCORE,
+    );
     if (found.length) {
       phrase = p;
       break;
@@ -69,12 +76,16 @@ export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
   // back in reading order after keeping the largest
   found.sort((a, b) => a.box.x - b.box.x || a.box.y - b.box.y);
 
-  const saved: { box: Box; score: number | null; cutoutMediaId: string }[] = [];
+  const saved: { box: Box; score: number | null; cutoutMediaId: string; cutoutPngMediaId: string | null }[] = [];
   for (const inst of found) {
-    const piece = await crop(data, inst.box);
-    const main = await whiteMain(piece.data);
-    const media = await saveMedia(ctx.ws.id, "main", main, { mime: "image/jpeg", width: 1200, height: 1200 });
-    saved.push({ ...inst, cutoutMediaId: media.id });
+    // SAM's mask gives a transparent cutout; without one (mock, or no match) the box is cropped
+    const png = inst.mask ? await maskCutout(data, inst.box, inst.mask) : null;
+    const pngMedia = png
+      ? await saveMedia(ctx.ws.id, "cutout", png, { mime: "image/png", ...(await dimensions(png)) })
+      : null;
+    const main = await whiteMain(png ?? (await crop(data, inst.box)).data);
+    const media = await saveMedia(ctx.ws.id, "main", main, { mime: "image/jpeg", width: MAIN_SIZE, height: MAIN_SIZE });
+    saved.push({ box: inst.box, score: inst.score, cutoutMediaId: media.id, cutoutPngMediaId: pngMedia?.id ?? null });
   }
   const itemIds = await ctx.ws.replaceItems(photo.id, saved);
   const check = await photoCheck(

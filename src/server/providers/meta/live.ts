@@ -1,15 +1,15 @@
 import "server-only";
-import { ListingText, PlanResult } from "@/lib/schemas/pipeline";
+import { z } from "zod";
+import { BanglaText, ListingText, PlanResult } from "@/lib/schemas/pipeline";
 import { logged } from "../log";
 import type { MetaProvider } from "../types";
-import { mockMeta } from "./mock";
+import { backgroundPrompt, editImage, generateImage, IMAGE_COST_USD, IMAGE_MODEL, lifestylePrompt } from "./image";
+import { SAM_COST_USD, SAM_MODEL, samSegment } from "./sam";
 import { photoDataUrl, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
 
 /**
- * The live Meta provider. plan and write call Muse Spark; segment, group, translate and
- * the image calls stay on the mock until their phases (3, 4 and 5), so the whole
- * pipeline still runs end to end. Those calls keep logging as "mock", which the Under
- * the hood panel shows, so fake output is never passed off as real.
+ * The live Meta provider: Muse Spark plans, writes, translates and groups; SAM 3.1
+ * finds and masks the products; Muse Image makes empty backgrounds and lifestyle edits.
  */
 
 // Prompts tuned during the Phase 0a spike runs; see the field descriptions in the schemas too.
@@ -32,11 +32,32 @@ const writeSystem = (brandVoice: string) =>
   "'check if'). When something is uncertain, leave it out of the buyer text or describe it neutrally ('see photos " +
   "for detail'), lower the confidence, and put the exact thing to verify in check_notes, which only the seller sees.";
 
+const BANGLA_SYSTEM =
+  "You are a native Bangla copywriter for Bangladeshi online shops (Facebook and Instagram sellers). " +
+  "Rewrite the listing in natural, warm Bangla as a real seller would write it, not word-for-word. Write " +
+  "everything in Bangla script, including product words (শাড়ি, কুর্তি, চুড়ি, মগ) and common English loanwords " +
+  "(জরি, কটন, ফেস্টিভ); never leave Latin-script words inside Bangla sentences. Only the tags may mix: give " +
+  "mostly Bangla tags plus two or three English ones buyers type (e.g. 'jamdani saree'). Keep facts identical: " +
+  "do not add or drop details.";
+
+const GROUP_SYSTEM =
+  SELLER_CONTEXT +
+  " A segmentation model found several items in one seller photo. You see each item's cutout, in order. Decide how " +
+  "the seller most likely sells them: 'separate' when they are different products (different designs or kinds), " +
+  "'set' when they are sold together as one bundle, 'variants' when they are the same design in different colours. " +
+  "Give one short, plain colour name per item in the same order (e.g. 'Maroon', 'Mustard', 'Navy'), and one short " +
+  "sentence of reason addressed to the seller.";
+
+const GroupSuggestion = z.object({
+  mode: z.enum(["separate", "set", "variants"]),
+  colors: z.array(z.string()).describe("One short colour name per item, in item order"),
+  reason: z.string().describe("One short sentence for the seller"),
+});
+
 const info = { provider: "meta", model: SPARK_MODEL, endpoint: "chat/completions", mode: "live" } as const;
 const retried = (r: SparkResult<unknown>) => (r.requests > 1 ? " · retried unreadable answer" : "");
 
 export const liveMeta: MetaProvider = {
-  ...mockMeta,
   mode: "live",
 
   plan: async (ctx, photo) => {
@@ -77,5 +98,70 @@ export const liveMeta: MetaProvider = {
       (r) => ({ summary: `"${r.data.title}" · confidence ${r.data.confidence}${retried(r)}`, costUsd: r.costUsd }),
     );
     return r.data;
+  },
+
+  translate: async (ctx, listing) => {
+    const { title, short_description, description, attributes, tags } = listing;
+    const r = await logged(
+      ctx,
+      info,
+      () =>
+        sparkJson({
+          name: "BanglaListing",
+          schema: BanglaText,
+          system: BANGLA_SYSTEM,
+          userText: `Listing to localize:\n${JSON.stringify({ title, short_description, description, attributes, tags }, null, 2)}`,
+        }),
+      (r) => ({ summary: `"${r.data.title}"${retried(r)}`, costUsd: r.costUsd }),
+    );
+    return r.data;
+  },
+
+  group: async (ctx, crops, plan) => {
+    const images = await Promise.all(crops.map((c) => photoDataUrl(c, 384)));
+    const r = await logged(
+      ctx,
+      info,
+      () =>
+        sparkJson({
+          name: "GroupSuggestion",
+          schema: GroupSuggestion,
+          system: GROUP_SYSTEM,
+          userText: `The photo was planned as: ${JSON.stringify({ product: plan.sam_phrase, kind: plan.multi_kind })}. There are ${crops.length} items, in this order.`,
+          imageUrl: images,
+        }),
+      (r) => ({ summary: `suggest ${r.data.mode} · ${r.data.colors.join(", ")}${retried(r)}`, costUsd: r.costUsd }),
+    );
+    // a short or long colour list would misalign colours and items, so pad or cut it
+    const colors = crops.map((_, i) => r.data.colors[i]?.trim() ?? "");
+    return { mode: r.data.mode, colors, reason: r.data.reason };
+  },
+
+  segment: (ctx, photo, phrase) =>
+    logged(
+      ctx,
+      { provider: "meta", model: SAM_MODEL, endpoint: "responses", mode: "live" },
+      () => samSegment(photo, phrase),
+      (found) => ({ summary: `"${phrase}" → ${found.length} instance(s)`, costUsd: SAM_COST_USD }),
+    ),
+
+  background: (ctx, scene, angle) => {
+    const { prompt, size } = backgroundPrompt(scene, angle);
+    return logged(
+      ctx,
+      { provider: "meta", model: IMAGE_MODEL, endpoint: "images/generations", mode: "live" },
+      () => generateImage(prompt, size),
+      () => ({ summary: `${scene} background (${angle})`, costUsd: IMAGE_COST_USD }),
+    );
+  },
+
+  editScene: async (ctx, main, scene, phrase) => {
+    const image = await photoDataUrl(main, 1024);
+    return logged(
+      ctx,
+      { provider: "meta", model: IMAGE_MODEL, endpoint: "images/edits", mode: "live" },
+      () => editImage(image, lifestylePrompt(phrase)),
+      () => ({ summary: `${scene} scene from the cutout`, costUsd: IMAGE_COST_USD }),
+    );
   },
 };

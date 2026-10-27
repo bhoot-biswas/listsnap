@@ -10,7 +10,7 @@ import { StepError } from "@/server/pipeline/run-step";
  * the answer, so the two can't drift apart.
  */
 
-const BASE_URL = "https://api.meta.ai/v1";
+export const BASE_URL = "https://api.meta.ai/v1";
 export const SPARK_MODEL = "muse-spark-1.3";
 const PRICE_PER_M = { input: 1.25, output: 4.25 };
 
@@ -62,10 +62,10 @@ export function strictSchema(schema: z.ZodType): Record<string, unknown> {
 }
 
 /** The photo as a JPEG data URL, no larger than the size the spike measured. */
-export async function photoDataUrl(photo: Buffer): Promise<string> {
+export async function photoDataUrl(photo: Buffer, maxPx = PHOTO_PX): Promise<string> {
   const jpeg = await sharp(photo)
     .rotate()
-    .resize(PHOTO_PX, PHOTO_PX, { fit: "inside", withoutEnlargement: true })
+    .resize(maxPx, maxPx, { fit: "inside", withoutEnlargement: true })
     .jpeg({ quality: 85 })
     .toBuffer();
   return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
@@ -76,14 +76,15 @@ export async function sparkJson<S extends z.ZodType>(opts: {
   schema: S;
   system: string;
   userText: string;
-  imageUrl?: string;
+  /** One photo, or several in order (grouping sends one crop per item). */
+  imageUrl?: string | string[];
 }): Promise<SparkResult<z.infer<S>>> {
   const key = env().modelApiKey;
   // not the seller's to fix, so a plain Error: the generic message plus a server log line
   if (!key) throw new Error("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
 
   const content: unknown[] = [{ type: "text", text: opts.userText }];
-  if (opts.imageUrl) content.push({ type: "image_url", image_url: { url: opts.imageUrl } });
+  for (const url of [opts.imageUrl ?? []].flat()) content.push({ type: "image_url", image_url: { url } });
   const body = JSON.stringify({
     model: SPARK_MODEL,
     messages: [
