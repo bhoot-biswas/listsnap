@@ -1,0 +1,44 @@
+# Internal planning, spikes, eval photos, demo script: local only
+/docs/
+
+# AI agent instructions and skills are committed; only personal overrides stay local
+/CLAUDE.local.md
+/.claude/settings.local.json
+
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+/.next/
+/out/
+/build/
+next-env.d.ts
+*.tsbuildinfo
+
+# env files (only .env.example is committed)
+.env
+.env.*
+!.env.example
+
+# uploads and generated media
+/media/
+/storage/
+
+# tests
+/coverage/
+/playwright-report/
+/test-results/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
