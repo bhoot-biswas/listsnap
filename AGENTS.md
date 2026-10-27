@@ -46,4 +46,6 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build   # what CI runs
 
 ## Git
 
-Small commits on `main`. A short summary line (≤ 72 characters), a blank line, then what changed and why. Internal planning lives in `docs/`, which is gitignored; don't reference it from committed files.
+- Small commits on `main`.
+- Commit messages: a short summary line (≤ 72 characters), then a few terse bullets of what changed. No phase or milestone numbers, no testing notes or background, no attribution lines.
+- Internal planning lives in `docs/`, which is gitignored; don't reference it from committed files.
