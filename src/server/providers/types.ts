@@ -18,6 +18,8 @@ export interface CallContext {
 export interface SegmentInstance {
   box: Box;
   score: number | null;
+  /** SAM's mask covering `box`; the raster may be scaled down (long side up to 1024). Absent in mock mode. */
+  mask?: { raster: Uint8Array; width: number; height: number };
 }
 
 export interface MetaProvider {

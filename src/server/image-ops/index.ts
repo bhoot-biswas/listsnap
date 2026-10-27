@@ -7,7 +7,7 @@ export type { Box } from "./types";
 /**
  * All pixel work behind one module, so a fallback can replace sharp
  * if Hostinger can't load it. Phase 1 has what the mock pipeline needs: crops, a white
- * main image, a photo check and composites. Mask → alpha arrives with live SAM (Phase 3).
+ * main image, a photo check and composites; cutout.ts turns SAM masks into transparent cutouts.
  */
 
 /** Main image size for the store: square, white, product centred (WooCommerce default ratio). */
@@ -91,6 +91,28 @@ export async function compositeOnBackground(
     opts.shadow === "drop"
       ? Math.round((height - p.info.height) / 2)
       : Math.max(0, Math.round(height * 0.86 - p.info.height));
+  if (opts.shadow === "drop" && p.info.channels === 4) {
+    // a real cutout casts its own outline, a little down and right, as daylight from above would
+    const { width: pw, height: ph } = p.info;
+    const blur = Math.max(6, Math.round(Math.min(pw, ph) * 0.025));
+    const pad = blur * 3;
+    const alpha = await sharp(p.data).extractChannel(3).raw().toBuffer();
+    const shade = Buffer.alloc(pw * ph * 4);
+    for (let i = 0; i < pw * ph; i++) shade[i * 4 + 3] = Math.round(alpha[i]! * 0.38);
+    const outline = await sharp(shade, { raw: { width: pw, height: ph, channels: 4 } })
+      .extend({ top: pad, bottom: pad, left: pad, right: pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .blur(blur)
+      .png()
+      .toBuffer();
+    const offset = Math.round(blur * 0.8);
+    return sharp(bg)
+      .composite([
+        { input: outline, left: left - pad + offset, top: top - pad + offset },
+        { input: p.data, left, top },
+      ])
+      .jpeg({ quality: 88, mozjpeg: true })
+      .toBuffer();
+  }
   const rx = Math.round(p.info.width * 0.45);
   const ry = Math.max(8, Math.round(p.info.height * (opts.shadow === "drop" ? 0.5 : 0.06)));
   const cy = opts.shadow === "drop" ? top + p.info.height / 2 + ry * 0.08 : top + p.info.height;

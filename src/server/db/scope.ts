@@ -37,7 +37,10 @@ export interface ItemRow {
   instance_idx: number;
   box_json: Box;
   score: number | null;
+  /** The white 1:1 main image. */
   cutout_media_id: string | null;
+  /** The transparent cutout from SAM's mask; null for mock crops. */
+  cutout_png_media_id: string | null;
   color: string | null;
   kept: 0 | 1;
 }
@@ -133,15 +136,15 @@ export function forWorkspace(workspaceId: string) {
     /** Replaces a photo's items; a re-run segment step must not leave the old ones behind. */
     async replaceItems(
       photoId: string,
-      items: { box: Box; score: number | null; cutoutMediaId: string }[],
+      items: { box: Box; score: number | null; cutoutMediaId: string; cutoutPngMediaId?: string | null }[],
     ): Promise<string[]> {
       const ids = items.map(() => randomUUID());
       await transaction(async (conn) => {
         await conn.query("DELETE FROM items WHERE photo_id = ? AND workspace_id = ?", [photoId, ws]);
         for (const [i, item] of items.entries()) {
           await conn.query(
-            "INSERT INTO items (id, photo_id, workspace_id, instance_idx, box_json, score, cutout_media_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [ids[i]!, photoId, ws, i, json(item.box), item.score, item.cutoutMediaId],
+            "INSERT INTO items (id, photo_id, workspace_id, instance_idx, box_json, score, cutout_media_id, cutout_png_media_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [ids[i]!, photoId, ws, i, json(item.box), item.score, item.cutoutMediaId, item.cutoutPngMediaId ?? null],
           );
         }
       });
@@ -150,7 +153,7 @@ export function forWorkspace(workspaceId: string) {
 
     items: (jobId: string) =>
       select<ItemRow>(
-        `SELECT i.id, i.photo_id, i.instance_idx, i.box_json, i.score, i.cutout_media_id, i.color, i.kept
+        `SELECT i.id, i.photo_id, i.instance_idx, i.box_json, i.score, i.cutout_media_id, i.cutout_png_media_id, i.color, i.kept
            FROM items i JOIN photos p ON p.id = i.photo_id
           WHERE p.job_id = ? AND i.workspace_id = ? ORDER BY p.sort, i.instance_idx`,
         [jobId, ws],

@@ -37,13 +37,18 @@ async function originalPhoto(ctx: ListingStepContext): Promise<Buffer> {
   return file.data;
 }
 
-/** The white main image of the listing's first item: what renders start from. */
-async function mainImage(ctx: ListingStepContext): Promise<Buffer> {
+/**
+ * The listing's first item, as renders need it: `main` is the white 1:1 image (what the
+ * lifestyle edit starts from); `product` is the transparent cutout when SAM made one,
+ * so composites place the product itself rather than a white square.
+ */
+async function itemImages(ctx: ListingStepContext): Promise<{ main: Buffer; product: Buffer }> {
   const items = await ctx.ws.items(ctx.listing.job_id);
   const first = items.find((i) => i.id === ctx.listing.item_ids_json[0]);
-  const file = first?.cutout_media_id ? await readMedia(ctx.ws.id, first.cutout_media_id) : null;
-  if (!file) throw new StepError("The cutout for this item is missing.");
-  return file.data;
+  const main = first?.cutout_media_id ? await readMedia(ctx.ws.id, first.cutout_media_id) : null;
+  if (!main) throw new StepError("The cutout for this item is missing.");
+  const png = first?.cutout_png_media_id ? await readMedia(ctx.ws.id, first.cutout_png_media_id) : null;
+  return { main: main.data, product: png?.data ?? main.data };
 }
 
 export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
@@ -74,7 +79,7 @@ export async function translateStep(ctx: ListingStepContext): Promise<BanglaText
  */
 export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise<RenderResult> {
   const p = await plan(ctx);
-  const main = await mainImage(ctx);
+  const { main, product } = await itemImages(ctx);
   const step = call(ctx, "render");
   let image: Buffer;
   if (scene === "lifestyle") {
@@ -83,7 +88,7 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
     const bg = await meta().background(step, scene, p.camera_angle);
     const size =
       scene === "banner" ? { width: 1536, height: 768, scale: 0.8 } : { width: 1024, height: 1024, scale: 0.72 };
-    image = await compositeOnBackground(bg, main, {
+    image = await compositeOnBackground(bg, product, {
       ...size,
       shadow: p.camera_angle === "top_down" && scene !== "banner" ? "drop" : "contact",
     });
