@@ -54,10 +54,21 @@ export interface WooDraftInput {
   images: { mediaId: string; alt: string }[];
 }
 
+/** A shop's WooCommerce store: its address and REST keys (decrypted only for the call). */
+export interface WooStore {
+  url: string;
+  key: string;
+  secret: string;
+}
+
 export interface WooProvider {
   readonly mode: "mock" | "live";
   /** Creates or updates a draft product; never publishes. */
-  saveDraft(ctx: CallContext, input: WooDraftInput): Promise<{ productId: number; editUrl: string }>;
+  saveDraft(
+    ctx: CallContext,
+    store: WooStore | null,
+    input: WooDraftInput,
+  ): Promise<{ productId: number; editUrl: string }>;
 }
 
 export interface InstagramProvider {

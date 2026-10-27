@@ -7,7 +7,7 @@ let nextId = 1000;
 
 export const mockWoo: WooProvider = {
   mode: "mock",
-  saveDraft: (ctx, input) =>
+  saveDraft: (ctx, _store, input) =>
     logged(
       ctx,
       {

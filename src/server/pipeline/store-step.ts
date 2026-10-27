@@ -2,7 +2,10 @@ import "server-only";
 import { sqlStepStore } from "@/server/db/steps";
 import { forWorkspace, type ListingRow, type WorkspaceScope } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
-import { woo } from "@/server/providers";
+import { z } from "zod";
+import { decryptSecret } from "@/server/crypto";
+import { env } from "@/server/env";
+import { woo, type WooStore } from "@/server/providers";
 import { ListingText } from "@/lib/schemas/pipeline";
 import { runStep, StepError } from "./run-step";
 import type { ExecuteResult } from "./execute";
@@ -18,7 +21,8 @@ export interface StoreResult {
   editUrl: string;
 }
 
-const LOCK_MS = 45_000;
+// the store downloads every image while creating the product, which can take a while
+const LOCK_MS = 90_000;
 const SAVABLE = new Set<ListingRow["status"]>(["ready", "needs_review", "in_store", "posted"]);
 
 export async function executeStoreStep(
@@ -44,7 +48,7 @@ async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: List
   if (!en.success) throw new StepError("The listing text is missing. Make the listing again.");
   const text = en.data;
   const step = { workspaceId: ws.id, jobId: listing.job_id, step: "store" };
-  const saved = await woo().saveDraft(step, {
+  const saved = await woo().saveDraft(step, await wooStore(ws, workspace), {
     listingId: listing.id,
     productId: listing.wc_product_id,
     title: text.title,
@@ -58,6 +62,25 @@ async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: List
   });
   await ws.markInStore(listing.id, saved.productId);
   return saved;
+}
+
+const WooCredentials = z.object({ key: z.string().min(1), secret: z.string().min(1) });
+
+/**
+ * Which store this shop saves to: demo shops share the demo store, everyone else uses
+ * their own connection. Mock mode needs none.
+ */
+async function wooStore(ws: WorkspaceScope, workspace: Workspace): Promise<WooStore | null> {
+  if (woo().mode === "mock") return null;
+  if (workspace.isDemo) {
+    const demo = env().demoWoo;
+    if (!demo) throw new StepError("The demo store isn't set up yet. Try again later.");
+    return demo;
+  }
+  const c = await ws.storeConnection("woo");
+  if (!c?.base_url || !c.credentials_enc || c.status === "disconnected")
+    throw new StepError("Connect your WooCommerce store first, in Connections.");
+  return { url: c.base_url, ...WooCredentials.parse(JSON.parse(decryptSecret(c.credentials_enc))) };
 }
 
 /** Middle of Spark's typical range, rounded the shop's way; the seller edits it in Review. */

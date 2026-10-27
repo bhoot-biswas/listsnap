@@ -36,6 +36,14 @@ Every outside service is mocked by default (`PROVIDER_MODE_*=mock`), so the whol
 
 In mock mode a photo at least twice as wide as it is tall is treated as three different products, which shows the Choose items step.
 
+To save drafts to a real WooCommerce store without a hosted shop, start the local test store. It runs WordPress and WooCommerce in Docker on http://localhost:8080 and writes its REST keys into `.env.local` as the demo store:
+
+```bash
+pnpm store:setup
+```
+
+Then set `PROVIDER_MODE_WOO=live` in `.env.local`. Demo shops now save their drafts to the local store, which downloads product images from the app through short-lived signed links.
+
 ```bash
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
