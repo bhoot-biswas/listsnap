@@ -48,5 +48,5 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build   # what CI runs
 
 - New work goes on its own branch off an up-to-date `main` (`feat/<short-name>`, `fix/<short-name>`, `chore/<short-name>`), never directly on `main`.
 - Small commits on that branch. The maintainer reviews and merges into `main`; agents never merge or push to `main` themselves.
-- Commit messages: a short summary line (≤ 72 characters), then a few terse bullets of what changed. No phase or milestone numbers, no testing notes or background, no attribution lines.
+- Commit messages: a short summary line (≤ 72 characters), a blank line, then a body shaped to the change. A one-line fix may need no body. Otherwise open with a sentence or two on what the change does and why, then bullets only where there is a real list (new files, routes, settings). Prose, bullets or both, whichever reads best; keep it brief. No phase or milestone numbers, no testing narrative, no attribution lines.
 - Internal planning lives in `docs/`, which is gitignored; don't reference it from committed files.
