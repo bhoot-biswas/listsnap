@@ -74,3 +74,22 @@ export function sqlStepStore(workspaceId: string): StepStore {
     },
   };
 }
+
+/**
+ * Writes steps that finished elsewhere straight in as done, with their results: how
+ * demo shops get sample jobs that look exactly like ones the pipeline ran.
+ */
+export async function recordDoneSteps(
+  workspaceId: string,
+  jobId: string,
+  steps: { step: string; target: string; result: unknown }[],
+): Promise<void> {
+  for (const s of steps) {
+    await execute(
+      `INSERT INTO job_steps (job_id, step, target, workspace_id, status, attempts, result_json, started_at, finished_at)
+       VALUES (?, ?, ?, ?, 'done', 1, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
+       ON DUPLICATE KEY UPDATE status = 'done', attempts = 1, result_json = VALUES(result_json), finished_at = UTC_TIMESTAMP(3)`,
+      [jobId, s.step, s.target, workspaceId, json(s.result)],
+    );
+  }
+}

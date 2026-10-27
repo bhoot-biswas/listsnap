@@ -13,7 +13,7 @@ const MAX = 5;
 const isPhoto = (f: File) => f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name);
 
 /** Picks photos (camera, files, drag and drop, paste), shrinks them, uploads, then opens the job. */
-export function SnapForm() {
+export function SnapForm({ samples = [] }: { samples?: { url: string; label: string }[] }) {
   const t = useTranslations("snap");
   const router = useRouter();
   const [files, setFiles] = useState<{ file: File; url: string }[]>([]);
@@ -47,6 +47,13 @@ export function SnapForm() {
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
   });
+
+  const addSample = async (url: string) => {
+    const res = await fetch(url).catch(() => null);
+    if (!res?.ok) return toast.error(t("sampleFailed"));
+    const name = url.split("/").pop() ?? "sample.jpg";
+    add([new File([await res.blob()], name, { type: "image/jpeg" })]);
+  };
 
   const upload = async () => {
     if (!files.length) return;
@@ -117,6 +124,27 @@ export function SnapForm() {
           onChange={(e) => e.target.files && add(e.target.files)}
         />
       </div>
+
+      {samples.length > 0 && files.length === 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t("samplesTitle")}</p>
+          <ul className="flex flex-wrap gap-3">
+            {samples.map((s) => (
+              <li key={s.url}>
+                <button
+                  type="button"
+                  onClick={() => addSample(s.url)}
+                  className="flex items-center gap-2 rounded-lg border bg-card p-1.5 pr-3 text-sm hover:bg-muted/60"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a small static sample thumbnail */}
+                  <img src={s.url} alt="" className="size-10 rounded-md object-cover" />
+                  {s.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {files.length > 0 && (
         <div className="space-y-4">

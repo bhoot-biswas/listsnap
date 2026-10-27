@@ -27,6 +27,10 @@ export interface Env {
   providers: { meta: ProviderMode; woo: ProviderMode; instagram: ProviderMode };
   modelApiKey: string;
   mockDelayMs: number;
+  /** The store every demo shop saves to. Null until configured. */
+  demoWoo: { url: string; key: string; secret: string } | null;
+  /** Where a store downloads product images from: the site URL, unless the store can't reach it (local Docker). */
+  mediaFetchBaseUrl: string;
 }
 
 let cached: Env | undefined;
@@ -69,6 +73,11 @@ export function env(): Env {
     },
     modelApiKey: read("MODEL_API_KEY"),
     mockDelayMs: Math.max(0, Number(read("MOCK_DELAY_MS")) || 0),
+    demoWoo:
+      read("DEMO_WOO_URL") && read("DEMO_WOO_KEY") && read("DEMO_WOO_SECRET")
+        ? { url: read("DEMO_WOO_URL").replace(/\/+$/, ""), key: read("DEMO_WOO_KEY"), secret: read("DEMO_WOO_SECRET") }
+        : null,
+    mediaFetchBaseUrl: (read("MEDIA_FETCH_BASE_URL") || siteUrl).replace(/\/+$/, ""),
   };
   return cached;
 }

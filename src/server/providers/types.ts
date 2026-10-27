@@ -49,13 +49,26 @@ export interface WooDraftInput {
   category: string;
   regularPrice: number | null;
   tags: string[];
-  imageUrls: string[];
+  attributes: { name: string; value: string }[];
+  /** Workspace media, main image first. The live client uploads the files, since /media is private. */
+  images: { mediaId: string; alt: string }[];
+}
+
+/** A shop's WooCommerce store: its address and REST keys (decrypted only for the call). */
+export interface WooStore {
+  url: string;
+  key: string;
+  secret: string;
 }
 
 export interface WooProvider {
   readonly mode: "mock" | "live";
   /** Creates or updates a draft product; never publishes. */
-  saveDraft(ctx: CallContext, input: WooDraftInput): Promise<{ productId: number; editUrl: string }>;
+  saveDraft(
+    ctx: CallContext,
+    store: WooStore | null,
+    input: WooDraftInput,
+  ): Promise<{ productId: number; editUrl: string }>;
 }
 
 export interface InstagramProvider {

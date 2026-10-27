@@ -5,6 +5,12 @@
 #   pnpm db:down      stop it
 #
 # Port 3307 on the host so it never clashes with a MySQL already installed on 3306.
+#
+# A local WordPress + WooCommerce test store sits behind the "store" profile, so the
+# commands above never start it:
+#
+#   pnpm store:setup  start it on http://localhost:8080, install WooCommerce, write test keys to .env.local
+#   pnpm store:down   stop it
 
 services:
   db:
@@ -27,5 +33,64 @@ services:
       retries: 20
     restart: unless-stopped
 
+  store-db:
+    image: mariadb:11.4
+    container_name: listsnap-store-db
+    profiles: ["store"]
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+      MARIADB_ROOT_PASSWORD: wordpress-root
+    volumes:
+      - listsnap-store-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      # the first start creates the data files, which takes longer
+      start_period: 90s
+
+  store:
+    image: wordpress:php8.3-apache
+    container_name: listsnap-store
+    profiles: ["store"]
+    depends_on:
+      store-db:
+        condition: service_healthy
+    environment: &wp-env
+      WORDPRESS_DB_HOST: store-db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    ports:
+      - "${STORE_PORT:-8080}:80"
+    # the store downloads product images from the app running on the host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - listsnap-store:/var/www/html
+      - ./docker/store/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "-o", "/dev/null", "http://localhost/wp-includes/images/blank.gif"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  store-cli:
+    image: wordpress:cli-php8.3
+    profiles: ["store"]
+    user: "33:33"
+    depends_on:
+      store:
+        condition: service_healthy
+    environment: *wp-env
+    volumes:
+      - listsnap-store:/var/www/html
+      - ./docker/store/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+
 volumes:
   listsnap-db:
+  listsnap-store-db:
+  listsnap-store:

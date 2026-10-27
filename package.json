@@ -13,7 +13,9 @@
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose stop db",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs",
-    "db:status": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --status"
+    "db:status": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --status",
+    "store:setup": "node scripts/store-setup.mjs",
+    "store:down": "docker compose --profile store stop store store-db"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
