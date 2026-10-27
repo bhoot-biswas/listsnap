@@ -121,7 +121,16 @@
     "tooMany": "Up to 5 photos of one product.",
     "notPhoto": "That file isn't a photo. Use JPG, PNG or HEIC.",
     "uploadFailed": "The upload didn't go through. Check your connection and try again.",
-    "tips": "Fill the frame with the product, avoid shadows, one product per photo."
+    "tips": "Fill the frame with the product, avoid shadows, one product per photo.",
+    "recent": "Recent listings",
+    "recentEmpty": "Your listings will show up here.",
+    "samplesTitle": "Try a sample",
+    "samples": {
+      "saree": "Saree",
+      "bangles": "Bangles",
+      "kurti": "Kurti"
+    },
+    "sampleFailed": "The sample photo didn’t load. Try again."
   },
   "job": {
     "title": "Making your listing",
@@ -151,7 +160,7 @@
     "chooseConfirm": "Continue with {count, plural, one {# item} other {# items}}",
     "suggested": "Suggested",
     "doneTitle": "{count, plural, one {Your listing is ready} other {Your # listings are ready}}",
-    "doneBody": "Review it next. Saving to your store comes in the next phase.",
+    "doneBody": "Check the text, then save it to your store. Products are always saved as drafts.",
     "review": "Review",
     "newListing": "Snap another",
     "listing": "Listing {n}",
@@ -160,7 +169,12 @@
     "costSoFar": "Cost so far",
     "noCalls": "No calls yet.",
     "notFound": "This job isn't in your shop.",
-    "offline": "You're offline. The steps continue when you're back."
+    "offline": "You're offline. The steps continue when you're back.",
+    "saveOne": "Save as draft in store",
+    "saveAll": "Save all {count} as drafts",
+    "saving": "Saving to your store…",
+    "saveFailed": "Your store didn’t answer. Your listing is safe here. Try again.",
+    "seeSaved": "See saved drafts"
   },
   "placeholder": {
     "body": "This page is part of the app shell. It gets built in {phase}.",
@@ -171,5 +185,16 @@
     "body": "Your work is saved. Try again, or go back to the dashboard.",
     "notFoundTitle": "Page not found",
     "notFoundBody": "This page doesn't exist or isn't in your shop."
+  },
+  "done": {
+    "title": "Saved to your store",
+    "heading": "{count, plural, one {Draft saved} other {# drafts saved}}",
+    "body": "“{title}” is in your store as a draft.",
+    "open": "Open",
+    "openInStore": "Open in WooCommerce",
+    "snapAnother": "Snap another",
+    "toDashboard": "Back to dashboard",
+    "instagramSoon": "Instagram posting is coming soon.",
+    "stats": "Took {seconds} s · AI cost ${cost}"
   }
 }

@@ -49,7 +49,9 @@ export interface WooDraftInput {
   category: string;
   regularPrice: number | null;
   tags: string[];
-  imageUrls: string[];
+  attributes: { name: string; value: string }[];
+  /** Workspace media, main image first. The live client uploads the files, since /media is private. */
+  images: { mediaId: string; alt: string }[];
 }
 
 export interface WooProvider {

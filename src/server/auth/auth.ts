@@ -5,6 +5,7 @@ import { anonymous, magicLink } from "better-auth/plugins";
 import { env } from "@/server/env";
 import { getPool } from "@/server/db/pool";
 import { createWorkspaceForUser } from "@/server/db/workspaces";
+import { seedDemoWorkspace } from "@/server/demo/seed";
 import { sendMagicLinkMail } from "./mail";
 
 /**
@@ -93,7 +94,9 @@ function build() {
         create: {
           after: async (user) => {
             const demo = !!(user as { isAnonymous?: boolean }).isAnonymous;
-            await createWorkspaceForUser(user.id, { demo });
+            const workspaceId = await createWorkspaceForUser(user.id, { demo });
+            // an empty demo is still a working demo, so a seeding problem never blocks sign-in
+            if (demo) await seedDemoWorkspace(workspaceId).catch((err) => console.error("[demo] seeding failed:", err));
           },
         },
       },

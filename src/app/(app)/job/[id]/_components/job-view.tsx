@@ -11,12 +11,18 @@ import type { JobState } from "@/lib/job-state";
 import { StepList } from "./step-list";
 import { ChooseItems } from "./choose-items";
 import { UnderTheHood } from "./under-the-hood";
+import { SaveToStore } from "./save-to-store";
+
+const SAVABLE = new Set(["ready", "needs_review"]);
 
 export function JobView({ initial }: { initial: JobState }) {
   const t = useTranslations("job");
   const tCommon = useTranslations("common");
   const { state, offline, retry, choose } = useJobRunner(initial);
   const photo = state.photos[0];
+  const finished = state.status === "ready";
+  const savable = finished ? state.listings.filter((l) => SAVABLE.has(l.status)) : [];
+  const inStore = state.listings.some((l) => l.status === "in_store" || l.status === "posted");
 
   return (
     <>
@@ -50,7 +56,7 @@ export function JobView({ initial }: { initial: JobState }) {
 
           {state.listings.length > 0 && (
             <section className="space-y-3">
-              {state.status === "ready" && state.listings.some((l) => l.status !== "failed") && (
+              {finished && state.listings.some((l) => l.status !== "failed") && (
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold">{t("doneTitle", { count: state.listings.length })}</h2>
                   <p className="text-sm text-muted-foreground">{t("doneBody")}</p>
@@ -94,10 +100,31 @@ export function JobView({ initial }: { initial: JobState }) {
                         </figure>
                       ))}
                     </div>
+                    {savable.length > 1 && SAVABLE.has(l.status) && (
+                      <SaveToStore jobId={state.id} listingIds={[l.id]} label={t("saveOne")} variant="outline" />
+                    )}
                   </li>
                 ))}
               </ul>
-              {state.status === "ready" && <ButtonLink href="/snap">{t("newListing")}</ButtonLink>}
+              {finished && (
+                <div className="flex flex-wrap gap-3">
+                  {savable.length > 0 && (
+                    <SaveToStore
+                      jobId={state.id}
+                      listingIds={savable.map((l) => l.id)}
+                      label={savable.length > 1 ? t("saveAll", { count: savable.length }) : t("saveOne")}
+                    />
+                  )}
+                  {inStore && (
+                    <ButtonLink href={`/job/${state.id}/done`} variant="outline" size="lg">
+                      {t("seeSaved")}
+                    </ButtonLink>
+                  )}
+                  <ButtonLink href="/snap" variant={savable.length || inStore ? "ghost" : "default"} size="lg">
+                    {t("newListing")}
+                  </ButtonLink>
+                </div>
+              )}
             </section>
           )}
         </div>
