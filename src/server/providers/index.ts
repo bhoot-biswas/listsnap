@@ -1,6 +1,7 @@
 import "server-only";
 import { env } from "@/server/env";
 import { mockMeta } from "./meta/mock";
+import { liveMeta } from "./meta/live";
 import { mockWoo } from "./woo/mock";
 import { mockInstagram } from "./ig/mock";
 import type { InstagramProvider, MetaProvider, WooProvider } from "./types";
@@ -16,12 +17,12 @@ class NotBuiltYet extends Error {
 
 /**
  * Picks mock or live per provider from PROVIDER_MODE_*. Live clients land in later
- * phases (Meta in Phase 2/3, WooCommerce in Phase 2, Instagram in Phase 6); until then
- * asking for one fails loudly instead of quietly falling back to fake data.
+ * phases (WooCommerce in Phase 2, Instagram in Phase 6); until then asking for one
+ * fails loudly instead of quietly falling back to fake data. Live Meta is built call by
+ * call; see meta/live.ts for which calls are still mocked.
  */
 export function meta(): MetaProvider {
-  if (env().providers.meta === "live") throw new NotBuiltYet("Meta Model API", "PROVIDER_MODE_META", "Phase 2");
-  return mockMeta;
+  return env().providers.meta === "live" ? liveMeta : mockMeta;
 }
 
 export function woo(): WooProvider {

@@ -24,16 +24,16 @@ export const PlanResult = z.object({
   sam_phrase: z
     .string()
     .min(1)
-    .describe("Short noun phrase naming the product to segment, 1-4 words, e.g. 'jamdani saree'"),
+    .describe("Short noun phrase naming the product to segment, 1-4 words, e.g. 'jamdani saree', 'gold bangle'. Not a command or a question."),
   alt_phrases: z.array(z.string()).describe("Two or three alternative noun phrases to try if the first finds nothing"),
   category_guess: z.string().describe("Store category, e.g. 'Sarees', 'Bangles', 'Kurtis', 'Home decor'"),
   likely_multi: z.boolean().describe("True if the photo shows more than one sellable item"),
   item_count_guess: z.number().int().describe("How many sellable items are visible"),
   multi_kind: MultiKind.describe(
-    "How the visible items relate: 'pair' = one product sold as a pair; 'identical_copies' = several of the same item; 'shop_display' = a crowded stall or shelf",
+    "How the visible items relate: 'pair' = one product sold as a pair (earrings, shoes); 'identical_copies' = several of the same item (one listing, quantity N); 'shop_display' = a crowded stall or shelf with many products",
   ),
   camera_angle: CameraAngle.describe(
-    "From directly above (flat lay), from the side at product level, or angled in between",
+    "How the photo was taken: from directly above (flat lay), from the side at product level, or at an angle in between",
   ),
   photo_notes: z.string().describe("One short sentence on photo quality: clutter, light, framing"),
 });
@@ -69,7 +69,10 @@ export const GroupResult = z.object({
 });
 export type GroupResult = z.infer<typeof GroupResult>;
 
-const Attribute = z.object({ name: z.string(), value: z.string() });
+const Attribute = z.object({
+  name: z.string().describe("Attribute name, e.g. Fabric, Color, Size, Length, Material"),
+  value: z.string().describe("Attribute value"),
+});
 
 /** Step 4 `write`: the English listing. */
 export const ListingText = z.object({
@@ -77,13 +80,23 @@ export const ListingText = z.object({
   short_description: z.string().describe("One or two sentences, at most 160 characters"),
   description: z
     .string()
-    .describe("For buyers, plain text: what it is, material, size or fit, care. No notes to the seller"),
-  category: z.string(),
+    .describe(
+      "For buyers: 3-6 short paragraphs or bullet lines in plain text: what it is, material, size or fit, care, who it suits. No invented facts and no notes to the seller; say 'see photos for detail' when unsure",
+    ),
+  category: z.string().describe("Store category"),
   attributes: z.array(Attribute).describe("Only attributes visible in the photo or very likely"),
   tags: z.array(z.string()).describe("5-10 lowercase search tags"),
-  price_hint_bdt: z.object({ low: z.number().int(), high: z.number().int(), basis: z.string() }),
+  price_hint_bdt: z
+    .object({
+      low: z.number().int().describe("Low end of a typical retail price in Bangladesh, in BDT"),
+      high: z.number().int().describe("High end, in BDT"),
+      basis: z.string().describe("One short sentence on why"),
+    })
+    .describe("Typical Bangladesh social-commerce retail price range"),
   confidence: z.number().min(0).max(1).describe("0 to 1: how sure you are the listing is correct without edits"),
-  check_notes: z.array(z.string()).describe("What the seller should check. At most 4"),
+  check_notes: z
+    .array(z.string())
+    .describe("What the seller should check, e.g. 'Check the fabric: could be cotton or silk blend'. At most 4"),
 });
 export type ListingText = z.infer<typeof ListingText>;
 
