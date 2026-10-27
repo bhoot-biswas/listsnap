@@ -87,11 +87,15 @@
   },
   "onboarding": {
     "title": "আপনার দোকান সাজিয়ে নিন",
-    "body": "এখন দোকানের নাম দিন। WooCommerce আর Instagram সংযোগ পরের ধাপে।",
+    "body": "দুটি ছোট ধাপ: দোকানের নাম দিন, তারপর আপনার WooCommerce স্টোর যুক্ত করুন।",
     "shopName": "দোকানের নাম",
     "shopNamePlaceholder": "রূপকথা ক্রাফটস",
-    "continue": "ড্যাশবোর্ডে যান",
-    "errorName": "দোকানের একটি নাম দিন (২–৮০ অক্ষর)।"
+    "continue": "এগিয়ে যান",
+    "errorName": "দোকানের একটি নাম দিন (২–৮০ অক্ষর)।",
+    "step": "ধাপ {n}/২",
+    "storeTitle": "আপনার WooCommerce স্টোর যুক্ত করুন",
+    "storeBody": "ListSnap প্রতিটি লিস্টিং আপনার স্টোরে ড্রাফট হিসেবে সেভ করে। আপনি না চাইলে কিছুই প্রকাশ হয় না।",
+    "back": "পেছনে"
   },
   "dashboard": {
     "title": "ড্যাশবোর্ড",
@@ -196,5 +200,83 @@
     "toDashboard": "ড্যাশবোর্ডে ফিরুন",
     "instagramSoon": "ইনস্টাগ্রামে পোস্ট করা শিগগিরই আসছে।",
     "stats": "সময় লেগেছে {seconds} সেকেন্ড · AI খরচ ${cost}"
+  },
+  "connect": {
+    "url": "স্টোরের ঠিকানা",
+    "urlPlaceholder": "https://myshop.com",
+    "key": "Consumer key",
+    "secret": "Consumer secret",
+    "guideTitle": "এগুলো কোথায় পাব?",
+    "guide1": "WordPress-এ WooCommerce → Settings → Advanced → REST API খুলুন।",
+    "guide2": "“Add key” চাপুন, ListSnap-এর মতো একটা নাম দিন, আর Permissions দিন Read/Write।",
+    "guide3": "“Generate API key” চাপুন, তারপর consumer key আর secret এখানে কপি করুন।",
+    "test": "সংযোগ পরীক্ষা করুন",
+    "testing": "পরীক্ষা হচ্ছে…",
+    "save": "সংযোগ সেভ করুন",
+    "saveOnboarding": "এগিয়ে যান",
+    "saving": "সেভ হচ্ছে…",
+    "retestHint": "আপনি তথ্য বদলেছেন। আবার সংযোগ পরীক্ষা করুন।",
+    "defaultCategory": "ডিফল্ট ক্যাটাগরি",
+    "defaultCategoryHint": "পণ্যের সঙ্গে মেলে এমন ক্যাটাগরি স্টোরে না থাকলে এটি ব্যবহার হবে।",
+    "createCategories": "ListSnap মিলিয়ে নতুন ক্যাটাগরি তৈরি করুক",
+    "demoStore": "এখনো স্টোর নেই? আপাতত ডেমো স্টোর ব্যবহার করুন",
+    "errors": {
+      "url": "আপনার স্টোরের ওয়েব ঠিকানা দিন, যেমন https://myshop.com।",
+      "keys": "consumer key আর consumer secret দুটোই পেস্ট করুন।",
+      "demo": "ডেমো দোকান সবসময় আমাদের টেস্ট স্টোর ব্যবহার করে।",
+      "failed": "এই মুহূর্তে স্টোরটি পরীক্ষা করা গেল না। একটু পরে আবার চেষ্টা করুন।"
+    },
+    "checks": {
+      "https": {
+        "pass": "নিরাপদ সংযোগ (HTTPS)",
+        "warn": "নিরাপদ নয় (HTTP)। শুধু টেস্ট স্টোরের জন্য চলবে।",
+        "fail": "স্টোরের ঠিকানা https:// দিয়ে শুরু হতে হবে।"
+      },
+      "reach": {
+        "pass": "স্টোরে পৌঁছানো গেছে",
+        "fail": "এই ঠিকানায় WooCommerce পাওয়া যায়নি।"
+      },
+      "read": {
+        "pass": "Key দিয়ে পণ্য দেখা যায়",
+        "fail": "আপনার স্টোর এই key গ্রহণ করেনি।"
+      },
+      "write": {
+        "pass": "Key দিয়ে ড্রাফট পণ্য সেভ করা যায়",
+        "fail": "এই key দিয়ে পণ্য সেভ করা যায় না।"
+      },
+      "color": {
+        "pass": "Color অ্যাট্রিবিউট পাওয়া গেছে",
+        "warn": "এখনো Color অ্যাট্রিবিউট নেই। আপাতত ListSnap রং পণ্যের বিবরণে যোগ করবে।"
+      }
+    },
+    "reasons": {
+      "http": "আপনার স্টোরের https:// ঠিকানা ব্যবহার করুন।",
+      "private": "আপনার স্টোরের পাবলিক ওয়েব ঠিকানা ব্যবহার করুন।",
+      "unreachable": "ঠিকানাটা আর সাইট চালু আছে কিনা দেখে নিন।",
+      "not_woo": "ঠিকানাটা দেখুন, আর WooCommerce ইনস্টল ও চালু আছে কিনা নিশ্চিত করুন।",
+      "server": "আপনার স্টোরে একটা সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।",
+      "keys": "WooCommerce → Settings → Advanced → REST API থেকে key আর secret আবার কপি করুন।",
+      "read_only": "আপনার key শুধু Read-এর জন্য। WooCommerce → Settings → Advanced → REST API-তে Permissions দিন Read/Write।"
+    }
+  },
+  "connections": {
+    "woo": "WooCommerce",
+    "instagram": "ইনস্টাগ্রাম",
+    "connected": "যুক্ত আছে",
+    "broken": "দেখা দরকার",
+    "checked": "পরীক্ষা হয়েছে {time}",
+    "keyHint": "Key ••••{hint}",
+    "defaultCategory": "ডিফল্ট ক্যাটাগরি: {name}",
+    "noDefaultCategory": "কোনো ডিফল্ট ক্যাটাগরি নেই",
+    "demoStore": "ডেমো স্টোর",
+    "demoShopBody": "ডেমো দোকানের ড্রাফট আমাদের টেস্ট স্টোরে সেভ হয়।",
+    "usingDemoBody": "আপাতত আপনার ড্রাফট আমাদের টেস্ট স্টোরে সেভ হচ্ছে। যেকোনো সময় নিজের স্টোর যুক্ত করুন।",
+    "testNow": "এখন পরীক্ষা করুন",
+    "replaceKeys": "Key বদলান",
+    "connectOwn": "নিজের স্টোর যুক্ত করুন",
+    "disconnect": "স্টোর বিচ্ছিন্ন করুন",
+    "disconnectHint": "যে ড্রাফট আগেই স্টোরে আছে সেগুলো থেকে যাবে।",
+    "notConnected": "স্টোর যুক্ত করুন, যাতে ListSnap লিস্টিংগুলো ড্রাফট হিসেবে সেখানে সেভ করতে পারে।",
+    "instagramSoon": "শিগগিরই আসছে। নিজের অ্যাকাউন্ট থেকে পোস্ট করতে Meta-র অ্যাপ রিভিউ লাগবে; ডেমো দোকান আমাদের টেস্ট অ্যাকাউন্ট ব্যবহার করে।"
   }
 }

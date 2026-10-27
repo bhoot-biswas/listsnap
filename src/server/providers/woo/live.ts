@@ -4,6 +4,7 @@ import { signedMediaUrl } from "@/server/media/signed";
 import { StepError } from "@/server/pipeline/run-step";
 import type { WooDraftInput, WooProvider, WooStore } from "../types";
 import { WooHttpError, wooApi, type WooApi } from "./http";
+import { checkWooStore } from "./check";
 
 /**
  * The real WooCommerce client. Products are created as drafts and never published;
@@ -34,7 +35,9 @@ export const liveWoo: WooProvider = {
   async saveDraft(ctx, store, input) {
     if (!store) throw new StepError("Connect your WooCommerce store first, in Connections.");
     const api = wooApi(ctx, store);
-    const categoryId = input.category ? await findOrCreateTerm(api, "products/categories", input.category) : null;
+    const categoryId = input.category
+      ? await findOrCreateTerm(api, "products/categories", input.category, input.fallbackCategoryId)
+      : input.fallbackCategoryId;
     const tagIds: number[] = [];
     for (const tag of input.tags.slice(0, 10)) tagIds.push(await findOrCreateTerm(api, "products/tags", tag));
 
@@ -57,6 +60,8 @@ export const liveWoo: WooProvider = {
       : await api.post<Product>("products", { ...body, status: "draft" }, { timeoutMs: IMAGE_TIMEOUT_MS });
     return { productId: saved.id, editUrl: editUrl(store, saved.id) };
   },
+
+  check: checkWooStore,
 };
 
 export const editUrl = (store: WooStore, productId: number) =>
@@ -81,12 +86,21 @@ async function findProduct(api: WooApi, input: WooDraftInput): Promise<Product |
   return found.find((p) => p.meta_data.some((m) => m.key === LISTING_META_KEY && m.value === input.listingId)) ?? null;
 }
 
-/** Categories and tags are matched by name (case-insensitive) and created when missing. */
-async function findOrCreateTerm(api: WooApi, path: string, name: string): Promise<number> {
+/**
+ * Categories and tags are matched by name (case-insensitive). A missing one is created,
+ * unless the shop chose a default category, which keeps the store's categories tidy.
+ */
+async function findOrCreateTerm(
+  api: WooApi,
+  path: string,
+  name: string,
+  fallbackId: number | null = null,
+): Promise<number> {
   const wanted = name.trim().toLowerCase();
   const found = await api.get<Term[]>(path, { search: name.trim(), per_page: 100 });
   const match = found.find((t) => decodeEntities(t.name).trim().toLowerCase() === wanted);
   if (match) return match.id;
+  if (fallbackId) return fallbackId;
   try {
     return (await api.post<Term>(path, { name: name.trim() })).id;
   } catch (err) {

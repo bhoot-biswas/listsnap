@@ -93,3 +93,7 @@ export async function markOnboarded(workspaceId: string, name?: string): Promise
     [name ?? null, workspaceId],
   );
 }
+
+export async function renameWorkspace(workspaceId: string, name: string): Promise<void> {
+  await execute("UPDATE workspaces SET name = ? WHERE id = ?", [name, workspaceId]);
+}

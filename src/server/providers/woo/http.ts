@@ -1,6 +1,7 @@
 import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 import { env } from "@/server/env";
+import { isPublicHost } from "@/server/net/public-host";
 import { StepError } from "@/server/pipeline/run-step";
 import { logged } from "../log";
 import type { CallContext, WooStore } from "../types";
@@ -13,7 +14,11 @@ import type { CallContext, WooStore } from "../types";
  * need, so plain HTTP is refused in production.
  */
 
-/** A store answer that isn't a success. Its message quotes the store, so the seller may see it. */
+/**
+ * A failed store call, worded for the seller. `status` is the HTTP status (0 when the
+ * store never answered) and `code` WooCommerce's error code, so callers like the
+ * connection check can tell wrong keys from read-only ones.
+ */
 export class WooHttpError extends StepError {
   constructor(
     readonly status: number,
@@ -55,13 +60,16 @@ export interface WooApi {
 
 export function wooApi(ctx: CallContext, store: WooStore): WooApi {
   const https = store.url.startsWith("https://");
-  if (!https && env().prod) throw new StepError("Your store address must start with https://.");
+  if (!https && env().prod) throw new WooHttpError(0, "http", "Your store address must start with https://.");
+  let publicCheck: Promise<boolean> | null = null;
 
   const call = async <T>(method: string, path: string, query: Query, body: unknown, timeoutMs: number): Promise<T> =>
     logged(
       ctx,
       { provider: "woo", model: "woocommerce", endpoint: `${method} ${path.replace(/\/\d+/g, "/:id")}`, mode: "live" },
       async () => {
+        if (env().prod && !(await (publicCheck ??= isPublicHost(new URL(store.url).hostname))))
+          throw new WooHttpError(0, "private", "That store address isn't reachable from the internet.");
         const url = `${store.url}/wp-json/wc/v3/${path}`;
         const qs = https
           ? new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)])).toString()
@@ -79,7 +87,11 @@ export function wooApi(ctx: CallContext, store: WooStore): WooApi {
             redirect: "error",
           });
         } catch {
-          throw new StepError("Your store didn't answer. Your listing is safe here; try again in a moment.");
+          throw new WooHttpError(
+            0,
+            "unreachable",
+            "Your store didn't answer. Your listing is safe here; try again in a moment.",
+          );
         }
         const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
         if (!res.ok) throw httpError(res.status, data);
@@ -96,15 +108,24 @@ export function wooApi(ctx: CallContext, store: WooStore): WooApi {
 }
 
 /** Store errors in words a seller can act on; WooCommerce's own message is kept for the rest. */
-function httpError(status: number, data: Record<string, unknown> | null): Error {
+function httpError(status: number, data: Record<string, unknown> | null): WooHttpError {
   const code = typeof data?.code === "string" ? data.code : "";
   const message = typeof data?.message === "string" ? data.message : "";
   const extra = (data?.data as Record<string, unknown> | undefined) ?? {};
   if (status === 401 || status === 403)
-    return new StepError("Your store didn't accept ListSnap's keys. Check them in Connections (read/write access).");
-  if (status === 404 && code === "rest_no_route")
-    return new StepError("ListSnap couldn't find WooCommerce at your store address. Check it in Connections.");
-  if (status >= 500) return new StepError(`Your store had a problem (error ${status}). Your listing is safe here.`);
+    return new WooHttpError(
+      status,
+      code,
+      "Your store didn't accept ListSnap's keys. Check them in Connections (read/write access).",
+    );
+  if (status === 404 && (code === "rest_no_route" || !data))
+    return new WooHttpError(
+      status,
+      "not_woo",
+      "ListSnap couldn't find WooCommerce at your store address. Check it in Connections.",
+    );
+  if (status >= 500)
+    return new WooHttpError(status, code, `Your store had a problem (error ${status}). Your listing is safe here.`);
   // WooCommerce quotes the image link here, which must not reach the seller or the log
   if (code === "woocommerce_product_image_upload_error")
     return new WooHttpError(
