@@ -31,16 +31,17 @@ export async function maskCutout(
       if (mask.raster[sy * mask.width + sx]) alphaRaw[y * bw + x] = 255;
     }
   }
-  // sharp widens one raw channel to sRGB when blurring, so take channel 0 back out
-  const alpha = await sharp(alphaRaw, { raw: { width: bw, height: bh, channels: 1 } })
-    .blur(feather)
-    .extractChannel(0)
-    .raw()
-    .toBuffer();
   const rgb = await sharp(photo)
     .extract({ left, top, width: bw, height: bh })
     .toColourspace("srgb")
     .removeAlpha()
+    .raw()
+    .toBuffer();
+  fillOccluders(alphaRaw, rgb, bw, bh);
+  // sharp widens one raw channel to sRGB when blurring, so take channel 0 back out
+  const alpha = await sharp(alphaRaw, { raw: { width: bw, height: bh, channels: 1 } })
+    .blur(feather)
+    .extractChannel(0)
     .raw()
     .toBuffer();
 
@@ -74,4 +75,62 @@ export async function maskCutout(
 /** True when the image carries transparency (a real cutout, not a rectangular crop). */
 export async function hasAlpha(img: Buffer): Promise<boolean> {
   return !!(await sharp(img).metadata()).hasAlpha;
+}
+
+/** How far (RGB distance) a hole's colour must be from the background to count as in front of the product. */
+const OCCLUDER_DISTANCE = 60;
+
+/**
+ * SAM masks only what the phrase names, so whatever lies on the product (a tea tag on
+ * a "pink mug", a price sticker) comes back as a hole, and the cutout would show the
+ * product with a piece missing. A hole that looks like the background around the
+ * product is a real gap (inside a mug handle, the middle of a bangle) and stays
+ * transparent; one that doesn't is something in front of the product, and is put back,
+ * so the cutout matches the photo. Works in place on the 0/255 mask.
+ */
+export function fillOccluders(mask: Uint8Array, rgb: Uint8Array, width: number, height: number): void {
+  const n = width * height;
+  const label = new Int32Array(n).fill(-1);
+  const regions: { touchesEdge: boolean; count: number; sum: [number, number, number] }[] = [];
+  const stack: number[] = [];
+  for (let start = 0; start < n; start++) {
+    if (mask[start] || label[start]! >= 0) continue;
+    const region = { touchesEdge: false, count: 0, sum: [0, 0, 0] as [number, number, number] };
+    const id = regions.push(region) - 1;
+    label[start] = id;
+    stack.push(start);
+    while (stack.length) {
+      const p = stack.pop()!;
+      const x = p % width;
+      const y = (p - x) / width;
+      region.count++;
+      region.sum[0] += rgb[p * 3]!;
+      region.sum[1] += rgb[p * 3 + 1]!;
+      region.sum[2] += rgb[p * 3 + 2]!;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) region.touchesEdge = true;
+      const next = [
+        x > 0 ? p - 1 : -1,
+        x < width - 1 ? p + 1 : -1,
+        y > 0 ? p - width : -1,
+        y < height - 1 ? p + width : -1,
+      ];
+      for (const q of next) {
+        if (q >= 0 && !mask[q] && label[q]! < 0) {
+          label[q] = id;
+          stack.push(q);
+        }
+      }
+    }
+  }
+
+  // the background is what surrounds the product inside its box: the regions open to the edge
+  const outside = regions.filter((r) => r.touchesEdge);
+  const total = outside.reduce((s, r) => s + r.count, 0);
+  if (!total) return;
+  const bg = [0, 1, 2].map((c) => outside.reduce((s, r) => s + r.sum[c]!, 0) / total);
+  const fill = regions.map(
+    (r) => !r.touchesEdge && Math.hypot(...[0, 1, 2].map((c) => r.sum[c]! / r.count - bg[c]!)) > OCCLUDER_DISTANCE,
+  );
+  if (!fill.some(Boolean)) return;
+  for (let i = 0; i < n; i++) if (!mask[i] && fill[label[i]!]) mask[i] = 255;
 }
