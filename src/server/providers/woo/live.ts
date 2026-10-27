@@ -48,6 +48,7 @@ export const liveWoo: WooProvider = {
       description: toHtml(input.description),
       short_description: toHtml(input.shortDescription),
       regular_price: input.regularPrice === null ? "" : String(input.regularPrice),
+      ...(input.stockQty === null ? {} : { manage_stock: true, stock_quantity: input.stockQty }),
       categories: categoryId ? [{ id: categoryId }] : [],
       tags: tagIds.map((id) => ({ id })),
       attributes: input.attributes.map((a, i) => ({ name: a.name, options: [a.value], visible: true, position: i })),

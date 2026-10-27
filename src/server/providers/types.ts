@@ -53,6 +53,8 @@ export interface WooDraftInput {
   /** Used when the store has no category by that name; null lets the client create one. */
   fallbackCategoryId: number | null;
   regularPrice: number | null;
+  /** Null leaves stock unmanaged in the store. */
+  stockQty: number | null;
   tags: string[];
   attributes: { name: string; value: string }[];
   /** Workspace media, main image first. The live client uploads the files, since /media is private. */

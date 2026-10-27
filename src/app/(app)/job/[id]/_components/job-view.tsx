@@ -14,6 +14,7 @@ import { UnderTheHood } from "./under-the-hood";
 import { SaveToStore } from "./save-to-store";
 
 const SAVABLE = new Set(["ready", "needs_review"]);
+const EDITABLE = new Set(["ready", "needs_review", "in_store", "posted"]);
 
 export function JobView({ initial }: { initial: JobState }) {
   const t = useTranslations("job");
@@ -100,8 +101,15 @@ export function JobView({ initial }: { initial: JobState }) {
                         </figure>
                       ))}
                     </div>
-                    {savable.length > 1 && SAVABLE.has(l.status) && (
-                      <SaveToStore jobId={state.id} listingIds={[l.id]} label={t("saveOne")} variant="outline" />
+                    {finished && EDITABLE.has(l.status) && (
+                      <div className="flex flex-wrap gap-2">
+                        <ButtonLink href={`/job/${state.id}/review?l=${l.id}`} variant="outline">
+                          {t("review")}
+                        </ButtonLink>
+                        {savable.length > 1 && SAVABLE.has(l.status) && (
+                          <SaveToStore jobId={state.id} listingIds={[l.id]} label={t("saveOne")} variant="outline" />
+                        )}
+                      </div>
                     )}
                   </li>
                 ))}
