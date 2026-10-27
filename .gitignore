@@ -22,7 +22,7 @@ next-env.d.ts
 !.env.example
 
 # uploads and generated media
-/media/
+/.data/
 /storage/
 
 # tests

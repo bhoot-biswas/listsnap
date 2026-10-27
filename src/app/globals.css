@@ -1,0 +1,169 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-marigold: var(--marigold);
+  --color-marigold-soft: var(--marigold-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-code: var(--code);
+  --color-code-foreground: var(--code-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: var(--font-ui);
+  --font-heading: var(--font-bricolage), var(--font-ui);
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+}
+
+/*
+ * Design tokens, light and dark. shadcn's `accent` is its hover surface, so it stays neutral and
+ * the brand's marigold gets its own name: it marks AI-made things, never errors.
+ */
+:root {
+  --radius: 10px;
+  --background: #f7f8f6;
+  --foreground: #14201a;
+  --card: #ffffff;
+  --card-foreground: #14201a;
+  --popover: #ffffff;
+  --popover-foreground: #14201a;
+  --primary: #0e7357;
+  --primary-foreground: #ffffff;
+  --primary-soft: #dcefe7;
+  --secondary: #eef1ec;
+  --secondary-foreground: #14201a;
+  --muted: #eef1ec;
+  --muted-foreground: #5a6961;
+  --accent: #eef1ec;
+  --accent-foreground: #14201a;
+  --marigold: #c98a12;
+  --marigold-soft: #f8ecd2;
+  --success: #1d7a46;
+  --warning: #a86a00;
+  --destructive: #b23a2e;
+  --border: #dce2da;
+  --input: #dce2da;
+  --ring: #0e7357;
+  --code: #d7e8df;
+  --code-foreground: #13201a;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #14201a;
+  --sidebar-primary: #0e7357;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #dcefe7;
+  --sidebar-accent-foreground: #0b5c45;
+  --sidebar-border: #dce2da;
+  --sidebar-ring: #0e7357;
+  --font-ui: var(--font-inter), var(--font-hind), ui-sans-serif, system-ui, sans-serif;
+}
+
+.dark {
+  --background: #0f1512;
+  --foreground: #e6eee9;
+  --card: #161e1a;
+  --card-foreground: #e6eee9;
+  --popover: #161e1a;
+  --popover-foreground: #e6eee9;
+  --primary: #34b88f;
+  --primary-foreground: #0b1a14;
+  --primary-soft: #173a2f;
+  --secondary: #1e2823;
+  --secondary-foreground: #e6eee9;
+  --muted: #1e2823;
+  --muted-foreground: #9aaba2;
+  --accent: #1e2823;
+  --accent-foreground: #e6eee9;
+  --marigold: #e7b04a;
+  --marigold-soft: #3a2e14;
+  --success: #3dbf77;
+  --warning: #e0a23a;
+  --destructive: #e26d60;
+  --border: #2a3630;
+  --input: #2a3630;
+  --ring: #34b88f;
+  --code: #d7e8df;
+  --code-foreground: #13201a;
+  --sidebar: #161e1a;
+  --sidebar-foreground: #e6eee9;
+  --sidebar-primary: #34b88f;
+  --sidebar-primary-foreground: #0b1a14;
+  --sidebar-accent: #173a2f;
+  --sidebar-accent-foreground: #b8ead7;
+  --sidebar-border: #2a3630;
+  --sidebar-ring: #34b88f;
+}
+
+/* Bangla UI: Hind Siliguri first and one size step larger */
+html[lang="bn"] {
+  --font-ui: var(--font-hind), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 106.25%;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-heading tracking-tight;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

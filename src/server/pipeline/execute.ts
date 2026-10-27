@@ -1,0 +1,121 @@
+import "server-only";
+import { sqlStepStore } from "@/server/db/steps";
+import { forWorkspace, type WorkspaceScope } from "@/server/db/scope";
+import type { Workspace } from "@/server/db/workspaces";
+import { GroupMode, Scene } from "@/lib/schemas/pipeline";
+import { runStep, type StepOutcome } from "./run-step";
+import { groupStep, planStep, segmentStep } from "./job-steps";
+import { renderStep, translateStep, writeStep } from "./listing-steps";
+import { isSettled, renderTarget, type JobStepName, type ListingStepName } from "./next-calls";
+
+/**
+ * The entry points Route Handlers call. Each finds the record inside the workspace
+ * (another shop's id is "not found"), runs one step under the §3c rules, then settles
+ * the job's status. Render steps measured up to 34 s, so they hold their lock longer.
+ */
+
+const LOCK_MS = 45_000;
+const RENDER_LOCK_MS = 90_000;
+
+export type ExecuteResult = { found: false } | { found: true; outcome: StepOutcome<unknown> };
+
+export async function executeJobStep(
+  workspace: Workspace,
+  jobId: string,
+  step: JobStepName,
+  force = false,
+): Promise<ExecuteResult> {
+  const ws = forWorkspace(workspace.id);
+  const job = await ws.getJob(jobId);
+  if (!job) return { found: false };
+  // "Try again" on a job that gave up puts it back to work
+  if (force && job.status === "failed") await ws.transitionJob(jobId, "failed", "processing");
+  const ctx = { ws, jobId };
+  const work = (): Promise<unknown> =>
+    step === "plan" ? planStep(ctx) : step === "segment" ? segmentStep(ctx) : groupStep(ctx);
+  const outcome = await runStep(sqlStepStore(ws.id), { jobId, step, target: "-" }, { lockMs: LOCK_MS, force }, work);
+  await settleJob(ws, workspace, jobId);
+  return { found: true, outcome };
+}
+
+export async function executeListingStep(
+  workspace: Workspace,
+  listingId: string,
+  step: ListingStepName,
+  opts: { scene?: string; force?: boolean } = {},
+): Promise<ExecuteResult | { found: true; invalid: string }> {
+  const ws = forWorkspace(workspace.id);
+  const listing = await ws.getListing(listingId);
+  if (!listing) return { found: false };
+  const ctx = { ws, workspace, listing };
+  const store = sqlStepStore(ws.id);
+  let outcome: StepOutcome<unknown>;
+  if (step === "render") {
+    const scene = Scene.safeParse(opts.scene);
+    if (!scene.success) return { found: true, invalid: "Unknown scene" };
+    outcome = await runStep(
+      store,
+      { jobId: listing.job_id, step, target: renderTarget(listingId, scene.data) },
+      { lockMs: RENDER_LOCK_MS, force: opts.force },
+      () => renderStep(ctx, scene.data),
+    );
+  } else {
+    const work = (): Promise<unknown> => (step === "write" ? writeStep(ctx) : translateStep(ctx));
+    outcome = await runStep(
+      store,
+      { jobId: listing.job_id, step, target: listingId },
+      { lockMs: LOCK_MS, force: opts.force },
+      work,
+    );
+    if (step === "write" && outcome.state === "failed" && outcome.exhausted)
+      await ws.setListingStatus(listingId, "failed");
+  }
+  await settleJob(ws, workspace, listing.job_id);
+  return { found: true, outcome };
+}
+
+/**
+ * The seller's answer on Choose items (S6): which items to keep and how to group them.
+ * Creates the listings and lets the pipeline continue. Only valid while the job waits.
+ */
+export async function applyChoice(
+  workspace: Workspace,
+  jobId: string,
+  choice: { mode: GroupMode; keepItemIds: string[] },
+): Promise<"ok" | "not_found" | "not_waiting" | "invalid"> {
+  const ws = forWorkspace(workspace.id);
+  const job = await ws.getJob(jobId);
+  if (!job) return "not_found";
+  if (job.status !== "awaiting_choice") return "not_waiting";
+  const items = await ws.items(jobId);
+  const kept = items.filter((i) => choice.keepItemIds.includes(i.id)).map((i) => i.id);
+  if (!kept.length || !["separate", "set", "variants"].includes(choice.mode)) return "invalid";
+
+  const groups = choice.mode === "separate" ? kept.map((id) => ({ itemIds: [id] })) : [{ itemIds: kept }];
+  await ws.createListings(jobId, groups);
+  await ws.updateJob(jobId, { groupMode: choice.mode });
+  await ws.transitionJob(jobId, "awaiting_choice", "processing");
+  return "ok";
+}
+
+/** Scenes made automatically: `separate` gets studio only per item (to keep image costs down). */
+export function autoScenes(workspace: Workspace, groupMode: string | null): Scene[] {
+  return groupMode === "separate" ? ["studio"] : workspace.settings.scenes;
+}
+
+/** Marks the job ready or failed once nothing is left to run. */
+async function settleJob(ws: WorkspaceScope, workspace: Workspace, jobId: string): Promise<void> {
+  const job = await ws.getJob(jobId);
+  if (!job || job.status !== "processing") return;
+  const [steps, listings] = await Promise.all([ws.steps(jobId), ws.listings(jobId)]);
+  const input = {
+    jobStatus: job.status,
+    steps,
+    listingIds: listings.map((l) => l.id),
+    scenes: autoScenes(workspace, job.group_mode),
+    translate: workspace.settings.listingLanguages.includes("bn"),
+  };
+  if (!isSettled(input)) return;
+  const jobStepFailed = steps.some((s) => s.target === "-" && s.status === "failed");
+  await ws.transitionJob(jobId, "processing", jobStepFailed || !listings.length ? "failed" : "ready");
+}

@@ -1,0 +1,70 @@
+/**
+ * The job as the browser sees it: GET /api/jobs/:id, the Processing page and the
+ * step runner all use this one shape. Built on the server from saved state only.
+ */
+
+export type StepStatus = "pending" | "running" | "done" | "failed";
+
+export interface StepView {
+  step: string;
+  target: string;
+  status: StepStatus;
+  attempts: number;
+  exhausted: boolean;
+  error: string | null;
+  /** One line on what the AI decided, e.g. 'Looking for: "jamdani saree"'. */
+  detail: string | null;
+}
+
+export interface ListingView {
+  id: string;
+  status: "processing" | "needs_review" | "ready" | "in_store" | "posted" | "failed";
+  title: string | null;
+  titleBn: string | null;
+  confidence: number | null;
+  stockQty: number | null;
+  images: { id: string; url: string; kind: string }[];
+}
+
+export interface ItemView {
+  id: string;
+  url: string | null;
+  color: string | null;
+  score: number | null;
+}
+
+export interface ApiCallView {
+  id: number;
+  at: string;
+  model: string;
+  step: string;
+  mode: "mock" | "live";
+  ms: number;
+  costUsd: number;
+  ok: boolean;
+  summary: string | null;
+}
+
+/** A step call the runner should make next, already as a URL. */
+export interface NextCallView {
+  key: string;
+  url: string;
+}
+
+export interface JobState {
+  id: string;
+  status: "processing" | "awaiting_choice" | "ready" | "failed";
+  groupMode: string | null;
+  createdAt: string;
+  photos: { id: string; url: string; width: number; height: number }[];
+  steps: StepView[];
+  items: ItemView[];
+  /** Only while waiting for the seller (Choose items). */
+  suggestion: { mode: string; colors: string[]; reason: string } | null;
+  listings: ListingView[];
+  scenes: string[];
+  translate: boolean;
+  next: NextCallView[];
+  calls: ApiCallView[];
+  costUsd: number;
+}

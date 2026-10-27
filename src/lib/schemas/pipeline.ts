@@ -1,0 +1,112 @@
+import { z } from "zod";
+
+/**
+ * What each model step returns. The same shapes the Phase 0a spike proved against Muse
+ * Spark's strict structured output: every field required, optional values as empty
+ * strings or arrays, no length limits in the schema itself (they go in descriptions,
+ * since the strict subset has no maxItems). Parsing with these is how a model answer
+ * is checked before anything is saved.
+ */
+
+export const MultiKind = z.enum([
+  "single",
+  "pair",
+  "identical_copies",
+  "different_designs",
+  "same_design_different_colors",
+  "set",
+  "shop_display",
+]);
+export const CameraAngle = z.enum(["top_down", "side", "angled"]);
+
+/** Step 1 `plan`: what SAM should look for, before any segmentation. */
+export const PlanResult = z.object({
+  sam_phrase: z
+    .string()
+    .min(1)
+    .describe("Short noun phrase naming the product to segment, 1-4 words, e.g. 'jamdani saree'"),
+  alt_phrases: z.array(z.string()).describe("Two or three alternative noun phrases to try if the first finds nothing"),
+  category_guess: z.string().describe("Store category, e.g. 'Sarees', 'Bangles', 'Kurtis', 'Home decor'"),
+  likely_multi: z.boolean().describe("True if the photo shows more than one sellable item"),
+  item_count_guess: z.number().int().describe("How many sellable items are visible"),
+  multi_kind: MultiKind.describe(
+    "How the visible items relate: 'pair' = one product sold as a pair; 'identical_copies' = several of the same item; 'shop_display' = a crowded stall or shelf",
+  ),
+  camera_angle: CameraAngle.describe(
+    "From directly above (flat lay), from the side at product level, or angled in between",
+  ),
+  photo_notes: z.string().describe("One short sentence on photo quality: clutter, light, framing"),
+});
+export type PlanResult = z.infer<typeof PlanResult>;
+
+export const Box = z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() });
+
+/** Step 2 `segment`: one row per instance SAM found (masks and cutouts are stored as media). */
+export const SegmentResult = z.object({
+  phrase: z.string(),
+  tried: z.array(z.string()),
+  instances: z.array(
+    z.object({ itemId: z.string(), box: Box, score: z.number().nullable(), cutoutMediaId: z.string().nullable() }),
+  ),
+  check: z.object({
+    fillPercent: z.number(),
+    sharp: z.boolean(),
+    exposure: z.enum(["dark", "ok", "bright"]),
+    hints: z.array(z.string()),
+  }),
+});
+export type SegmentResult = z.infer<typeof SegmentResult>;
+
+export const GroupMode = z.enum(["single", "pair", "identical", "separate", "set", "variants", "angles"]);
+export type GroupMode = z.infer<typeof GroupMode>;
+
+/** Step 3 `group`: Spark's suggestion when SAM finds several items. */
+export const GroupResult = z.object({
+  mode: GroupMode,
+  auto: z.boolean().describe("True when no seller choice is needed (single, pair, identical copies)"),
+  colors: z.array(z.string()).describe("A color name per item, in item order"),
+  reason: z.string(),
+});
+export type GroupResult = z.infer<typeof GroupResult>;
+
+const Attribute = z.object({ name: z.string(), value: z.string() });
+
+/** Step 4 `write`: the English listing. */
+export const ListingText = z.object({
+  title: z.string().min(1).describe("Product title, at most 70 characters, no ALL CAPS, no emoji"),
+  short_description: z.string().describe("One or two sentences, at most 160 characters"),
+  description: z
+    .string()
+    .describe("For buyers, plain text: what it is, material, size or fit, care. No notes to the seller"),
+  category: z.string(),
+  attributes: z.array(Attribute).describe("Only attributes visible in the photo or very likely"),
+  tags: z.array(z.string()).describe("5-10 lowercase search tags"),
+  price_hint_bdt: z.object({ low: z.number().int(), high: z.number().int(), basis: z.string() }),
+  confidence: z.number().min(0).max(1).describe("0 to 1: how sure you are the listing is correct without edits"),
+  check_notes: z.array(z.string()).describe("What the seller should check. At most 4"),
+});
+export type ListingText = z.infer<typeof ListingText>;
+
+/** Step 5 `translate`: the Bangla text fields. */
+export const BanglaText = z.object({
+  title: z.string().min(1),
+  short_description: z.string(),
+  description: z.string(),
+  attributes: z.array(Attribute),
+  tags: z.array(z.string()),
+});
+export type BanglaText = z.infer<typeof BanglaText>;
+
+export const Scene = z.enum(["studio", "lifestyle", "banner"]);
+export type Scene = z.infer<typeof Scene>;
+
+/** Step 6 `render`: one scene of one listing. */
+export const RenderResult = z.object({
+  scene: Scene,
+  mediaId: z.string(),
+  aiLabel: z.enum(["ai_background", "ai_scene"]),
+});
+export type RenderResult = z.infer<typeof RenderResult>;
+
+/** Below this, a written listing lands in Needs review instead of Ready. */
+export const REVIEW_THRESHOLD = 0.7;

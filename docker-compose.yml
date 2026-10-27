@@ -1,0 +1,31 @@
+# Local database, the same engine family Hostinger runs (MariaDB, utf8mb4).
+#
+#   pnpm db:up        start it (data stays in the listsnap-db volume)
+#   pnpm db:migrate   create or update the tables
+#   pnpm db:down      stop it
+#
+# Port 3307 on the host so it never clashes with a MySQL already installed on 3306.
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: listsnap-db
+    environment:
+      MARIADB_DATABASE: listsnap
+      MARIADB_USER: listsnap
+      MARIADB_PASSWORD: listsnap
+      MARIADB_ROOT_PASSWORD: listsnap-root
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "${DB_PORT:-3307}:3306"
+    volumes:
+      - listsnap-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  listsnap-db:

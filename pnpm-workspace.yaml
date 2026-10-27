@@ -1,0 +1,7 @@
+# Packages whose install scripts we skip. All of them ship prebuilt binaries as
+# optional dependencies, so the scripts only re-check or rebuild what is already there.
+allowBuilds:
+  "@parcel/watcher": false
+  "@swc/core": false
+  sharp: false
+  unrs-resolver: false

@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    services:
+      db:
+        image: mariadb:11.4
+        env:
+          MARIADB_DATABASE: listsnap
+          MARIADB_USER: listsnap
+          MARIADB_PASSWORD: listsnap
+          MARIADB_ROOT_PASSWORD: listsnap-root
+        ports: ["3307:3306"]
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: mysql://listsnap:listsnap@127.0.0.1:3307/listsnap
+      BETTER_AUTH_SECRET: ci-only-secret-that-is-at-least-32-characters-long
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # each step reports even if an earlier one failed, so one run shows every problem
+      - name: Typecheck
+        if: ${{ !cancelled() }}
+        run: pnpm typecheck
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: pnpm lint
+      - name: Migrate
+        if: ${{ !cancelled() }}
+        run: node scripts/db-migrate.mjs
+      - name: Test
+        if: ${{ !cancelled() }}
+        run: pnpm test
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: pnpm build

@@ -1,0 +1,175 @@
+{
+  "common": {
+    "appName": "ListSnap",
+    "tagline": "Snap a product photo. Get a store listing in English and Bangla.",
+    "back": "Back",
+    "tryAgain": "Try again",
+    "loading": "Loading…",
+    "comingSoon": "Coming soon",
+    "mock": "Mock",
+    "aiBackground": "AI background",
+    "aiScene": "AI scene"
+  },
+  "nav": {
+    "work": "Work",
+    "shop": "Shop",
+    "you": "You",
+    "newListing": "New listing",
+    "dashboard": "Dashboard",
+    "listings": "Listings",
+    "bulk": "Bulk uploads",
+    "media": "Media library",
+    "connections": "Connections",
+    "usage": "Usage",
+    "settings": "Settings",
+    "help": "Help",
+    "profile": "Profile",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "language": "Language",
+    "signOut": "Sign out",
+    "openMenu": "Open menu",
+    "snap": "Snap",
+    "demoSeller": "Demo seller"
+  },
+  "status": {
+    "processing": "Processing",
+    "needs_review": "Needs review",
+    "ready": "Ready",
+    "in_store": "In store",
+    "posted": "Posted",
+    "failed": "Failed"
+  },
+  "demo": {
+    "banner": "You're in a demo shop. Products go to our test store.",
+    "cta": "Sign in to use your own store",
+    "expired": "This demo shop has ended after 24 hours. Start a new demo or sign in with Google."
+  },
+  "signIn": {
+    "title": "Sign in to your shop",
+    "google": "Continue with Google",
+    "or": "or",
+    "email": "Email",
+    "emailPlaceholder": "you@shop.com",
+    "sendLink": "Email me a sign-in link",
+    "sending": "Sending…",
+    "sentTitle": "Check your inbox",
+    "sentBody": "We sent a link to {email}. It works for 15 minutes.",
+    "resendIn": "Resend in {seconds}s",
+    "resend": "Resend link",
+    "differentEmail": "Use a different email",
+    "justLooking": "Just looking?",
+    "tryDemo": "Try the demo shop",
+    "startingDemo": "Opening the demo shop…",
+    "terms": "By continuing you agree to use ListSnap for products you're allowed to sell.",
+    "devMailNote": "Development: the link is printed in the server console.",
+    "errorGeneric": "Something went wrong. Try again in a moment.",
+    "errorExpired": "That link has expired. Send a new one.",
+    "errorCancelled": "Google sign-in was cancelled.",
+    "errorEmail": "Enter a valid email address."
+  },
+  "landing": {
+    "title": "From one photo to a store-ready listing",
+    "body": "ListSnap finds the product in your photo, cuts it out, writes the listing in English and Bangla, makes studio photos and saves a draft to your WooCommerce store.",
+    "start": "Get started",
+    "openShop": "Open your shop",
+    "pricing": "Pricing",
+    "steps": "Photo → cutout → listing → studio photos → store draft"
+  },
+  "pricing": {
+    "title": "Pricing",
+    "free": "Free",
+    "freeBody": "20 listings a day, 60 images. Nothing to pay during the beta.",
+    "pro": "Pro",
+    "proBody": "Pay per listing, about the cost of a cup of tea. Coming later."
+  },
+  "onboarding": {
+    "title": "Set up your shop",
+    "body": "Name your shop now. Connecting WooCommerce and Instagram comes next.",
+    "shopName": "Shop name",
+    "shopNamePlaceholder": "Rupkotha Crafts",
+    "continue": "Continue to dashboard",
+    "errorName": "Give your shop a name (2–80 characters)."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "hello": "Hello, {name}",
+    "intro": "Snap a product to make your next listing.",
+    "recent": "Recent jobs",
+    "empty": "No listings yet. Your first one takes about a minute.",
+    "snapFirst": "Snap your first product",
+    "listingsCount": "{count, plural, =0 {No listings} one {# listing} other {# listings}}",
+    "jobStatus": {
+      "processing": "Processing",
+      "awaiting_choice": "Choose items",
+      "ready": "Done",
+      "failed": "Failed"
+    }
+  },
+  "snap": {
+    "title": "New listing",
+    "intro": "Take or upload up to 5 photos of one product. A plain background and good light work best.",
+    "take": "Take a photo",
+    "upload": "Upload photos",
+    "drop": "Drop photos here, or paste from the clipboard",
+    "selected": "{count, plural, one {# photo} other {# photos}} ready",
+    "clear": "Clear",
+    "start": "Make the listing",
+    "uploading": "Uploading…",
+    "tooMany": "Up to 5 photos of one product.",
+    "notPhoto": "That file isn't a photo. Use JPG, PNG or HEIC.",
+    "uploadFailed": "The upload didn't go through. Check your connection and try again.",
+    "tips": "Fill the frame with the product, avoid shadows, one product per photo."
+  },
+  "job": {
+    "title": "Making your listing",
+    "steps": {
+      "upload": "Uploaded",
+      "plan": "Understanding the photo",
+      "segment": "Cutting out the product",
+      "group": "Grouping the items",
+      "write": "Writing the listing",
+      "translate": "Writing it in Bangla",
+      "render": "Making studio photos"
+    },
+    "scenes": {
+      "studio": "Studio",
+      "lifestyle": "Lifestyle",
+      "banner": "Banner"
+    },
+    "attempt": "Attempt {n} of 3",
+    "failedHint": "This step failed. Your other work is safe.",
+    "retrying": "Trying again…",
+    "waiting": "Waiting for the other tab…",
+    "chooseTitle": "Several items found",
+    "chooseBody": "Pick the items to list and how to list them.",
+    "chooseSeparate": "Separate products",
+    "chooseSet": "One set",
+    "chooseVariants": "One product, color options",
+    "chooseConfirm": "Continue with {count, plural, one {# item} other {# items}}",
+    "suggested": "Suggested",
+    "doneTitle": "{count, plural, one {Your listing is ready} other {Your # listings are ready}}",
+    "doneBody": "Review it next. Saving to your store comes in the next phase.",
+    "review": "Review",
+    "newListing": "Snap another",
+    "listing": "Listing {n}",
+    "stock": "Stock: {qty}",
+    "underTheHood": "Under the hood",
+    "costSoFar": "Cost so far",
+    "noCalls": "No calls yet.",
+    "notFound": "This job isn't in your shop.",
+    "offline": "You're offline. The steps continue when you're back."
+  },
+  "placeholder": {
+    "body": "This page is part of the app shell. It gets built in {phase}.",
+    "goDashboard": "Go to Dashboard"
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "body": "Your work is saved. Try again, or go back to the dashboard.",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "This page doesn't exist or isn't in your shop."
+  }
+}
