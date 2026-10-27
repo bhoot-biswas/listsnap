@@ -5,11 +5,11 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { finishOnboarding, type OnboardingState } from "@/server/actions/onboarding";
+import { saveShopName, type OnboardingState } from "@/server/actions/onboarding";
 
 export function OnboardingForm({ defaultName }: { defaultName: string }) {
   const t = useTranslations("onboarding");
-  const [state, action, pending] = useActionState<OnboardingState, FormData>(finishOnboarding, { error: null });
+  const [state, action, pending] = useActionState<OnboardingState, FormData>(saveShopName, { error: null });
   return (
     <form action={action} className="space-y-4">
       <div className="space-y-2">

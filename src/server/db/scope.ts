@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { Box } from "@/server/image-ops/types";
 import { execute, json, select, selectOne, transaction } from "./pool";
 import { listingQueries } from "./listings";
+import { connectionQueries } from "./connections";
 
 export type { ListingRow, ListingStatus, RecentListingRow } from "./listings";
 
@@ -161,6 +162,7 @@ export function forWorkspace(workspaceId: string) {
     },
 
     ...listingQueries(ws),
+    ...connectionQueries(ws),
 
     steps: (jobId: string) =>
       select<StepRowView>(
@@ -190,17 +192,6 @@ export function forWorkspace(workspaceId: string) {
       );
       return { needsReview: Number(row?.needs_review ?? 0), listingsToday: Number(row?.today ?? 0) };
     },
-
-    /** The shop's connection to a store or Instagram; credentials stay encrypted here. */
-    storeConnection: (kind: "woo" | "instagram") =>
-      selectOne<{
-        base_url: string | null;
-        credentials_enc: string | null;
-        status: "connected" | "broken" | "disconnected";
-      }>("SELECT base_url, credentials_enc, status FROM store_connections WHERE workspace_id = ? AND kind = ?", [
-        ws,
-        kind,
-      ]),
 
     recentJobs: (limit = 10) =>
       select<JobRow & { photo_media_id: string | null; listings: number }>(

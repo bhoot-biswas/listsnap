@@ -1,5 +1,6 @@
 import type { Box } from "@/server/image-ops/types";
 import type { BanglaText, GroupMode, ListingText, PlanResult, Scene } from "@/lib/schemas/pipeline";
+import type { WooCheckResult } from "@/lib/woo-connection";
 
 /**
  * Every outside service sits behind one of these interfaces, each with a mock and a
@@ -47,6 +48,8 @@ export interface WooDraftInput {
   description: string;
   shortDescription: string;
   category: string;
+  /** Used when the store has no category by that name; null lets the client create one. */
+  fallbackCategoryId: number | null;
   regularPrice: number | null;
   tags: string[];
   attributes: { name: string; value: string }[];
@@ -69,6 +72,8 @@ export interface WooProvider {
     store: WooStore | null,
     input: WooDraftInput,
   ): Promise<{ productId: number; editUrl: string }>;
+  /** Tests an address and keys before they're saved (onboarding, Connections). */
+  check(ctx: CallContext, store: WooStore): Promise<WooCheckResult>;
 }
 
 export interface InstagramProvider {

@@ -87,11 +87,15 @@
   },
   "onboarding": {
     "title": "Set up your shop",
-    "body": "Name your shop now. Connecting WooCommerce and Instagram comes next.",
+    "body": "Two quick steps: name your shop, then connect your WooCommerce store.",
     "shopName": "Shop name",
     "shopNamePlaceholder": "Rupkotha Crafts",
-    "continue": "Continue to dashboard",
-    "errorName": "Give your shop a name (2–80 characters)."
+    "continue": "Continue",
+    "errorName": "Give your shop a name (2–80 characters).",
+    "step": "Step {n} of 2",
+    "storeTitle": "Connect your WooCommerce store",
+    "storeBody": "ListSnap saves every listing to your store as a draft. Nothing is published without you.",
+    "back": "Back"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -196,5 +200,83 @@
     "toDashboard": "Back to dashboard",
     "instagramSoon": "Instagram posting is coming soon.",
     "stats": "Took {seconds} s · AI cost ${cost}"
+  },
+  "connect": {
+    "url": "Store address",
+    "urlPlaceholder": "https://myshop.com",
+    "key": "Consumer key",
+    "secret": "Consumer secret",
+    "guideTitle": "Where do I find these?",
+    "guide1": "In WordPress, open WooCommerce → Settings → Advanced → REST API.",
+    "guide2": "Click “Add key”, give it a name like ListSnap, and set Permissions to Read/Write.",
+    "guide3": "Click “Generate API key”, then copy the consumer key and secret here.",
+    "test": "Test connection",
+    "testing": "Testing…",
+    "save": "Save connection",
+    "saveOnboarding": "Continue",
+    "saving": "Saving…",
+    "retestHint": "You changed the details. Test the connection again.",
+    "defaultCategory": "Default category",
+    "defaultCategoryHint": "Used when your store has no category that matches the product.",
+    "createCategories": "Let ListSnap create a matching category",
+    "demoStore": "No store yet? Use the demo store for now",
+    "errors": {
+      "url": "Enter your store’s web address, like https://myshop.com.",
+      "keys": "Paste both the consumer key and the consumer secret.",
+      "demo": "Demo shops always use our test store.",
+      "failed": "We couldn’t test the store just now. Try again in a moment."
+    },
+    "checks": {
+      "https": {
+        "pass": "Secure connection (HTTPS)",
+        "warn": "Not secure (HTTP). Fine for a test store only.",
+        "fail": "Your store address must start with https://."
+      },
+      "reach": {
+        "pass": "Store reachable",
+        "fail": "We couldn’t reach WooCommerce at this address."
+      },
+      "read": {
+        "pass": "Keys can read products",
+        "fail": "Your store didn’t accept these keys."
+      },
+      "write": {
+        "pass": "Keys can save draft products",
+        "fail": "These keys can’t save products."
+      },
+      "color": {
+        "pass": "Color attribute found",
+        "warn": "No Color attribute yet. ListSnap adds colours as product details for now."
+      }
+    },
+    "reasons": {
+      "http": "Use the https:// address of your store.",
+      "private": "Use your store’s public web address.",
+      "unreachable": "Check the address, and that your site is online.",
+      "not_woo": "Check the address, and that WooCommerce is installed and active.",
+      "server": "Your store had a problem. Try again in a moment.",
+      "keys": "Copy the key and secret again from WooCommerce → Settings → Advanced → REST API.",
+      "read_only": "Your keys are Read-only. In WooCommerce → Settings → Advanced → REST API, set Permissions to Read/Write."
+    }
+  },
+  "connections": {
+    "woo": "WooCommerce",
+    "instagram": "Instagram",
+    "connected": "Connected",
+    "broken": "Needs attention",
+    "checked": "Checked {time}",
+    "keyHint": "Key ••••{hint}",
+    "defaultCategory": "Default category: {name}",
+    "noDefaultCategory": "No default category",
+    "demoStore": "Demo store",
+    "demoShopBody": "Demo shops save their drafts to our test store.",
+    "usingDemoBody": "You’re saving drafts to our test store for now. Connect your own store any time.",
+    "testNow": "Test now",
+    "replaceKeys": "Replace keys",
+    "connectOwn": "Connect your own store",
+    "disconnect": "Disconnect store",
+    "disconnectHint": "Drafts already in your store stay there.",
+    "notConnected": "Connect your store so ListSnap can save listings to it as drafts.",
+    "instagramSoon": "Coming soon. Posting from your own account needs Meta’s app review; demo shops use our test account."
   }
 }
