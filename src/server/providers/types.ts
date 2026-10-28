@@ -59,6 +59,18 @@ export interface WooDraftInput {
   attributes: { name: string; value: string }[];
   /** Workspace media, main image first. The live client uploads the files, since /media is private. */
   images: { mediaId: string; alt: string }[];
+  /** Colours sold as variations of one variable product; null makes a simple product. */
+  variants: WooVariantInput[] | null;
+}
+
+export interface WooVariantInput {
+  /** Matches a variation to its item on later saves. */
+  itemId: string;
+  color: string;
+  regularPrice: number | null;
+  stockQty: number | null;
+  /** This colour's main image, also sent in `images` so the gallery shows every colour. */
+  mediaId: string | null;
 }
 
 /** A shop's WooCommerce store: its address and REST keys (decrypted only for the call). */

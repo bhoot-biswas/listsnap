@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Variants } from "@/lib/variants";
 
 /**
  * What the seller can change on Review. Autosave sends the whole thing each time, so
@@ -29,6 +30,8 @@ export const ListingEdit = z.object({
   stockQty: z.number().int().min(0).max(1_000_000).nullable(),
   /** Scene media to send to the store; the main image always goes. */
   selectedMediaIds: z.array(z.string().uuid()).max(20),
+  /** Colour variants, for a listing of one design in several colours; otherwise null. */
+  variants: Variants.nullable(),
 });
 export type ListingEdit = z.infer<typeof ListingEdit>;
 

@@ -7,6 +7,7 @@ import { forWorkspace } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
 import { BanglaText, ListingText } from "@/lib/schemas/pipeline";
 import { suggestedPrice, type ListingEdit } from "@/lib/schemas/review";
+import { listingVariants } from "@/lib/variants";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -52,7 +53,11 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
     priceBdt: listing.price_bdt ?? suggestedPrice(price_hint_bdt, viewer.workspace.settings.priceRounding),
     stockQty: listing.stock_qty,
     selectedMediaIds: media.filter((m) => m.selected).map((m) => m.id),
+    variants: listingVariants(job.group_mode, listing.item_ids_json, items, listing.fields_json?.variants),
   };
+  const colorPhotos = Object.fromEntries(
+    items.flatMap((i) => (i.cutout_media_id ? [[i.id, mediaUrl(i.cutout_media_id)]] : [])),
+  );
 
   const t = await getTranslations("review");
   return (
@@ -64,6 +69,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
         listingId={listing.id}
         initial={initial}
         photos={photos}
+        colorPhotos={colorPhotos}
         hint={{ low: price_hint_bdt.low, high: price_hint_bdt.high }}
         confidence={listing.confidence}
         checkNotes={listing.check_notes ?? []}

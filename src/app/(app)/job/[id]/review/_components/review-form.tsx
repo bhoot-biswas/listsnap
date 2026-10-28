@@ -14,6 +14,7 @@ import { SaveToStore } from "@/components/app/save-to-store";
 import { Autosaver, type SaveState } from "./autosave";
 import { ConfidencePanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
 import { TextFields, type TextValue } from "./text-fields";
+import { VariantFields } from "./variant-fields";
 
 export type { ReviewPhoto } from "./review-side";
 
@@ -31,6 +32,7 @@ export function ReviewForm({
   listingId,
   initial,
   photos,
+  colorPhotos,
   hint,
   confidence,
   checkNotes,
@@ -41,6 +43,7 @@ export function ReviewForm({
   listingId: string;
   initial: ListingEdit;
   photos: ReviewPhoto[];
+  colorPhotos: Record<string, string>;
   hint: { low: number; high: number };
   confidence: number | null;
   checkNotes: string[];
@@ -170,21 +173,34 @@ export function ReviewForm({
                 {outside ? t("priceOutside", hint) : t("priceHint", hint)}
               </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="stock">{t("stockField")}</Label>
-              <Input
-                id="stock"
-                inputMode="numeric"
-                value={edit.stockQty ?? ""}
-                onChange={(e) => change({ ...edit, stockQty: toInt(e.target.value) })}
-                aria-describedby="stock-hint"
-                className="h-11"
-              />
-              <p id="stock-hint" className="text-xs text-muted-foreground">
-                {t("stockHint")}
-              </p>
-            </div>
+            {edit.variants ? (
+              <p className="self-center text-sm text-muted-foreground">{t("stockPerColor")}</p>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="stock">{t("stockField")}</Label>
+                <Input
+                  id="stock"
+                  inputMode="numeric"
+                  value={edit.stockQty ?? ""}
+                  onChange={(e) => change({ ...edit, stockQty: toInt(e.target.value) })}
+                  aria-describedby="stock-hint"
+                  className="h-11"
+                />
+                <p id="stock-hint" className="text-xs text-muted-foreground">
+                  {t("stockHint")}
+                </p>
+              </div>
+            )}
           </div>
+
+          {edit.variants && (
+            <VariantFields
+              variants={edit.variants}
+              photos={colorPhotos}
+              basePrice={edit.priceBdt}
+              onChange={(variants) => change({ ...edit, variants })}
+            />
+          )}
 
           <div role="tablist" aria-label={t("title")} className="inline-flex rounded-lg border p-1">
             {(["en", "bn"] as const).map((l) => (
