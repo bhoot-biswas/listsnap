@@ -11,7 +11,7 @@ import type { JobState } from "@/lib/job-state";
 import { StepList } from "./step-list";
 import { ChooseItems } from "./choose-items";
 import { UnderTheHood } from "./under-the-hood";
-import { SaveToStore } from "./save-to-store";
+import { SaveToStore } from "@/components/app/save-to-store";
 import { PhotoStage } from "./photo-stage";
 import { BeforeAfter } from "./before-after";
 

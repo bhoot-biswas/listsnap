@@ -134,7 +134,12 @@
       "bangles": "Bangles",
       "kurti": "Kurti"
     },
-    "sampleFailed": "The sample photo didn’t load. Try again."
+    "sampleFailed": "The sample photo didn’t load. Try again.",
+    "several": "{count} photos: how should they be listed?",
+    "eachOwn": "One listing each",
+    "eachOwnHint": "Different products, listed together in bulk",
+    "sameProduct": "Same product, different angles",
+    "sameProductHint": "One listing with all the photos"
   },
   "job": {
     "title": "Making your listing",
@@ -336,5 +341,41 @@
     "saveToStore": "Save draft to store",
     "updateStore": "Update store draft",
     "over": "{count} over"
+  },
+  "bulk": {
+    "title": "Bulk uploads",
+    "intro": "Upload up to {max} photos at once. Each photo becomes its own listing.",
+    "newUpload": "New bulk upload",
+    "choose": "Choose photos",
+    "uploading": "Uploading {done} of {total}…",
+    "tooMany": "Up to {max} photos per bulk upload.",
+    "uploadFailed": "The upload didn't go through. Check your connection and try again.",
+    "someFailed": "{count, plural, one {# photo couldn't be uploaded.} other {# photos couldn't be uploaded.}}",
+    "empty": "No bulk uploads yet.",
+    "photos": "{count, plural, one {# photo} other {# photos}}",
+    "summary": "{done} of {total} done",
+    "batchTitle": "Bulk · {count, plural, one {# photo} other {# photos}}",
+    "progress": "{done} of {total} done",
+    "pause": "Pause",
+    "resume": "Resume",
+    "pausedBanner": "{count, plural, one {Paused, # photo left.} other {Paused, # photos left.}}",
+    "allDone": "All photos are done.",
+    "saveSelected": "{count, plural, one {Save # to store} other {Save # to store}}",
+    "selectAll": "Select all ready",
+    "select": "Select {title}",
+    "colPhoto": "Photo",
+    "colTitle": "Title",
+    "colPrice": "Price (৳)",
+    "colCategory": "Category",
+    "colConfidence": "Confidence",
+    "colStatus": "Status",
+    "open": "Open",
+    "review": "Review",
+    "working": "Working…",
+    "waiting": "Waiting",
+    "needsChoice": "Needs your choice",
+    "stuck": "Failed, try again",
+    "moreListings": "+{count} more",
+    "edited": "Saved"
   }
 }

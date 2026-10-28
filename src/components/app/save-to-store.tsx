@@ -36,6 +36,7 @@ export function SaveToStore({
   variant = "default",
   update = false,
   beforeSave,
+  onDone,
   className,
 }: {
   jobId: string;
@@ -46,6 +47,8 @@ export function SaveToStore({
   update?: boolean;
   /** Runs first (Review flushes its autosave); false stops the save. */
   beforeSave?: () => Promise<boolean>;
+  /** Stay on the page instead of opening Done (bulk saves span several jobs). */
+  onDone?: () => void;
   className?: string;
 }) {
   const t = useTranslations("job");
@@ -67,7 +70,10 @@ export function SaveToStore({
         return;
       }
     }
-    router.push(`/job/${jobId}/done`);
+    if (onDone) {
+      setSaving(false);
+      onDone();
+    } else router.push(`/job/${jobId}/done`);
   };
 
   return (

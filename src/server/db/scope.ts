@@ -4,8 +4,10 @@ import type { Box } from "@/server/image-ops/types";
 import { execute, json, select, selectOne, transaction } from "./pool";
 import { listingQueries } from "./listings";
 import { connectionQueries } from "./connections";
+import { batchQueries } from "./batches";
 
 export type { ListingRow, ListingStatus, RecentListingRow } from "./listings";
+export type { BatchSummaryRow } from "./batches";
 
 /**
  * Every app query, bound to one workspace (no SQL outside src/server/db,
@@ -77,10 +79,14 @@ export function forWorkspace(workspaceId: string) {
   return {
     id: ws,
 
-    async createJob(photos: { mediaId: string; width: number; height: number }[]): Promise<string> {
+    async createJob(photos: { mediaId: string; width: number; height: number }[], batchId?: string): Promise<string> {
       const jobId = randomUUID();
       await transaction(async (conn) => {
-        await conn.query("INSERT INTO jobs (id, workspace_id) VALUES (?, ?)", [jobId, ws]);
+        await conn.query("INSERT INTO jobs (id, workspace_id, batch_id) VALUES (?, ?, ?)", [
+          jobId,
+          ws,
+          batchId ?? null,
+        ]);
         for (const [sort, p] of photos.entries()) {
           await conn.query(
             "INSERT INTO photos (id, job_id, workspace_id, media_id, sort, width, height) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -166,6 +172,7 @@ export function forWorkspace(workspaceId: string) {
 
     ...listingQueries(ws),
     ...connectionQueries(ws),
+    ...batchQueries(ws),
 
     steps: (jobId: string) =>
       select<StepRowView>(
