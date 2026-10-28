@@ -19,7 +19,9 @@ export interface ListingRow {
   confidence: number | null;
   check_notes: string[] | null;
   stock_qty: number | null;
+  price_bdt: number | null;
   wc_product_id: number | null;
+  sent_at: Date | null;
   updated_at: Date;
 }
 
@@ -34,7 +36,7 @@ export interface RecentListingRow {
 }
 
 const LISTING_COLUMNS =
-  "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, wc_product_id, updated_at";
+  "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, price_bdt, wc_product_id, sent_at, updated_at";
 
 export function listingQueries(ws: string) {
   return {
@@ -71,10 +73,7 @@ export function listingQueries(ws: string) {
       ),
 
     getListing: (id: string) =>
-      selectOne<ListingRow>(
-        `SELECT ${LISTING_COLUMNS} FROM listings WHERE id = ? AND workspace_id = ?`,
-        [id, ws],
-      ),
+      selectOne<ListingRow>(`SELECT ${LISTING_COLUMNS} FROM listings WHERE id = ? AND workspace_id = ?`, [id, ws]),
 
     /**
      * Saves one language's text. Read-modify-write under a row lock rather than JSON_SET,
@@ -115,11 +114,49 @@ export function listingQueries(ws: string) {
 
     listingMedia: (listingIds: string[]) =>
       listingIds.length
-        ? select<{ id: string; listing_id: string; kind: string; width: number; height: number }>(
-            `SELECT id, listing_id, kind, width, height FROM media WHERE workspace_id = ? AND listing_id IN (${listingIds.map(() => "?").join(",")}) ORDER BY sort, created_at`,
+        ? select<{ id: string; listing_id: string; kind: string; width: number; height: number; selected: 0 | 1 }>(
+            `SELECT id, listing_id, kind, width, height, selected FROM media WHERE workspace_id = ? AND listing_id IN (${listingIds.map(() => "?").join(",")}) ORDER BY sort, created_at`,
             [ws, ...listingIds],
           )
         : Promise.resolve([]),
+
+    /**
+     * The seller's edits from Review. The text replaces each language's editable fields
+     * but keeps what the seller can't edit (the price hint, confidence, check notes), so
+     * the AI's own view of the listing stays readable. One row lock, like saveListingText.
+     */
+    async saveListingEdits(
+      id: string,
+      edit: {
+        en: object;
+        bn: object | null;
+        priceBdt: number | null;
+        stockQty: number | null;
+        selectedMediaIds: string[];
+      },
+    ) {
+      await transaction(async (conn) => {
+        const [rows] = await conn.query(
+          "SELECT fields_json FROM listings WHERE id = ? AND workspace_id = ? FOR UPDATE",
+          [id, ws],
+        );
+        const current = (rows as { fields_json: Record<string, unknown> | string | null }[])[0]?.fields_json;
+        const fields = typeof current === "string" ? (JSON.parse(current) as Record<string, unknown>) : (current ?? {});
+        const next = {
+          ...fields,
+          en: { ...(fields.en as object), ...edit.en },
+          ...(edit.bn ? { bn: { ...(fields.bn as object), ...edit.bn } } : {}),
+        };
+        await conn.query(
+          "UPDATE listings SET fields_json = ?, price_bdt = ?, stock_qty = ? WHERE id = ? AND workspace_id = ?",
+          [json(next), edit.priceBdt, edit.stockQty, id, ws],
+        );
+        await conn.query(
+          `UPDATE media SET selected = COALESCE(id IN (${edit.selectedMediaIds.map(() => "?").join(",") || "NULL"}), 0) WHERE listing_id = ? AND workspace_id = ?`,
+          [...edit.selectedMediaIds, id, ws],
+        );
+      });
+    },
 
     /** A store draft exists now; the id lets a later save update it instead of making another. */
     async markInStore(id: string, productId: number) {

@@ -1,10 +1,11 @@
 import "server-only";
-import { sqlStepStore } from "@/server/db/steps";
+import { reopenDoneStep, sqlStepStore } from "@/server/db/steps";
 import { forWorkspace, type ListingRow, type WorkspaceScope } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
 import { woo } from "@/server/providers";
 import { resolveWooStore } from "@/server/stores/woo-store";
 import { ListingText } from "@/lib/schemas/pipeline";
+import { suggestedPrice } from "@/lib/schemas/review";
 import { runStep, StepError } from "./run-step";
 import type { ExecuteResult } from "./execute";
 
@@ -26,11 +27,14 @@ const SAVABLE = new Set<ListingRow["status"]>(["ready", "needs_review", "in_stor
 export async function executeStoreStep(
   workspace: Workspace,
   listingId: string,
+  opts: { update?: boolean } = {},
 ): Promise<ExecuteResult | { found: true; invalid: string }> {
   const ws = forWorkspace(workspace.id);
   const listing = await ws.getListing(listingId);
   if (!listing) return { found: false };
   if (!SAVABLE.has(listing.status)) return { found: true, invalid: "This listing isn't finished yet." };
+  // "Update store draft": send the seller's edits to the same product again
+  if (opts.update) await reopenDoneStep(ws.id, { jobId: listing.job_id, step: "store", target: listingId });
   // pressing the button again is the seller's "Try again", so a used-up step may run once more
   const outcome = await runStep(
     sqlStepStore(ws.id),
@@ -56,7 +60,8 @@ async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: List
     shortDescription: text.short_description,
     category: text.category,
     fallbackCategoryId: target?.settings.defaultCategoryId ?? null,
-    regularPrice: suggestedPrice(text.price_hint_bdt, workspace.settings.priceRounding),
+    regularPrice: listing.price_bdt ?? suggestedPrice(text.price_hint_bdt, workspace.settings.priceRounding),
+    stockQty: listing.stock_qty,
     tags: text.tags,
     attributes: text.attributes,
     images: await images(ws, listing, text.title),
@@ -65,16 +70,12 @@ async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: List
   return saved;
 }
 
-/** Middle of Spark's typical range, rounded the shop's way; the seller edits it in Review. */
-export function suggestedPrice(hint: { low: number; high: number }, rounding: number): number | null {
-  if (!(hint.low > 0 && hint.high >= hint.low)) return null;
-  const step = rounding > 0 ? rounding : 1;
-  return Math.round((hint.low + hint.high) / 2 / step) * step;
-}
+export { suggestedPrice };
 
-/** The white main image first, then the scenes in their saved order. */
+/** The white main image first, then the scenes the seller kept, in their saved order. */
 async function images(ws: WorkspaceScope, listing: ListingRow, alt: string) {
   const [items, media] = await Promise.all([ws.items(listing.job_id), ws.listingMedia([listing.id])]);
   const main = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id;
-  return [...(main ? [main] : []), ...media.map((m) => m.id)].map((mediaId) => ({ mediaId, alt }));
+  const scenes = media.filter((m) => m.selected).map((m) => m.id);
+  return [...(main ? [main] : []), ...scenes].map((mediaId) => ({ mediaId, alt }));
 }
