@@ -49,6 +49,8 @@ export async function loadJobState(workspace: Workspace, jobId: string): Promise
   const translate = workspace.settings.listingLanguages.includes("bn");
   const next = nextCalls({ jobStatus: job.status, steps, listingIds: listings.map((l) => l.id), scenes, translate });
   const group = steps.find((s) => s.step === "group" && s.status === "done")?.result_json as GroupResult | undefined;
+  const segment = steps.find((s) => s.step === "segment" && s.status === "done")?.result_json as
+    SegmentResult | undefined;
 
   const stepViews: StepView[] = steps.map((s) => ({
     step: s.step,
@@ -70,6 +72,8 @@ export async function loadJobState(workspace: Workspace, jobId: string): Promise
     items: items.map((i) => ({
       id: i.id,
       url: i.cutout_media_id ? mediaUrl(i.cutout_media_id) : null,
+      png: i.cutout_png_media_id ? mediaUrl(i.cutout_png_media_id) : null,
+      box: i.box_json,
       color: i.color,
       score: i.score,
     })),
@@ -97,6 +101,7 @@ export async function loadJobState(workspace: Workspace, jobId: string): Promise
         images,
       };
     }),
+    check: segment ? { fillPercent: segment.check.fillPercent, hints: segment.check.hints } : null,
     scenes,
     translate,
     next: next.map((c) => ({ key: callKey(c), url: callUrl(jobId, c) })),

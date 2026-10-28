@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { WifiOff } from "lucide-react";
+import { Lightbulb, WifiOff } from "lucide-react";
 import { TopBar } from "@/components/app/top-bar";
 import { ButtonLink } from "@/components/app/button-link";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -12,6 +12,8 @@ import { StepList } from "./step-list";
 import { ChooseItems } from "./choose-items";
 import { UnderTheHood } from "./under-the-hood";
 import { SaveToStore } from "./save-to-store";
+import { PhotoStage } from "./photo-stage";
+import { BeforeAfter } from "./before-after";
 
 const SAVABLE = new Set(["ready", "needs_review"]);
 const EDITABLE = new Set(["ready", "needs_review", "in_store", "posted"]);
@@ -24,6 +26,20 @@ export function JobView({ initial }: { initial: JobState }) {
   const finished = state.status === "ready";
   const savable = finished ? state.listings.filter((l) => SAVABLE.has(l.status)) : [];
   const inStore = state.listings.some((l) => l.status === "in_store" || l.status === "posted");
+  // compare the photo with the first listing's studio scene, or its cutout until that's made
+  const first = state.listings[0];
+  const compare =
+    first?.images.find((i) => i.kind === "studio")?.url ?? first?.images.find((i) => i.kind === "main")?.url;
+  const box = state.items[0]?.box;
+  const focus =
+    photo && box
+      ? { x: ((box.x + box.w / 2) / photo.width) * 100, y: ((box.y + box.h / 2) / photo.height) * 100 }
+      : { x: 50, y: 50 };
+  /** Scenes still being made for a listing, shown as placeholder tiles. */
+  const pendingScenes = (l: (typeof state.listings)[number]) =>
+    finished || l.status === "failed"
+      ? 0
+      : Math.max(0, state.scenes.length - l.images.filter((i) => i.kind !== "main").length);
 
   return (
     <>
@@ -36,21 +52,30 @@ export function JobView({ initial }: { initial: JobState }) {
       )}
       <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 md:px-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
-            {photo && (
-              <div className="relative aspect-square overflow-hidden rounded-xl border bg-muted">
-                <Image
-                  src={photo.url}
-                  alt=""
-                  fill
-                  sizes="(max-width: 768px) 100vw, 280px"
-                  className="object-contain"
-                  unoptimized
-                  priority
-                />
-              </div>
-            )}
-            <StepList state={state} onRetry={retry} />
+          <div className="grid gap-6 md:grid-cols-[320px_minmax(0,1fr)]">
+            <div className="space-y-4">
+              {photo && <PhotoStage photo={photo} items={state.items} />}
+              {photo && compare && <BeforeAfter before={photo.url} after={compare} focus={focus} />}
+            </div>
+            <div className="space-y-4">
+              <StepList state={state} onRetry={retry} />
+              {state.check && state.check.hints.length > 0 && (
+                <aside className="space-y-2 rounded-xl border border-warning/40 bg-marigold-soft p-4 text-sm">
+                  <p className="flex items-center gap-2 font-medium">
+                    <Lightbulb className="size-4 text-warning" aria-hidden="true" />
+                    {t("hintTitle")}
+                  </p>
+                  <ul className="list-disc space-y-1 pl-5">
+                    {state.check.hints.map((h) => (
+                      <li key={h}>{t(`hints.${h}`, { fill: state.check!.fillPercent })}</li>
+                    ))}
+                  </ul>
+                  <ButtonLink href="/snap" variant="outline">
+                    {t("retake")}
+                  </ButtonLink>
+                </aside>
+              )}
+            </div>
           </div>
 
           {state.status === "awaiting_choice" && <ChooseItems state={state} onChoose={choose} />}
@@ -79,7 +104,7 @@ export function JobView({ initial }: { initial: JobState }) {
                       <StatusBadge status={l.status} />
                     </div>
                     {l.stockQty && <p className="text-sm">{t("stock", { qty: l.stockQty })}</p>}
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-4 gap-2" aria-busy={pendingScenes(l) > 0}>
                       {l.images.map((img) => (
                         <figure
                           key={img.id}
@@ -100,13 +125,22 @@ export function JobView({ initial }: { initial: JobState }) {
                           )}
                         </figure>
                       ))}
+                      {Array.from({ length: pendingScenes(l) }, (_, k) => (
+                        <div
+                          key={`pending-${k}`}
+                          className="aspect-square animate-pulse rounded-md border border-dashed bg-muted"
+                        />
+                      ))}
                     </div>
-                    {finished && EDITABLE.has(l.status) && (
+                    {l.title && EDITABLE.has(l.status) && (
                       <div className="flex flex-wrap gap-2">
-                        <ButtonLink href={`/job/${state.id}/review?l=${l.id}`} variant="outline">
-                          {t("review")}
+                        <ButtonLink
+                          href={`/job/${state.id}/review?l=${l.id}`}
+                          variant={finished ? "outline" : "default"}
+                        >
+                          {finished ? t("review") : t("reviewNow")}
                         </ButtonLink>
-                        {savable.length > 1 && SAVABLE.has(l.status) && (
+                        {finished && savable.length > 1 && SAVABLE.has(l.status) && (
                           <SaveToStore jobId={state.id} listingIds={[l.id]} label={t("saveOne")} variant="outline" />
                         )}
                       </div>
