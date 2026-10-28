@@ -21,7 +21,10 @@ export const mockWoo: WooProvider = {
         const productId = input.productId ?? nextId++;
         return { productId, editUrl: `https://store.example/wp-admin/post.php?post=${productId}&action=edit` };
       },
-      (r) => ({ summary: `draft #${r.productId} "${input.title}"`, costUsd: 0 }),
+      (r) => ({
+        summary: `draft #${r.productId} "${input.title}"${input.variants ? ` · ${input.variants.length} colours` : ""}`,
+        costUsd: 0,
+      }),
     ),
 
   // keys ending in "_readonly" show the failed write check without a real store

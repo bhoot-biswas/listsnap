@@ -264,7 +264,7 @@
       },
       "color": {
         "pass": "Color attribute found",
-        "warn": "No Color attribute yet. ListSnap adds colours as product details for now."
+        "warn": "No Color attribute yet. ListSnap will give each product its own Color option."
       }
     },
     "reasons": {
@@ -317,6 +317,17 @@
     "priceOutside": "Outside the usual range ৳{low}–{high}. Check it before saving.",
     "stockField": "Stock",
     "stockHint": "Leave empty to not track stock.",
+    "colors": "Colors",
+    "colorsHint": "Each color becomes an option on one product in your store. Leave a price empty to use the price above.",
+    "sellColor": "Sell {color}",
+    "colorName": "Color name",
+    "colorPrice": "Price for {color}",
+    "colorStock": "Stock for {color}",
+    "colorStockPlaceholder": "Stock",
+    "colorEmpty": "Give every color a name.",
+    "colorDuplicate": "Two colors have the same name.",
+    "colorNoneOn": "Keep at least one color.",
+    "stockPerColor": "Stock is set for each color below.",
     "attributes": "Attributes",
     "attributeName": "Name",
     "attributeValue": "Value",

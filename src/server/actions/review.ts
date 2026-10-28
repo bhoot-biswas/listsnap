@@ -20,9 +20,14 @@ export async function saveListingEdit(listingId: string, input: unknown): Promis
   const listing = await ws.getListing(listingId);
   if (!listing) return { ok: false, error: "not_found" };
   const own = new Set((await ws.listingMedia([listingId])).map((m) => m.id));
+  // colours can only name items of this listing
+  const items = new Set(listing.item_ids_json);
+  const variants = parsed.data.variants?.filter((v) => items.has(v.itemId)) ?? null;
+  if (variants && !variants.some((v) => v.on)) return { ok: false, error: "invalid" };
   await ws.saveListingEdits(listingId, {
     ...parsed.data,
     selectedMediaIds: parsed.data.selectedMediaIds.filter((id) => own.has(id)),
+    variants,
   });
   return { ok: true };
 }

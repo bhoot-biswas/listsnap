@@ -264,7 +264,7 @@
       },
       "color": {
         "pass": "Color অ্যাট্রিবিউট পাওয়া গেছে",
-        "warn": "এখনো Color অ্যাট্রিবিউট নেই। আপাতত ListSnap রং পণ্যের বিবরণে যোগ করবে।"
+        "warn": "এখনো Color অ্যাট্রিবিউট নেই। ListSnap প্রতিটি পণ্যে নিজস্ব Color অপশন যোগ করবে।"
       }
     },
     "reasons": {
@@ -317,6 +317,17 @@
     "priceOutside": "সাধারণ দামের বাইরে (৳{low}–{high})। সেভ করার আগে দেখে নিন।",
     "stockField": "স্টক",
     "stockHint": "স্টক হিসাব না রাখতে চাইলে খালি রাখুন।",
+    "colors": "রং",
+    "colorsHint": "প্রতিটি রং স্টোরে একটি পণ্যের অপশন হবে। দাম খালি রাখলে উপরের দাম বসবে।",
+    "sellColor": "{color} বিক্রি করুন",
+    "colorName": "রঙের নাম",
+    "colorPrice": "{color}-এর দাম",
+    "colorStock": "{color}-এর স্টক",
+    "colorStockPlaceholder": "স্টক",
+    "colorEmpty": "প্রতিটি রঙের একটি নাম দিন।",
+    "colorDuplicate": "দুটি রঙের নাম একই।",
+    "colorNoneOn": "অন্তত একটি রং রাখুন।",
+    "stockPerColor": "প্রতিটি রঙের স্টক নিচে দিন।",
     "attributes": "বৈশিষ্ট্য",
     "attributeName": "নাম",
     "attributeValue": "মান",

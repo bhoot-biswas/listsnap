@@ -15,7 +15,7 @@ export interface ListingRow {
   sort: number;
   item_ids_json: string[];
   status: ListingStatus;
-  fields_json: { en?: unknown; bn?: unknown } | null;
+  fields_json: { en?: unknown; bn?: unknown; variants?: unknown } | null;
   confidence: number | null;
   check_notes: string[] | null;
   stock_qty: number | null;
@@ -133,6 +133,8 @@ export function listingQueries(ws: string) {
         priceBdt: number | null;
         stockQty: number | null;
         selectedMediaIds: string[];
+        /** Undefined keeps the saved colours. */
+        variants?: object[] | null;
       },
     ) {
       await transaction(async (conn) => {
@@ -146,6 +148,7 @@ export function listingQueries(ws: string) {
           ...fields,
           en: { ...(fields.en as object), ...edit.en },
           ...(edit.bn ? { bn: { ...(fields.bn as object), ...edit.bn } } : {}),
+          ...(edit.variants ? { variants: edit.variants } : {}),
         };
         await conn.query(
           "UPDATE listings SET fields_json = ?, price_bdt = ?, stock_qty = ? WHERE id = ? AND workspace_id = ?",

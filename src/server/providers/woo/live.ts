@@ -2,15 +2,18 @@ import "server-only";
 import { readMedia } from "@/server/media/store";
 import { signedMediaUrl } from "@/server/media/signed";
 import { StepError } from "@/server/pipeline/run-step";
+import { isColorAttribute } from "@/lib/variants";
 import type { WooDraftInput, WooProvider, WooStore } from "../types";
 import { WooHttpError, wooApi, type WooApi } from "./http";
 import { checkWooStore } from "./check";
+import { colorAttribute, syncVariations } from "./variations";
 
 /**
  * The real WooCommerce client. Products are created as drafts and never published;
  * an update leaves the status alone, so a draft the seller published by hand stays
  * published. Images are sideloaded by the store from signed links, and only once:
- * resending them on every update would pile up copies in the media library.
+ * resending them on every update would pile up copies in the media library. A listing
+ * with colours becomes a variable product, one variation per colour.
  */
 
 export const LISTING_META_KEY = "_listsnap_listing_id";
@@ -41,24 +44,55 @@ export const liveWoo: WooProvider = {
     const tagIds: number[] = [];
     for (const tag of input.tags.slice(0, 10)) tagIds.push(await findOrCreateTerm(api, "products/tags", tag));
 
+    const variants = input.variants?.length ? input.variants : null;
+    const color = variants
+      ? await colorAttribute(
+          api,
+          variants.map((v) => v.color),
+        )
+      : null;
+    // the variation attribute replaces Spark's "Color: Maroon, Navy, …" detail
+    const details = input.attributes.filter((a) => !(color && isColorAttribute(a.name)));
     const existing = await findProduct(api, input);
     const body: Record<string, unknown> = {
       name: input.title,
-      type: "simple",
+      type: variants ? "variable" : "simple",
       description: toHtml(input.description),
       short_description: toHtml(input.shortDescription),
-      regular_price: input.regularPrice === null ? "" : String(input.regularPrice),
-      ...(input.stockQty === null ? {} : { manage_stock: true, stock_quantity: input.stockQty }),
+      ...(variants
+        ? {}
+        : {
+            regular_price: input.regularPrice === null ? "" : String(input.regularPrice),
+            ...(input.stockQty === null ? {} : { manage_stock: true, stock_quantity: input.stockQty }),
+          }),
       categories: categoryId ? [{ id: categoryId }] : [],
       tags: tagIds.map((id) => ({ id })),
-      attributes: input.attributes.map((a, i) => ({ name: a.name, options: [a.value], visible: true, position: i })),
+      attributes: [
+        ...details.map((a, i) => ({ name: a.name, options: [a.value], visible: true, position: i })),
+        ...(color ? [{ ...color.product, position: details.length }] : []),
+      ],
       meta_data: [{ key: LISTING_META_KEY, value: input.listingId }],
     };
-    if (!existing?.images.length) body.images = await imageRefs(ctx.workspaceId, input);
+    const sent = existing?.images.length ? [] : await imageRefs(ctx.workspaceId, input);
+    if (sent.length) body.images = sent.map(({ src, alt, position }) => ({ src, alt, position }));
 
     const saved = existing
       ? await api.put<Product>(`products/${existing.id}`, body, { timeoutMs: IMAGE_TIMEOUT_MS })
       : await api.post<Product>("products", { ...body, status: "draft" }, { timeoutMs: IMAGE_TIMEOUT_MS });
+    if (variants && color) {
+      // the store answers with the images in the order they were sent
+      const ids = new Map(sent.flatMap((r, i) => (saved.images[i] ? [[r.mediaId, saved.images[i].id]] : [])));
+      // images went with an earlier save: the main image is still first
+      if (!sent.length && existing?.images[0] && input.images[0])
+        ids.set(input.images[0].mediaId, existing.images[0].id);
+      await syncVariations(api, saved.id, variants, color, {
+        ids,
+        src: async (mediaId) => {
+          const file = await readMedia(ctx.workspaceId, mediaId);
+          return file ? signedMediaUrl(ctx.workspaceId, mediaId, file.mime) : null;
+        },
+      });
+    }
     return { productId: saved.id, editUrl: editUrl(store, saved.id) };
   },
 
@@ -117,7 +151,12 @@ async function imageRefs(workspaceId: string, input: WooDraftInput) {
   for (const [i, img] of input.images.entries()) {
     const file = await readMedia(workspaceId, img.mediaId);
     if (!file) continue;
-    refs.push({ src: signedMediaUrl(workspaceId, img.mediaId, file.mime), alt: img.alt, position: i });
+    refs.push({
+      mediaId: img.mediaId,
+      src: signedMediaUrl(workspaceId, img.mediaId, file.mime),
+      alt: img.alt,
+      position: i,
+    });
   }
   return refs;
 }

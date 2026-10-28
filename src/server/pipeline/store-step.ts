@@ -1,11 +1,12 @@
 import "server-only";
 import { reopenDoneStep, sqlStepStore } from "@/server/db/steps";
-import { forWorkspace, type ListingRow, type WorkspaceScope } from "@/server/db/scope";
+import { forWorkspace, type ItemRow, type ListingRow, type WorkspaceScope } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
 import { woo } from "@/server/providers";
 import { resolveWooStore } from "@/server/stores/woo-store";
 import { ListingText } from "@/lib/schemas/pipeline";
 import { suggestedPrice } from "@/lib/schemas/review";
+import { listingVariants } from "@/lib/variants";
 import { runStep, StepError } from "./run-step";
 import type { ExecuteResult } from "./execute";
 
@@ -52,6 +53,21 @@ async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: List
   const step = { workspaceId: ws.id, jobId: listing.job_id, step: "store" };
   // mock mode needs no store, so a shop without a connection can still try the flow
   const target = woo().mode === "mock" ? null : await resolveWooStore(workspace);
+  const [job, items, media] = await Promise.all([
+    ws.getJob(listing.job_id),
+    ws.items(listing.job_id),
+    ws.listingMedia([listing.id]),
+  ]);
+  const price = listing.price_bdt ?? suggestedPrice(text.price_hint_bdt, workspace.settings.priceRounding);
+  const colors = listingVariants(job?.group_mode ?? null, listing.item_ids_json, items, listing.fields_json?.variants)
+    ?.filter((v) => v.on)
+    .map((v) => ({
+      itemId: v.itemId,
+      color: v.color,
+      regularPrice: v.priceBdt ?? price,
+      stockQty: v.stockQty,
+      mediaId: items.find((i) => i.id === v.itemId)?.cutout_media_id ?? null,
+    }));
   const saved = await woo().saveDraft(step, target?.store ?? null, {
     listingId: listing.id,
     productId: listing.wc_product_id,
@@ -60,11 +76,12 @@ async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: List
     shortDescription: text.short_description,
     category: text.category,
     fallbackCategoryId: target?.settings.defaultCategoryId ?? null,
-    regularPrice: listing.price_bdt ?? suggestedPrice(text.price_hint_bdt, workspace.settings.priceRounding),
+    regularPrice: price,
     stockQty: listing.stock_qty,
     tags: text.tags,
     attributes: text.attributes,
-    images: await images(ws, listing, text.title),
+    images: images(listing, items, media, text.title, colors ?? []),
+    variants: colors?.length ? colors : null,
   });
   await ws.markInStore(listing.id, saved.productId);
   return saved;
@@ -72,10 +89,22 @@ async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: List
 
 export { suggestedPrice };
 
-/** The white main image first, then the scenes the seller kept, in their saved order. */
-async function images(ws: WorkspaceScope, listing: ListingRow, alt: string) {
-  const [items, media] = await Promise.all([ws.items(listing.job_id), ws.listingMedia([listing.id])]);
+/**
+ * The white main image first, then the scenes the seller kept, in their saved order,
+ * then each other colour's image, so the gallery shows every colour on sale.
+ */
+function images(
+  listing: ListingRow,
+  items: ItemRow[],
+  media: { id: string; selected: number | boolean | null }[],
+  title: string,
+  colors: { color: string; mediaId: string | null }[],
+) {
   const main = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id;
-  const scenes = media.filter((m) => m.selected).map((m) => m.id);
-  return [...(main ? [main] : []), ...scenes].map((mediaId) => ({ mediaId, alt }));
+  const list = [...(main ? [{ mediaId: main, alt: title }] : [])];
+  for (const m of media) if (m.selected) list.push({ mediaId: m.id, alt: title });
+  for (const c of colors)
+    if (c.mediaId && !list.some((x) => x.mediaId === c.mediaId))
+      list.push({ mediaId: c.mediaId, alt: `${title}, ${c.color}` });
+  return list;
 }
