@@ -29,6 +29,10 @@ export interface ListingView {
 export interface ItemView {
   id: string;
   url: string | null;
+  /** The transparent cutout from SAM's mask; null for mock crops. */
+  png: string | null;
+  /** Where SAM found the item, in photo pixels. */
+  box: { x: number; y: number; w: number; h: number };
   color: string | null;
   score: number | null;
 }
@@ -62,6 +66,8 @@ export interface JobState {
   /** Only while waiting for the seller (Choose items). */
   suggestion: { mode: string; colors: string[]; reason: string } | null;
   listings: ListingView[];
+  /** The photo check once segment is done: how much of the frame the items fill, and retake hint keys. */
+  check: { fillPercent: number; hints: string[] } | null;
   scenes: string[];
   translate: boolean;
   next: NextCallView[];

@@ -178,7 +178,20 @@
     "saveAll": "Save all {count} as drafts",
     "saving": "Saving to your store…",
     "saveFailed": "Your store didn’t answer. Your listing is safe here. Try again.",
-    "seeSaved": "See saved drafts"
+    "seeSaved": "See saved drafts",
+    "foundCaption": "{count, plural, one {What SAM found} other {What SAM found: # items}}",
+    "before": "Before",
+    "after": "After",
+    "compare": "Compare your photo with the result",
+    "hintTitle": "A better photo would help",
+    "hints": {
+      "too_small": "The product fills only {fill}% of the photo. A closer shot gives better results.",
+      "blurry": "The photo looks blurry. Hold the phone still or tap to focus.",
+      "too_dark": "The photo is dark. Move to brighter light.",
+      "too_bright": "The photo is very bright. Avoid direct flash or sun."
+    },
+    "retake": "Take another photo",
+    "reviewNow": "Review now"
   },
   "placeholder": {
     "body": "This page is part of the app shell. It gets built in {phase}.",
