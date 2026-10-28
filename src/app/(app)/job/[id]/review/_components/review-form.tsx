@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { saveListingEdit } from "@/server/actions/review";
 import type { ListingEdit } from "@/lib/schemas/review";
 import { cn } from "@/lib/utils";
-import { SaveToStore } from "../../_components/save-to-store";
+import { SaveToStore } from "@/components/app/save-to-store";
 import { Autosaver, type SaveState } from "./autosave";
 import { ConfidencePanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
 import { TextFields, type TextValue } from "./text-fields";

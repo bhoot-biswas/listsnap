@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Camera, ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resizeForUpload } from "@/lib/resize-image";
+import { uploadBatch } from "@/lib/bulk-upload";
 import { cn } from "@/lib/utils";
 
 const MAX = 5;
@@ -53,6 +54,20 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
     if (!res?.ok) return toast.error(t("sampleFailed"));
     const name = url.split("/").pop() ?? "sample.jpg";
     add([new File([await res.blob()], name, { type: "image/jpeg" })]);
+  };
+
+  /** Several different products: one job each, run together as a bulk batch. */
+  const uploadEach = async () => {
+    setUploading(true);
+    const r = await uploadBatch(
+      files.map((f) => f.file),
+      () => {},
+    );
+    if (!r.ok) {
+      setUploading(false);
+      return r.status === 401 ? router.push("/sign-in") : toast.error(t("uploadFailed"));
+    }
+    router.push(`/bulk/${r.batchId}?start=1`);
   };
 
   const upload = async () => {
@@ -178,10 +193,40 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
               </li>
             ))}
           </ul>
-          <Button size="lg" className="w-full" onClick={upload} disabled={uploading}>
-            {uploading && <Loader2 className="animate-spin" />}
-            {uploading ? t("uploading") : t("start")}
-          </Button>
+          {files.length > 1 ? (
+            <fieldset className="space-y-3" disabled={uploading}>
+              <legend className="mb-3 text-sm font-medium">{t("several", { count: files.length })}</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={uploadEach}
+                  className="min-h-16 rounded-xl border bg-card p-4 text-left hover:border-primary disabled:opacity-60"
+                >
+                  <span className="block font-medium">{t("eachOwn")}</span>
+                  <span className="block text-sm text-muted-foreground">{t("eachOwnHint")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={upload}
+                  className="min-h-16 rounded-xl border bg-card p-4 text-left hover:border-primary disabled:opacity-60"
+                >
+                  <span className="block font-medium">{t("sameProduct")}</span>
+                  <span className="block text-sm text-muted-foreground">{t("sameProductHint")}</span>
+                </button>
+              </div>
+              {uploading && (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  {t("uploading")}
+                </p>
+              )}
+            </fieldset>
+          ) : (
+            <Button size="lg" className="w-full" onClick={upload} disabled={uploading}>
+              {uploading && <Loader2 className="animate-spin" />}
+              {uploading ? t("uploading") : t("start")}
+            </Button>
+          )}
         </div>
       )}
     </div>
