@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Check, CloudOff, Loader2 } from "lucide-react";
@@ -75,9 +75,17 @@ export function ReviewForm({
     };
   }, [saver]);
 
+  // the latest edit, for AI answers that arrive after the seller kept typing
+  const latest = useRef(edit);
   const change = (next: ListingEdit) => {
+    latest.current = next;
     setEdit(next);
     saver.change(next);
+  };
+  const setField = (l: "en" | "bn", field: "title" | "short_description" | "description", text: string) => {
+    const cur = latest.current;
+    if (l === "en") change({ ...cur, en: { ...cur.en, [field]: text } });
+    else if (cur.bn) change({ ...cur, bn: { ...cur.bn, [field]: text } });
   };
 
   const selected = new Set(edit.selectedMediaIds);
@@ -223,8 +231,11 @@ export function ReviewForm({
           {text ? (
             <TextFields
               key={lang}
+              listingId={listingId}
               lang={lang}
               value={text}
+              english={edit.en}
+              onField={(field, text) => setField(lang, field, text)}
               onChange={(v) =>
                 change(lang === "en" ? { ...edit, en: { ...edit.en, ...v } } : { ...edit, bn: { ...edit.bn!, ...v } })
               }

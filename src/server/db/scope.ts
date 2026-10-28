@@ -203,6 +203,15 @@ export function forWorkspace(workspaceId: string) {
       return { needsReview: Number(row?.needs_review ?? 0), listingsToday: Number(row?.today ?? 0) };
     },
 
+    /** Review's AI help used today (UTC), for its daily cap. */
+    async assistsToday(): Promise<number> {
+      const row = await selectOne<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM api_calls WHERE workspace_id = ? AND step = 'assist' AND created_at >= UTC_DATE()",
+        [ws],
+      );
+      return Number(row?.n ?? 0);
+    },
+
     recentJobs: (limit = 10) =>
       select<JobRow & { photo_media_id: string | null; listings: number }>(
         `SELECT j.id, j.status, j.group_mode, j.camera_angle, j.created_at,

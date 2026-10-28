@@ -4,7 +4,7 @@ import { env } from "@/server/env";
 import { gradient } from "@/server/image-ops";
 import type { BanglaText, ListingText, PlanResult } from "@/lib/schemas/pipeline";
 import { logged } from "../log";
-import type { MetaProvider, SegmentInstance } from "../types";
+import type { AssistInput, MetaProvider, SegmentInstance } from "../types";
 
 /**
  * Deterministic stand-ins for Muse Spark, SAM 3.1 and Muse Image: no key, no cost,
@@ -73,6 +73,18 @@ export const mockMeta: MetaProvider = {
         }));
       },
       (r) => ({ summary: `"${phrase}" → ${r.length} instance(s)`, costUsd: 0 }),
+    ),
+
+  // visibly different every time it matters, so the Review buttons can be tried without a key
+  assist: (ctx, input) =>
+    logged(
+      ctx,
+      { ...SPARK, endpoint: "chat/completions" },
+      async () => {
+        await delay();
+        return mockAssist(input);
+      },
+      () => ({ summary: `${input.action} ${input.lang} ${input.field}`, costUsd: 0 }),
     ),
 
   group: (ctx, crops) =>
@@ -180,3 +192,28 @@ export const mockMeta: MetaProvider = {
       () => ({ summary: `${scene} scene from the cutout`, costUsd: 0 }),
     ),
 };
+
+const MOCK_BANGLA: Record<AssistInput["field"], string> = {
+  title: "হাতে তৈরি সুন্দর পণ্য",
+  short_description: "প্রতিদিনের ব্যবহারের জন্য আরামদায়ক ও সুন্দর।",
+  description: "যত্ন করে তৈরি, প্রতিদিন ব্যবহারের উপযোগী।\n\nনকশা ভালো করে দেখতে ছবিগুলো দেখুন।",
+};
+
+function mockAssist(input: AssistInput): string {
+  const text = input.text.trim();
+  const bn = input.lang === "bn";
+  const sentences = text.split(/(?<=[.!?।])\s+/).filter(Boolean);
+  switch (input.action) {
+    case "translate":
+      return MOCK_BANGLA[input.field];
+    case "shorter":
+      if (input.field === "title") return text.split(/\s+/).slice(0, 4).join(" ");
+      return sentences.length > 1
+        ? sentences.slice(0, Math.ceil(sentences.length / 2)).join(" ")
+        : text.slice(0, Math.ceil(text.length / 2));
+    case "longer":
+      return `${text}\n\n${bn ? "নরম কাপড়ে আলতো করে মুছে রাখুন। নকশা দেখতে ছবিগুলো দেখুন।" : "Easy to care for: wipe or wash gently and dry in the shade. See photos for detail."}`;
+    case "rewrite":
+      return sentences.length > 1 ? [...sentences].reverse().join(" ") : `${bn ? "সুন্দর" : "Lovely"} ${text}`;
+  }
+}

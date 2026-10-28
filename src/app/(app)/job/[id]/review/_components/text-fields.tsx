@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SHORT_MAX, TITLE_MAX } from "@/lib/schemas/review";
 import { cn } from "@/lib/utils";
+import { FieldAssist } from "./field-assist";
 
 export interface TextValue {
   title: string;
@@ -30,21 +31,42 @@ function Counter({ length, max }: { length: number; max: number }) {
   );
 }
 
-/** One language's text: title, descriptions, category (English only), attributes and tags. */
+/**
+ * One language's text: title, descriptions, category (English only), attributes and
+ * tags. The three text fields get AI buttons; Bangla ones can be written from `english`.
+ */
 export function TextFields({
+  listingId,
   lang,
   value,
+  english,
   onChange,
+  onField,
 }: {
+  listingId: string;
   lang: "en" | "bn";
   value: TextValue;
+  english: TextValue;
   onChange: (next: TextValue) => void;
+  /** Sets one field on the latest edit: an AI answer can arrive after more typing. */
+  onField: (field: "title" | "short_description" | "description", text: string) => void;
 }) {
   const t = useTranslations("review");
   const [tag, setTag] = useState("");
   const set = <K extends keyof TextValue>(key: K, v: TextValue[K]) => onChange({ ...value, [key]: v });
   const id = (name: string) => `${lang}-${name}`;
   const langProps = lang === "bn" ? { lang: "bn" } : {};
+  const assist = (field: "title" | "short_description" | "description", label: string) => (
+    <FieldAssist
+      listingId={listingId}
+      field={field}
+      label={label}
+      lang={lang}
+      value={value[field]}
+      source={english[field]}
+      onApply={(text) => onField(field, text)}
+    />
+  );
 
   const addTag = (raw = tag) => {
     const clean = raw.trim().replace(/,$/, "").trim();
@@ -66,6 +88,7 @@ export function TextFields({
           maxLength={200}
           className="h-11"
         />
+        {assist("title", t("titleField"))}
       </div>
 
       <div className="space-y-2">
@@ -80,6 +103,7 @@ export function TextFields({
           maxLength={600}
           rows={2}
         />
+        {assist("short_description", t("shortField"))}
       </div>
 
       <div className="space-y-2">
@@ -91,6 +115,7 @@ export function TextFields({
           maxLength={8000}
           rows={8}
         />
+        {assist("description", t("descriptionField"))}
       </div>
 
       {value.category !== undefined && (

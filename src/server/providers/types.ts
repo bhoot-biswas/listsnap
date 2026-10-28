@@ -1,6 +1,7 @@
 import type { Box } from "@/server/image-ops/types";
 import type { BanglaText, GroupMode, ListingText, PlanResult, Scene } from "@/lib/schemas/pipeline";
 import type { WooCheckResult } from "@/lib/woo-connection";
+import type { AssistRequest } from "@/lib/schemas/assist";
 
 /**
  * Every outside service sits behind one of these interfaces, each with a mock and a
@@ -37,10 +38,18 @@ export interface MetaProvider {
   }>;
   write(ctx: CallContext, photo: Buffer, plan: PlanResult, brandVoice: string): Promise<ListingText>;
   translate(ctx: CallContext, listing: ListingText): Promise<BanglaText>;
+  /** Review's per-field help: the new text for one field. */
+  assist(ctx: CallContext, input: AssistInput): Promise<string>;
   /** An empty background for a composite (studio and banner). */
   background(ctx: CallContext, scene: Scene, angle: PlanResult["camera_angle"]): Promise<Buffer>;
   /** A whole scene made by editing the white cutout image (lifestyle). */
   editScene(ctx: CallContext, main: Buffer, scene: Scene, phrase: string): Promise<Buffer>;
+}
+
+export interface AssistInput extends AssistRequest {
+  /** What the listing is about, so a rewrite keeps the facts. */
+  product: { title: string; category: string; attributes: { name: string; value: string }[] };
+  brandVoice: string;
 }
 
 export interface WooDraftInput {

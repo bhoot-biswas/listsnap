@@ -351,7 +351,28 @@
     "offline": "Offline, will save",
     "saveToStore": "Save draft to store",
     "updateStore": "Update store draft",
-    "over": "{count} over"
+    "over": "{count} over",
+    "assist": {
+      "group": "AI help for {field}",
+      "rewrite": "Rewrite",
+      "shorter": "Shorter",
+      "longer": "More detail",
+      "translate": "Translate from English",
+      "undo": "Undo",
+      "working": "Writing…",
+      "done": {
+        "rewrite": "Rewritten. Check it reads right.",
+        "shorter": "Made shorter.",
+        "longer": "Added detail. Check every fact is true.",
+        "translate": "Written from the English."
+      },
+      "errors": {
+        "busy": "The AI is busy right now. Try again in a minute; your text hasn't changed.",
+        "limit_reached": "You've used today's AI help. It comes back at midnight; your text is saved.",
+        "offline": "You're offline. Your text hasn't changed; try again when you're back.",
+        "other": "Something went wrong. Your text hasn't changed; try again."
+      }
+    }
   },
   "bulk": {
     "title": "Bulk uploads",
