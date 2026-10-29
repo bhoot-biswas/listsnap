@@ -74,7 +74,10 @@
     "errorGeneric": "Something went wrong. Try again in a moment.",
     "errorExpired": "That link has expired. Send a new one.",
     "errorCancelled": "Google sign-in was cancelled.",
-    "errorEmail": "Enter a valid email address."
+    "errorEmail": "Enter a valid email address.",
+    "confirmTitle": "Sign in to ListSnap",
+    "confirmBody": "Press the button to finish signing in. The link works once, for 15 minutes.",
+    "confirmButton": "Sign in"
   },
   "landing": {
     "title": "From one photo to a store-ready listing",

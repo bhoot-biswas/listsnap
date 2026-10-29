@@ -42,7 +42,7 @@ function queueMail(mail: Mail): void {
     return;
   }
   void t
-    .sendMail({ from: `ListSnap <${smtp.from}>`, ...mail })
+    .sendMail({ from: smtp.from, ...mail })
     .catch((err: unknown) =>
       console.error(`[mail] could not send "${mail.subject}":`, err instanceof Error ? err.message : err),
     );
