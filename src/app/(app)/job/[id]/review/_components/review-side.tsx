@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Check } from "lucide-react";
+import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { cn } from "@/lib/utils";
 
 export interface ReviewPhoto {
@@ -93,29 +94,13 @@ export function ReviewPhotos({
 /** Confidence as five dots and a word, plus what Spark said to check; never a raw percentage. */
 export function ConfidencePanel({ confidence, notes }: { confidence: number | null; notes: string[] }) {
   const t = useTranslations("review");
-  const c = confidence ?? 0;
-  const dots = Math.max(1, Math.round(c * 5));
-  const level = c < 0.5 ? "low" : c < 0.7 ? "fair" : c < 0.85 ? "good" : "great";
   return (
     <section aria-labelledby="confidence-title" className="space-y-3 rounded-xl border bg-card p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 id="confidence-title" className="text-sm font-semibold">
           {t("confidence")}
         </h2>
-        <p className="flex items-center gap-2 text-sm">
-          <span className="flex gap-1" aria-hidden="true">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <span
-                key={i}
-                className={cn(
-                  "size-2.5 rounded-full",
-                  i <= dots ? (c < 0.7 ? "bg-warning" : "bg-success") : "bg-muted",
-                )}
-              />
-            ))}
-          </span>
-          {t(`confidenceLevel.${level}`)}
-        </p>
+        <ConfidenceDots confidence={confidence} />
       </div>
       <div className="space-y-1">
         <p className="text-sm font-medium">{t("toCheck")}</p>
