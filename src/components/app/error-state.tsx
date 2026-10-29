@@ -14,7 +14,7 @@ export function ErrorState({ reset }: { reset: () => void }) {
       <div className="flex gap-2">
         <Button onClick={reset}>{t("common.tryAgain")}</Button>
         <ButtonLink variant="outline" href="/dashboard">
-          {t("placeholder.goDashboard")}
+          {t("errors.goDashboard")}
         </ButtonLink>
       </div>
     </div>

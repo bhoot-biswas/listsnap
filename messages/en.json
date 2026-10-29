@@ -531,7 +531,8 @@
     "title": "Something went wrong",
     "body": "Your work is saved. Try again, or go back to the dashboard.",
     "notFoundTitle": "Page not found",
-    "notFoundBody": "This page doesn't exist or isn't in your shop."
+    "notFoundBody": "This page doesn't exist or isn't in your shop.",
+    "goDashboard": "Go to Dashboard"
   },
   "done": {
     "title": "Saved to your store",
