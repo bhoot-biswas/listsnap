@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { env } from "@/server/env";
 import { StepError } from "@/server/pipeline/run-step";
@@ -15,8 +16,31 @@ import { BASE_URL, BUSY } from "./spark";
 
 export const IMAGE_MODEL = "muse-image-1.0";
 export const IMAGE_COST_USD = 0.01;
-/** Measured 10–34 s; render steps hold a 90 s lock, so this must end well before it. */
+/** Measured 8–34 s; render steps hold a 90 s lock, so this must end well before it. */
 const TIMEOUT_MS = 75_000;
+
+export const BLOCKED = "This photo couldn't be turned into an AI photo. Try a different photo; your listing is saved.";
+
+/**
+ * Its built-in web and image search could pull other sellers' pictures of "jamdani saree"
+ * and drift away from this one, and an empty backdrop needs no lookups either.
+ */
+const TOOLS_OFF = { enable_image_search: false, enable_web_search: false, enable_shell: false };
+
+/**
+ * Meta asks for a stable end-user id to fight abuse. A hash of the workspace id is stable
+ * without telling Meta who the seller is.
+ */
+export const endUser = (workspaceId: string) =>
+  createHash("sha256").update(`listsnap:${workspaceId}`).digest("hex").slice(0, 32);
+
+/** `low` is one render pass: in the spike it drew empty backdrops as well as `high`, in half the time. */
+export type ReasoningStrength = "low" | "high";
+
+export interface ImageResult {
+  image: Buffer;
+  tokens: number | null;
+}
 
 const NO_TEXT = "nothing on it, no objects, no people, no text, no logos.";
 
@@ -38,9 +62,34 @@ export const lifestylePrompt = (product: string) =>
 
 const ImagesResponse = z.object({
   data: z.array(z.object({ b64_json: z.string().nullish(), url: z.string().nullish() })).min(1),
+  usage: z.object({ total_tokens: z.number() }).nullish(),
 });
 
-async function imagesCall(path: "images/generations" | "images/edits", body: Record<string, unknown>): Promise<Buffer> {
+const ErrorBody = z.object({ error: z.object({ code: z.string().nullish() }) });
+
+/**
+ * One image from a JSON body. Renders store JPEG, so that is what we ask for; `size` only
+ * sets the aspect ratio (outputs come back at 1600 px whatever it says).
+ */
+export function imagesBody(
+  body: { prompt: string; size: string; images?: { image_url: string }[] },
+  opts: { reasoning: ReasoningStrength; user: string },
+): Record<string, unknown> {
+  return {
+    model: IMAGE_MODEL,
+    n: 1,
+    output_format: "jpeg",
+    reasoning_strength: opts.reasoning,
+    tool_enablement: TOOLS_OFF,
+    user: opts.user,
+    ...body,
+  };
+}
+
+async function imagesCall(
+  path: "images/generations" | "images/edits",
+  body: Record<string, unknown>,
+): Promise<ImageResult> {
   const key = env().modelApiKey;
   if (!key) throw new Error("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
   let res: Response;
@@ -48,7 +97,7 @@ async function imagesCall(path: "images/generations" | "images/edits", body: Rec
     res = await fetch(`${BASE_URL}/${path}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ model: IMAGE_MODEL, n: 1, output_format: "png", ...body }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (err) {
@@ -56,17 +105,39 @@ async function imagesCall(path: "images/generations" | "images/edits", body: Rec
     throw new StepError(BUSY);
   }
   if (res.status === 429 || res.status >= 500) throw new StepError(BUSY);
-  if (!res.ok) throw new Error(`Muse Image HTTP ${res.status}: ${(await res.text()).slice(0, 500)}`);
+  if (!res.ok) {
+    const text = await res.text();
+    const code = ErrorBody.safeParse(safeJson(text)).data?.error.code;
+    // a safety block is about the photo, so the seller hears it; it isn't billed either
+    if (code === "content_policy_violation") throw new StepError(BLOCKED);
+    throw new Error(`Muse Image HTTP ${res.status}: ${text.slice(0, 500)}`);
+  }
   const parsed = ImagesResponse.safeParse(await res.json().catch(() => null));
   if (!parsed.success) throw new Error(`Muse Image sent an unexpected response: ${parsed.error.message.slice(0, 300)}`);
   const item = parsed.data.data[0]!;
-  if (item.b64_json) return Buffer.from(item.b64_json, "base64");
+  const tokens = parsed.data.usage?.total_tokens ?? null;
+  if (item.b64_json) return { image: Buffer.from(item.b64_json, "base64"), tokens };
   if (item.url)
-    return Buffer.from(await (await fetch(item.url, { signal: AbortSignal.timeout(20_000) })).arrayBuffer());
+    return {
+      image: Buffer.from(await (await fetch(item.url, { signal: AbortSignal.timeout(20_000) })).arrayBuffer()),
+      tokens,
+    };
   throw new Error("Muse Image returned no image.");
 }
 
-export const generateImage = (prompt: string, size: string) => imagesCall("images/generations", { prompt, size });
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
-export const editImage = (imageDataUrl: string, prompt: string) =>
-  imagesCall("images/edits", { prompt, images: [{ image_url: imageDataUrl }], size: "1024x1024" });
+export const generateImage = (prompt: string, size: string, user: string) =>
+  imagesCall("images/generations", imagesBody({ prompt, size }, { reasoning: "low", user }));
+
+export const editImage = (imageDataUrl: string, prompt: string, user: string) =>
+  imagesCall(
+    "images/edits",
+    imagesBody({ prompt, images: [{ image_url: imageDataUrl }], size: "1024x1024" }, { reasoning: "high", user }),
+  );

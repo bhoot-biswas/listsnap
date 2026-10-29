@@ -3,8 +3,17 @@ import { z } from "zod";
 import { BanglaText, ListingText, PlanResult } from "@/lib/schemas/pipeline";
 import { logged } from "../log";
 import type { MetaProvider } from "../types";
-import { backgroundPrompt, editImage, generateImage, IMAGE_COST_USD, IMAGE_MODEL, lifestylePrompt } from "./image";
-import { SAM_COST_USD, SAM_MODEL, samSegment } from "./sam";
+import {
+  backgroundPrompt,
+  editImage,
+  endUser,
+  generateImage,
+  IMAGE_COST_USD,
+  IMAGE_MODEL,
+  type ImageResult,
+  lifestylePrompt,
+} from "./image";
+import { SAM_COST_USD, SAM_MODEL, SamRejectedError, samSegment } from "./sam";
 import { liveAssist } from "./assist";
 import { BANGLA_SYSTEM, SELLER_CONTEXT, writeSystem } from "./prompts";
 import { photoDataUrl, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
@@ -36,6 +45,7 @@ const GroupSuggestion = z.object({
 
 const info = { provider: "meta", model: SPARK_MODEL, endpoint: "chat/completions", mode: "live" } as const;
 const retried = (r: SparkResult<unknown>) => (r.requests > 1 ? " · retried unreadable answer" : "");
+const tokens = (r: ImageResult) => (r.tokens ? ` · ${r.tokens} tokens` : "");
 
 export const liveMeta: MetaProvider = {
   mode: "live",
@@ -119,31 +129,45 @@ export const liveMeta: MetaProvider = {
     return { mode: r.data.mode, colors, reason: r.data.reason };
   },
 
-  segment: (ctx, photo, phrase) =>
-    logged(
-      ctx,
-      { provider: "meta", model: SAM_MODEL, endpoint: "responses", mode: "live" },
-      () => samSegment(photo, phrase),
-      (found) => ({ summary: `"${phrase}" → ${found.length} instance(s)`, costUsd: SAM_COST_USD }),
-    ),
+  segment: async (ctx, photo, phrase) => {
+    try {
+      const r = await logged(
+        ctx,
+        { provider: "meta", model: SAM_MODEL, endpoint: "responses", mode: "live" },
+        () => samSegment(photo, phrase),
+        (r) => ({
+          summary: `"${phrase}" → ${r.instances.length} instance(s)${r.diagnostics ? ` · ${r.diagnostics} skipped line(s)` : ""}`,
+          costUsd: SAM_COST_USD,
+        }),
+      );
+      return r.instances;
+    } catch (err) {
+      // already logged as a failed call; a refused phrase counts as "nothing found" so the
+      // next phrase (or the whole-photo fallback) runs instead of three doomed attempts
+      if (err instanceof SamRejectedError) return [];
+      throw err;
+    }
+  },
 
-  background: (ctx, scene, angle) => {
+  background: async (ctx, scene, angle) => {
     const { prompt, size } = backgroundPrompt(scene, angle);
-    return logged(
+    const r = await logged(
       ctx,
       { provider: "meta", model: IMAGE_MODEL, endpoint: "images/generations", mode: "live" },
-      () => generateImage(prompt, size),
-      () => ({ summary: `${scene} background (${angle})`, costUsd: IMAGE_COST_USD }),
+      () => generateImage(prompt, size, endUser(ctx.workspaceId)),
+      (r) => ({ summary: `${scene} background (${angle})${tokens(r)}`, costUsd: IMAGE_COST_USD }),
     );
+    return r.image;
   },
 
   editScene: async (ctx, main, scene, phrase) => {
     const image = await photoDataUrl(main, 1024);
-    return logged(
+    const r = await logged(
       ctx,
       { provider: "meta", model: IMAGE_MODEL, endpoint: "images/edits", mode: "live" },
-      () => editImage(image, lifestylePrompt(phrase)),
-      () => ({ summary: `${scene} scene from the cutout`, costUsd: IMAGE_COST_USD }),
+      () => editImage(image, lifestylePrompt(phrase), endUser(ctx.workspaceId)),
+      (r) => ({ summary: `${scene} scene from the cutout${tokens(r)}`, costUsd: IMAGE_COST_USD }),
     );
+    return r.image;
   },
 };
