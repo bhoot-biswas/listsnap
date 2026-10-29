@@ -9,8 +9,10 @@ import { overviewQueries } from "./overview";
 import { usageQueries } from "./usage";
 import { limitQueries } from "./limits";
 import { mediaLibraryQueries } from "./media-library";
+import { opRunQueries } from "./op-runs";
 
-export type { ListingRow, ListingStatus, RecentListingRow } from "./listings";
+export type { ListingRow, ListingSnapshot, ListingStatus, RecentListingRow } from "./listings";
+export type { OpRunRow, OpVia } from "./op-runs";
 export type { BatchSummaryRow } from "./batches";
 export type { ActivityRow, AttentionRow, Checklist, DashboardStats, ListingListRow } from "./overview";
 export type { UsageCall, UsageDay, UsageStep } from "./usage";
@@ -192,6 +194,7 @@ export function forWorkspace(workspaceId: string) {
     ...usageQueries(ws),
     ...limitQueries(ws),
     ...mediaLibraryQueries(ws),
+    ...opRunQueries(ws),
 
     steps: (jobId: string) =>
       select<StepRowView>(

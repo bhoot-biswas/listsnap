@@ -42,7 +42,15 @@ export async function saveMedia(
   workspaceId: string,
   kind: MediaKind,
   data: Buffer,
-  meta: { mime: string; width: number; height: number; listingId?: string | null; sort?: number },
+  meta: {
+    mime: string;
+    width: number;
+    height: number;
+    listingId?: string | null;
+    sort?: number;
+    /** The image this one was made from, for generated images. */
+    fromMediaId?: string | null;
+  },
 ): Promise<MediaRecord> {
   const id = randomUUID();
   const ext = meta.mime === "image/png" ? "png" : "jpg";
@@ -51,7 +59,7 @@ export async function saveMedia(
   await mkdir(path.dirname(/*turbopackIgnore: true*/ abs), { recursive: true });
   await writeFile(abs, data);
   await execute(
-    "INSERT INTO media (id, workspace_id, kind, path, mime, bytes, width, height, listing_id, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO media (id, workspace_id, kind, path, mime, bytes, width, height, listing_id, from_media_id, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       id,
       workspaceId,
@@ -62,6 +70,7 @@ export async function saveMedia(
       meta.width,
       meta.height,
       meta.listingId ?? null,
+      meta.fromMediaId ?? null,
       meta.sort ?? 0,
     ],
   );
