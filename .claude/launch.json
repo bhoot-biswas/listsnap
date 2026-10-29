@@ -6,6 +6,15 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
       "port": 3000
+    },
+    {
+      "name": "listsnap-standalone",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "MEDIA_DIR=\"$PWD/.data/media\" PORT=3001 HOSTNAME=127.0.0.1 node --env-file=.env.local .next/standalone/server.js"
+      ],
+      "port": 3001
     }
   ]
 }
