@@ -14,6 +14,8 @@ export interface ListingListRow {
   job_id: string;
   status: ListingStatus;
   title: string | null;
+  /** Shown instead of the English title when the app is in Bangla (lib/titles.ts). */
+  title_bn: string | null;
   category: string | null;
   price_bdt: number | null;
   hint_low: number | null;
@@ -30,6 +32,7 @@ export interface AttentionRow {
   job_id: string;
   listing_id: string | null;
   title: string | null;
+  title_bn: string | null;
   created_at: Date;
 }
 
@@ -38,6 +41,7 @@ export interface ActivityRow {
   type: string;
   ref_id: string | null;
   title: string | null;
+  title_bn: string | null;
   job_id: string | null;
   created_at: Date;
 }
@@ -60,6 +64,7 @@ export interface Checklist {
 }
 
 const TITLE = "JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.en.title'))";
+const TITLE_BN = "JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.bn.title'))";
 const CUTOUT = `(SELECT i.cutout_media_id FROM items i
    WHERE i.id = JSON_UNQUOTE(JSON_EXTRACT(l.item_ids_json, '$[0]')) AND i.workspace_id = l.workspace_id)`;
 
@@ -85,7 +90,7 @@ export function overviewQueries(ws: string) {
       const filter = where.join(" AND ");
       const [rows, total] = await Promise.all([
         select<ListingListRow>(
-          `SELECT l.id, l.job_id, l.status, l.price_bdt, l.confidence, l.created_at, ${TITLE} AS title,
+          `SELECT l.id, l.job_id, l.status, l.price_bdt, l.confidence, l.created_at, ${TITLE} AS title, ${TITLE_BN} AS title_bn,
                   JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.en.category')) AS category,
                   CAST(JSON_VALUE(l.fields_json, '$.en.price_hint_bdt.low') AS SIGNED) AS hint_low,
                   CAST(JSON_VALUE(l.fields_json, '$.en.price_hint_bdt.high') AS SIGNED) AS hint_high,
@@ -163,10 +168,10 @@ export function overviewQueries(ws: string) {
     /** Unsure drafts and failed steps, newest first. */
     attention: (limit = 5) =>
       select<AttentionRow>(
-        `(SELECT 'review' AS kind, l.job_id, l.id AS listing_id, ${TITLE} AS title, l.created_at
+        `(SELECT 'review' AS kind, l.job_id, l.id AS listing_id, ${TITLE} AS title, ${TITLE_BN} AS title_bn, l.created_at
             FROM listings l WHERE l.workspace_id = ? AND l.status = 'needs_review')
          UNION ALL
-         (SELECT 'failed', j.id, l.id, ${TITLE}, j.created_at
+         (SELECT 'failed', j.id, l.id, ${TITLE}, ${TITLE_BN}, j.created_at
             FROM jobs j LEFT JOIN listings l ON l.job_id = j.id AND l.status = 'failed'
            WHERE j.workspace_id = ? AND (j.status = 'failed' OR l.id IS NOT NULL))
          ORDER BY created_at DESC LIMIT ?`,
@@ -176,7 +181,7 @@ export function overviewQueries(ws: string) {
     /** Recent changes, each listing once: re-saving a draft moves it to the top instead of repeating it. */
     async activity(limit = 8): Promise<ActivityRow[]> {
       const rows = await select<ActivityRow>(
-        `SELECT e.id, e.type, e.ref_id, e.created_at, ${TITLE} AS title, l.job_id
+        `SELECT e.id, e.type, e.ref_id, e.created_at, ${TITLE} AS title, ${TITLE_BN} AS title_bn, l.job_id
            FROM events e LEFT JOIN listings l ON e.type = 'sent_to_store' AND l.id = e.ref_id AND l.workspace_id = e.workspace_id
           WHERE e.workspace_id = ? AND e.type IN ('sent_to_store', 'connection_saved', 'connection_removed')
           ORDER BY e.id DESC LIMIT ?`,

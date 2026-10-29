@@ -1,10 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { ChevronRight } from "lucide-react";
 import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { StatusBadge } from "@/components/app/status-badge";
 import { listingHref } from "@/lib/listing-links";
+import { localTitle } from "@/lib/titles";
 import { suggestedPrice } from "@/lib/schemas/review";
 import type { ListingListRow } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
@@ -26,6 +27,7 @@ function Thumb({ mediaId, size }: { mediaId: string | null; size: number }) {
 export async function ListingTable({ rows, rounding }: { rows: ListingListRow[]; rounding: number }) {
   const t = await getTranslations("listings");
   const format = await getFormatter();
+  const locale = await getLocale();
   const view = rows.map((r) => {
     const price =
       r.price_bdt ??
@@ -35,7 +37,8 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
     return {
       ...r,
       href: listingHref(r),
-      title: r.title ?? t("untitled"),
+      title: localTitle(r, locale).text ?? t("untitled"),
+      lang: localTitle(r, locale).lang,
       price: price == null ? "–" : `৳${format.number(price)}`,
       created: format.relativeTime(r.created_at),
     };
@@ -49,7 +52,9 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
             <Link href={r.href} className="flex min-h-16 items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
               <Thumb mediaId={r.cutout_media_id} size={52} />
               <div className="min-w-0 flex-1 space-y-1">
-                <p className="truncate text-sm font-medium">{r.title}</p>
+                <p lang={r.lang} className="truncate text-sm font-medium">
+                  {r.title}
+                </p>
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="tabular-nums">{r.price}</span>
                   {r.colors > 1 && <span>· {t("colors", { count: r.colors })}</span>}
@@ -100,7 +105,7 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
                 </td>
                 <td className="max-w-80 px-3 py-2">
                   {/* the title link covers the row, so the whole row opens the listing */}
-                  <Link href={r.href} className="block truncate font-medium after:absolute after:inset-0">
+                  <Link href={r.href} lang={r.lang} className="block truncate font-medium after:absolute after:inset-0">
                     {r.title}
                   </Link>
                   {r.colors > 1 && <p className="text-xs text-muted-foreground">{t("colors", { count: r.colors })}</p>}
