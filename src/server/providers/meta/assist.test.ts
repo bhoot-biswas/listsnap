@@ -32,7 +32,7 @@ describe("assistPrompt", () => {
       lang: "en",
       text: "Handwoven Dhakai Jamdani Saree",
       product,
-      brandVoice: "Friendly",
+      voice: { tone: "Friendly", note: null },
     });
     expect(en.userText).toContain("at most 70 characters");
     expect(en.userText).toContain('"Fabric"');
@@ -45,10 +45,18 @@ describe("assistPrompt", () => {
       text: "",
       source: "Soft cotton.",
       product,
-      brandVoice: "Friendly",
+      voice: { tone: "Friendly", note: null },
     });
     expect(bn.system).toContain("Bangla");
     expect(bn.userText).toContain("English version:\nSoft cotton.");
     expect(bn.userText).not.toContain("Current Bangla text");
+  });
+});
+
+describe("writeSystem", () => {
+  it("adds the shop's note, quoted, only when there is one", async () => {
+    const { writeSystem } = await import("./prompts");
+    expect(writeSystem({ tone: "Friendly", note: 'Say "handmade"' })).toContain(`The shop also asks: "Say 'handmade'"`);
+    expect(writeSystem({ tone: "Friendly", note: null })).not.toContain("The shop also asks");
   });
 });

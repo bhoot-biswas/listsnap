@@ -6,13 +6,13 @@ import { useTranslations } from "next-intl";
 import { Camera } from "lucide-react";
 
 /**
- * The floating Snap button on phones. Hidden on the job pages, where the
+ * The floating Snap button on phones. Hidden on the job pages and on Settings, where the
  * page's own main button takes that spot, and on the Snap page itself.
  */
 export function SnapFab() {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  if (pathname.startsWith("/job/") || pathname === "/snap") return null;
+  if (pathname.startsWith("/job/") || pathname === "/snap" || pathname === "/settings") return null;
   return (
     <Link
       href="/snap"

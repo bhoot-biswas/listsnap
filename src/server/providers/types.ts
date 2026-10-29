@@ -36,7 +36,7 @@ export interface MetaProvider {
     colors: string[];
     reason: string;
   }>;
-  write(ctx: CallContext, photo: Buffer, plan: PlanResult, brandVoice: string): Promise<ListingText>;
+  write(ctx: CallContext, photo: Buffer, plan: PlanResult, voice: BrandVoice): Promise<ListingText>;
   translate(ctx: CallContext, listing: ListingText): Promise<BanglaText>;
   /** Review's per-field help: the new text for one field. */
   assist(ctx: CallContext, input: AssistInput): Promise<string>;
@@ -49,7 +49,13 @@ export interface MetaProvider {
 export interface AssistInput extends AssistRequest {
   /** What the listing is about, so a rewrite keeps the facts. */
   product: { title: string; category: string; attributes: { name: string; value: string }[] };
-  brandVoice: string;
+  voice: BrandVoice;
+}
+
+/** The shop's tone of voice and its standing note to the writer, from Settings. */
+export interface BrandVoice {
+  tone: string;
+  note: string | null;
 }
 
 export interface WooDraftInput {

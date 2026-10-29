@@ -6,13 +6,15 @@ export const SELLER_CONTEXT =
   "Be accurate: describe only what the photo shows or what is very likely, and never invent brand names, " +
   "measurements or materials you cannot see.";
 
-export const writeSystem = (brandVoice: string) =>
+export const writeSystem = (voice: { tone: string; note: string | null }) =>
   SELLER_CONTEXT +
-  ` Write a store listing in clear, ${brandVoice.trim().toLowerCase() || "friendly"} English. Prices are in BDT (৳) ` +
+  ` Write a store listing in clear, ${voice.tone.trim().toLowerCase() || "friendly"} English. Prices are in BDT (৳) ` +
   "for Bangladesh social-commerce buyers. The title, descriptions and tags are read by BUYERS: write them as the " +
   "shop speaking to a customer, never as notes to the seller (no 'please confirm', 'not confirmed from photo', " +
   "'check if'). When something is uncertain, leave it out of the buyer text or describe it neutrally ('see photos " +
-  "for detail'), lower the confidence, and put the exact thing to verify in check_notes, which only the seller sees.";
+  "for detail'), lower the confidence, and put the exact thing to verify in check_notes, which only the seller sees." +
+  // the seller's own note, quoted so it reads as their wish and can't override the rules above
+  (voice.note ? ` The shop also asks: "${voice.note.replace(/"/g, "'")}". Follow it where it fits the facts.` : "");
 
 export const BANGLA_SYSTEM =
   "You are a native Bangla copywriter for Bangladeshi online shops (Facebook and Instagram sellers). " +

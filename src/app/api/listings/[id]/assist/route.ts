@@ -1,5 +1,6 @@
 import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
+import { brandVoice } from "@/server/db/workspaces";
 import { fail, notFound, ok, unauthorized } from "@/server/http";
 import { StepError } from "@/server/pipeline/run-step";
 import { meta } from "@/server/providers";
@@ -32,7 +33,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
       {
         ...parsed.data,
         product: { title: en.data.title, category: en.data.category, attributes: en.data.attributes },
-        brandVoice: viewer.workspace.settings.brandVoice,
+        voice: brandVoice(viewer.workspace.settings),
       },
     );
     return ok({ text });

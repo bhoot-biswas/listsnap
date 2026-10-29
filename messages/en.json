@@ -251,6 +251,102 @@
     "left": "{count, plural, one {You can start # more listing today.} other {You can start # more listings today.}}",
     "leftOut": "{count, plural, one {# photo was left out: today's limit is reached.} other {# photos were left out: today's limit is reached.}}"
   },
+  "settings": {
+    "save": "Save settings",
+    "saved": "Settings saved. New listings use them.",
+    "invalid": "Check the highlighted field.",
+    "demoNote": "Demo shops keep their settings for 24 hours.",
+    "shop": {
+      "title": "Shop",
+      "intro": "How your shop appears in ListSnap.",
+      "name": "Shop name",
+      "nameError": "Give your shop a name (2–80 characters).",
+      "category": "Main category",
+      "categoryPlaceholder": "Sarees, jewellery, home decor…",
+      "fixed": "Prices are in Bangladeshi taka (৳), and dates follow Bangladesh time."
+    },
+    "writing": {
+      "title": "How listings are written",
+      "intro": "Sent with every new listing and every AI help click.",
+      "voice": "Tone of voice",
+      "voices": {
+        "Friendly": "Friendly",
+        "Professional": "Professional",
+        "Playful": "Playful"
+      },
+      "voiceHints": {
+        "Friendly": "Warm and simple",
+        "Professional": "Clear and polished",
+        "Playful": "Light and lively"
+      },
+      "note": "A note for the writer",
+      "notePlaceholder": "Always mention it's handmade in Tangail.",
+      "noteHint": "Up to {max, number} characters. It's followed where it fits the photo; facts always come first.",
+      "rounding": "Round suggested prices",
+      "roundingNone": "Don't round",
+      "roundingTo": "To the nearest ৳{n, number}"
+    },
+    "photos": {
+      "title": "Studio photos",
+      "intro": "Made automatically for each new listing.",
+      "scenes": {
+        "studio": "Studio",
+        "lifestyle": "Lifestyle",
+        "banner": "Banner"
+      },
+      "hints": {
+        "studio": "Your product on a clean studio background",
+        "lifestyle": "An AI scene around your product, labelled as AI",
+        "banner": "A wide image for your shop's front page"
+      },
+      "note": "Each photo counts toward your daily AI photo limit. Leave all unticked to make none."
+    },
+    "languages": {
+      "title": "Languages",
+      "intro": "Which languages each listing is written in.",
+      "always": "always on",
+      "banglaHint": "A Bangla version of every listing, written for Bangladeshi buyers"
+    }
+  },
+  "profile": {
+    "details": {
+      "title": "Your details",
+      "intro": "Shown to you only.",
+      "name": "Name",
+      "email": "Email",
+      "emailHint": "This is the address you sign in with.",
+      "phone": "Phone (optional)",
+      "phoneError": "Use digits only, like +880 1712-345678.",
+      "save": "Save",
+      "saved": "Profile saved."
+    },
+    "preferences": {
+      "title": "Preferences",
+      "intro": "These follow you to every device you sign in on.",
+      "language": "Language"
+    },
+    "signIn": {
+      "title": "Sign-in methods",
+      "intro": "How you can sign in to ListSnap.",
+      "email": "Email link",
+      "on": "On",
+      "linkGoogle": "Link Google"
+    },
+    "devices": {
+      "title": "Devices",
+      "intro": "Where you're signed in right now.",
+      "this": "This device",
+      "now": "Active now",
+      "lastActive": "Last active {when}",
+      "unknown": "Unknown device",
+      "signOutOthers": "Sign out of all other devices"
+    },
+    "demo": {
+      "title": "You're in a demo shop",
+      "body": "Demo shops have no account and end after 24 hours. Sign in to keep your own shop, store and listings.",
+      "signIn": "Sign in"
+    }
+  },
   "snap": {
     "title": "New listing",
     "intro": "Take or upload up to 5 photos of one product. A plain background and good light work best.",
