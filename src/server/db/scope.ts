@@ -8,11 +8,13 @@ import { batchQueries } from "./batches";
 import { overviewQueries } from "./overview";
 import { usageQueries } from "./usage";
 import { limitQueries } from "./limits";
+import { mediaLibraryQueries } from "./media-library";
 
 export type { ListingRow, ListingStatus, RecentListingRow } from "./listings";
 export type { BatchSummaryRow } from "./batches";
 export type { ActivityRow, AttentionRow, Checklist, DashboardStats, ListingListRow } from "./overview";
 export type { UsageCall, UsageDay, UsageStep } from "./usage";
+export type { MediaGroup, MediaTile } from "./media-library";
 
 /**
  * Every app query, bound to one workspace (no SQL outside src/server/db,
@@ -181,6 +183,7 @@ export function forWorkspace(workspaceId: string) {
     ...overviewQueries(ws),
     ...usageQueries(ws),
     ...limitQueries(ws),
+    ...mediaLibraryQueries(ws),
 
     steps: (jobId: string) =>
       select<StepRowView>(

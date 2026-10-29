@@ -4,12 +4,12 @@ import { Camera } from "lucide-react";
 import { z } from "zod";
 import { TopBar } from "@/components/app/top-bar";
 import { ButtonLink } from "@/components/app/button-link";
+import { Pager } from "@/components/app/pager";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { LISTING_PAGE_SIZE } from "@/server/db/overview";
-import { LISTING_STATUSES, ListingFilters } from "./_components/listing-filters";
+import { LISTING_STATUSES, ListingFilters, listingsHref } from "./_components/listing-filters";
 import { ListingTable } from "./_components/listing-table";
-import { Pager } from "./_components/pager";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("listings") };
@@ -66,7 +66,12 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
             ) : (
               <>
                 <ListingTable rows={rows} rounding={viewer.workspace.settings.priceRounding} />
-                <Pager {...filter} total={total} size={LISTING_PAGE_SIZE} />
+                <Pager
+                  page={filter.page}
+                  total={total}
+                  size={LISTING_PAGE_SIZE}
+                  href={(page) => listingsHref({ ...filter, page })}
+                />
               </>
             )}
           </>

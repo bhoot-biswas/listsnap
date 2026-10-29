@@ -1,24 +1,24 @@
+import type { Route } from "next";
 import { getTranslations } from "next-intl/server";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ButtonLink } from "@/components/app/button-link";
-import type { ListingStatus } from "@/server/db/scope";
-import { listingsHref } from "./listing-filters";
+import { ButtonLink } from "./button-link";
 
-/** "21–40 of 57" with previous and next links; hidden when everything fits on one page. */
+/**
+ * "21–40 of 57" with previous and next links (Listings, Media); hidden when everything
+ * fits on one page. `href` builds a page's URL, keeping the page's own filters.
+ */
 export async function Pager({
-  status,
-  q,
   page,
   total,
   size,
+  href,
 }: {
-  status: ListingStatus | null;
-  q: string;
   page: number;
   total: number;
   size: number;
+  href: (page: number) => Route;
 }) {
-  const t = await getTranslations("listings");
+  const t = await getTranslations("common.pager");
   if (total <= size && page === 1) return null;
   const from = (page - 1) * size + 1;
   const to = Math.min(page * size, total);
@@ -27,13 +27,13 @@ export async function Pager({
       <p className="text-sm text-muted-foreground tabular-nums">{t("range", { from, to, total })}</p>
       <div className="flex gap-2">
         {page > 1 && (
-          <ButtonLink variant="outline" className="h-11 md:h-9" href={listingsHref({ status, q, page: page - 1 })}>
+          <ButtonLink variant="outline" className="h-11 md:h-9" href={href(page - 1)}>
             <ChevronLeft />
             {t("previous")}
           </ButtonLink>
         )}
         {to < total && (
-          <ButtonLink variant="outline" className="h-11 md:h-9" href={listingsHref({ status, q, page: page + 1 })}>
+          <ButtonLink variant="outline" className="h-11 md:h-9" href={href(page + 1)}>
             {t("next")}
             <ChevronRight />
           </ButtonLink>

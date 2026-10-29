@@ -8,7 +8,13 @@
     "comingSoon": "Coming soon",
     "mock": "Mock",
     "aiBackground": "AI background",
-    "aiScene": "AI scene"
+    "aiScene": "AI scene",
+    "pager": {
+      "pages": "Pages",
+      "range": "{from, number}–{to, number} of {total, number}",
+      "previous": "Previous",
+      "next": "Next"
+    }
   },
   "nav": {
     "work": "Work",
@@ -176,11 +182,7 @@
     "status": "Status",
     "confidence": "AI confidence",
     "created": "Made",
-    "open": "Open",
-    "pages": "Pages",
-    "range": "{from}–{to} of {total}",
-    "previous": "Previous",
-    "next": "Next"
+    "open": "Open"
   },
   "usage": {
     "title": "Usage",
@@ -347,6 +349,98 @@
       "signIn": "Sign in"
     }
   },
+  "media": {
+    "empty": "Photos you snap and the studio shots ListSnap makes will appear here.",
+    "storage": "{size} MB stored",
+    "filters": "Filter by type",
+    "all": "All",
+    "groups": {
+      "originals": "Your photos",
+      "cutouts": "Cutouts",
+      "ai": "AI photos"
+    },
+    "kinds": {
+      "original": "Your photo",
+      "main": "White background",
+      "cutout": "Cutout",
+      "studio": "Studio",
+      "lifestyle": "Lifestyle",
+      "banner": "Banner"
+    },
+    "search": "Search by listing title",
+    "searchGo": "Search",
+    "noMatch": "No photos match.",
+    "untitled": "Untitled listing",
+    "open": "{kind} for {title}, opens full size",
+    "openFull": "Open full size",
+    "download": "Download",
+    "kb": "{kb} KB"
+  },
+  "help": {
+    "tips": {
+      "title": "Photo tips",
+      "intro": "A good photo gives a better cutout, a better listing and better studio shots.",
+      "avoid": "Avoid",
+      "do": "Do",
+      "items": {
+        "clutter": {
+          "bad": "A busy background with other things in the frame",
+          "good": "One product on a plain cloth, table or wall"
+        },
+        "distance": {
+          "bad": "The product small in the middle of a wide shot",
+          "good": "Step closer so the product fills most of the frame"
+        },
+        "light": {
+          "bad": "A dark room, or a flash that leaves hard shadows",
+          "good": "Daylight from a window, beside you rather than behind the product"
+        }
+      }
+    },
+    "faq": {
+      "title": "Questions",
+      "items": {
+        "keys": {
+          "q": "Where do I find my WooCommerce keys?",
+          "a": "In your WordPress admin, open WooCommerce → Settings → Advanced → REST API, then Add key. Choose Read/Write, generate it, and paste the consumer key and secret into Connections. ListSnap encrypts them and never shows them again."
+        },
+        "draft": {
+          "q": "Why is my product a draft?",
+          "a": "ListSnap never publishes for you. Every product goes to your store as a draft, so you can check it there and publish when you're ready."
+        },
+        "edit": {
+          "q": "Can I edit after saving to the store?",
+          "a": "Yes. Change anything on Review and press Update store draft: the same draft is updated, never copied."
+        },
+        "labels": {
+          "q": "What do the AI labels mean?",
+          "a": "AI background: your real product photo on a background made by AI. AI scene: the whole picture is an AI edit around your product, so check it still looks like what you sell."
+        },
+        "limits": {
+          "q": "What are the daily limits?",
+          "a": "Each shop can start 20 listings and make 60 AI photos a day. They start again at 6:00 AM Bangladesh time. Usage shows where you are."
+        },
+        "missed": {
+          "q": "The AI didn't find my product. What now?",
+          "a": "Press Try again, or take the photo again closer, on a plain background and in good light. Several products in one photo? You can choose which to keep and how to group them."
+        },
+        "data": {
+          "q": "How is my data used?",
+          "a": "Your photos are kept for your shop and sent to Meta's models (Muse Spark, SAM 3.1 and Muse Image) only to make your listings. Store keys are encrypted. Nothing is sold or shared with anyone else."
+        }
+      }
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "intro": "Anywhere except while typing.",
+      "newListing": "New listing"
+    },
+    "about": {
+      "title": "About ListSnap",
+      "body": "Built for the Meta AI Developer Hackathon with Muse Spark, SAM 3.1 and Muse Image.",
+      "contact": "Found a problem or have an idea? <link>Tell us on GitHub.</link>"
+    }
+  },
   "snap": {
     "title": "New listing",
     "intro": "Take or upload up to 5 photos of one product. A plain background and good light work best.",
@@ -432,10 +526,6 @@
     },
     "retake": "Take another photo",
     "reviewNow": "Review now"
-  },
-  "placeholder": {
-    "body": "This page is part of the app shell. It gets built in {phase}.",
-    "goDashboard": "Go to Dashboard"
   },
   "errors": {
     "title": "Something went wrong",
