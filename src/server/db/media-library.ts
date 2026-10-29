@@ -29,9 +29,10 @@ export interface MediaTile {
   job_id: string | null;
   listing_id: string | null;
   title: string | null;
+  title_bn: string | null;
 }
 
-const TITLE = (alias: string) => `JSON_UNQUOTE(JSON_EXTRACT(${alias}.fields_json, '$.en.title'))`;
+const TITLE = (alias: string, lang = "en") => `JSON_UNQUOTE(JSON_EXTRACT(${alias}.fields_json, '$.${lang}.title'))`;
 const likeTerm = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 export function mediaLibraryQueries(ws: string) {
@@ -41,15 +42,17 @@ export function mediaLibraryQueries(ws: string) {
       const params: (string | number)[] = [ws, ...kinds];
       let filter = "";
       if (opts.q) {
-        filter = "WHERE t.title COLLATE utf8mb4_unicode_ci LIKE ?";
-        params.push(likeTerm(opts.q));
+        filter = "WHERE t.title COLLATE utf8mb4_unicode_ci LIKE ? OR t.title_bn COLLATE utf8mb4_unicode_ci LIKE ?";
+        params.push(likeTerm(opts.q), likeTerm(opts.q));
       }
       // the job comes from the listing (AI photos), the photo (originals) or the item (cutouts)
       const base = `
         SELECT m.id, m.kind, m.mime, m.bytes, m.width, m.height, m.created_at, m.listing_id,
                COALESCE(l.job_id, p.job_id, pm.job_id, pc.job_id) AS job_id,
                COALESCE(${TITLE("l")}, (SELECT ${TITLE("l2")} FROM listings l2
-                  WHERE l2.job_id = COALESCE(p.job_id, pm.job_id, pc.job_id) ORDER BY l2.sort LIMIT 1)) AS title
+                  WHERE l2.job_id = COALESCE(p.job_id, pm.job_id, pc.job_id) ORDER BY l2.sort LIMIT 1)) AS title,
+               COALESCE(${TITLE("l", "bn")}, (SELECT ${TITLE("l2", "bn")} FROM listings l2
+                  WHERE l2.job_id = COALESCE(p.job_id, pm.job_id, pc.job_id) ORDER BY l2.sort LIMIT 1)) AS title_bn
           FROM media m
           LEFT JOIN listings l ON l.id = m.listing_id
           LEFT JOIN photos p ON p.media_id = m.id

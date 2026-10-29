@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import {
   BarChart3,
@@ -72,6 +72,7 @@ type NavItem = { href: Route; label: string; icon: React.ComponentType<{ classNa
  */
 export function AppSidebar({ data }: { data: SidebarData }) {
   const t = useTranslations("nav");
+  const format = useFormatter();
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
   const closeOnPhone = () => isMobile && setOpenMobile(false);
@@ -85,7 +86,7 @@ export function AppSidebar({ data }: { data: SidebarData }) {
           href: "/listings",
           label: t("listings"),
           icon: ListChecks,
-          badge: data.needsReview ? String(data.needsReview) : undefined,
+          badge: data.needsReview ? format.number(data.needsReview) : undefined,
         },
         { href: "/bulk", label: t("bulk"), icon: Upload },
         { href: "/media", label: t("media"), icon: Images },
@@ -95,7 +96,12 @@ export function AppSidebar({ data }: { data: SidebarData }) {
       label: t("shop"),
       items: [
         { href: "/connections", label: t("connections"), icon: Plug },
-        { href: "/usage", label: t("usage"), icon: BarChart3, badge: `${data.usageToday}/${data.usageLimit}` },
+        {
+          href: "/usage",
+          label: t("usage"),
+          icon: BarChart3,
+          badge: `${format.number(data.usageToday)}/${format.number(data.usageLimit)}`,
+        },
         { href: "/settings", label: t("settings"), icon: Settings },
       ],
     },

@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { Download, ExternalLink } from "lucide-react";
 import type { MediaTile } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
+import { localTitle } from "@/lib/titles";
 import { cn } from "@/lib/utils";
 
 const AI_KINDS = new Set(["studio", "lifestyle", "banner"]);
@@ -16,10 +17,12 @@ const AI_KINDS = new Set(["studio", "lifestyle", "banner"]);
 export async function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
   const t = await getTranslations("media");
   const format = await getFormatter();
+  const locale = await getLocale();
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {tiles.map((m) => {
         const url = mediaUrl(m.id);
+        const title = localTitle(m, locale);
         const ext = m.mime === "image/png" ? "png" : "jpg";
         const kb = format.number(m.bytes / 1024, { maximumFractionDigits: 0 });
         return (
@@ -28,7 +31,7 @@ export async function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
               href={url}
               target="_blank"
               rel="noreferrer"
-              aria-label={t("open", { kind: t(`kinds.${m.kind}`), title: m.title ?? t("untitled") })}
+              aria-label={t("open", { kind: t(`kinds.${m.kind}`), title: title.text ?? t("untitled") })}
               className={cn(
                 "relative block aspect-square",
                 m.kind === "cutout"
@@ -57,9 +60,10 @@ export async function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
               {m.job_id ? (
                 <Link
                   href={m.listing_id ? `/job/${m.job_id}/review?l=${m.listing_id}` : `/job/${m.job_id}`}
+                  lang={title.lang}
                   className="line-clamp-1 text-sm font-medium hover:underline"
                 >
-                  {m.title ?? t("untitled")}
+                  {title.text ?? t("untitled")}
                 </Link>
               ) : (
                 <p className="line-clamp-1 text-sm text-muted-foreground">{t("untitled")}</p>

@@ -534,6 +534,10 @@
     "notFoundBody": "This page doesn't exist or isn't in your shop.",
     "goDashboard": "Go to Dashboard"
   },
+  "offline": {
+    "offline": "You're offline. Your work is safe and saves when you're back.",
+    "back": "Back online."
+  },
   "done": {
     "title": "Saved to your store",
     "heading": "{count, plural, one {Draft saved} other {# drafts saved}}",

@@ -1,13 +1,15 @@
-import { getFormatter, getTranslations } from "next-intl/server";
+import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { AlertTriangle, CheckCircle2, CircleAlert } from "lucide-react";
 import { ButtonLink } from "@/components/app/button-link";
 import { listingHref } from "@/lib/listing-links";
+import { localTitle } from "@/lib/titles";
 import type { AttentionRow } from "@/server/db/scope";
 
 /** Unsure drafts and failed steps, each with one button. Empty reads as good news. */
 export async function NeedsAttention({ rows }: { rows: AttentionRow[] }) {
   const t = await getTranslations("dashboard.attention");
   const format = await getFormatter();
+  const locale = await getLocale();
   return (
     <section aria-labelledby="attention" className="space-y-3">
       <h2 id="attention" className="text-base font-semibold">
@@ -27,7 +29,9 @@ export async function NeedsAttention({ rows }: { rows: AttentionRow[] }) {
               <li key={`${r.kind}-${r.listing_id ?? r.job_id}`} className="flex min-h-14 items-center gap-3 px-4 py-2">
                 <Icon className={failed ? "size-4 text-destructive" : "size-4 text-warning"} aria-hidden="true" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{r.title ?? t("untitled")}</p>
+                  <p lang={localTitle(r, locale).lang} className="truncate text-sm font-medium">
+                    {localTitle(r, locale).text ?? t("untitled")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t(failed ? "failed" : "review")} · {format.relativeTime(r.created_at)}
                   </p>
