@@ -1,0 +1,28 @@
+# ListSnap as a systemd service. Installed by DEPLOY.md to /etc/systemd/system/listsnap.service.
+# `next start` reads /srv/listsnap/.env.production.local, a link to /etc/listsnap/env.
+
+[Unit]
+Description=ListSnap
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=simple
+User=listsnap
+Group=listsnap
+WorkingDirectory=/srv/listsnap
+Environment=NODE_ENV=production
+# only Nginx on this machine talks to the app
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000
+Restart=always
+RestartSec=3
+
+# the app writes only its media folder and its own build
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/listsnap /srv/listsnap
+
+[Install]
+WantedBy=multi-user.target
