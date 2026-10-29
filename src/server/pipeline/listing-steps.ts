@@ -4,7 +4,7 @@ import { compositeOnBackground, dimensions } from "@/server/image-ops";
 import { readMedia, saveMedia } from "@/server/media/store";
 import { meta } from "@/server/providers";
 import type { ListingRow, WorkspaceScope } from "@/server/db/scope";
-import type { Workspace } from "@/server/db/workspaces";
+import { brandVoice, type Workspace } from "@/server/db/workspaces";
 import {
   ListingText,
   REVIEW_THRESHOLD,
@@ -54,7 +54,7 @@ async function itemImages(ctx: ListingStepContext): Promise<{ main: Buffer; prod
 export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
   const p = await plan(ctx);
   const text = ListingText.parse(
-    await meta().write(call(ctx, "write"), await originalPhoto(ctx), p, ctx.workspace.settings.brandVoice),
+    await meta().write(call(ctx, "write"), await originalPhoto(ctx), p, brandVoice(ctx.workspace.settings)),
   );
   await ctx.ws.saveListingText(ctx.listing.id, "en", text, {
     confidence: text.confidence,

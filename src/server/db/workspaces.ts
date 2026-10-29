@@ -6,6 +6,8 @@ export interface WorkspaceSettings {
   mainCategory: string | null;
   listingLanguages: ("en" | "bn")[];
   brandVoice: "Friendly" | "Professional" | "Playful";
+  /** A short standing instruction for the writer, such as "always mention handmade". */
+  brandNote: string | null;
   scenes: ("studio" | "lifestyle" | "banner")[];
   priceRounding: number;
   timeZone: string;
@@ -16,11 +18,15 @@ export const DEFAULT_SETTINGS: WorkspaceSettings = {
   mainCategory: null,
   listingLanguages: ["en", "bn"],
   brandVoice: "Friendly",
+  brandNote: null,
   scenes: ["studio"],
   priceRounding: 10,
   timeZone: "Asia/Dhaka",
   currency: "BDT",
 };
+
+/** The tone and note the writer gets with every listing and AI help call. */
+export const brandVoice = (s: WorkspaceSettings) => ({ tone: s.brandVoice, note: s.brandNote });
 
 /** What pages and routes get about the current workspace. No secrets, no raw rows. */
 export interface Workspace {
@@ -96,4 +102,9 @@ export async function markOnboarded(workspaceId: string, name?: string): Promise
 
 export async function renameWorkspace(workspaceId: string, name: string): Promise<void> {
   await execute("UPDATE workspaces SET name = ? WHERE id = ?", [name, workspaceId]);
+}
+
+/** Settings replace the stored ones whole: the form always sends every field. */
+export async function saveWorkspaceSettings(workspaceId: string, name: string, settings: WorkspaceSettings) {
+  await execute("UPDATE workspaces SET name = ?, settings_json = ? WHERE id = ?", [name, json(settings), workspaceId]);
 }

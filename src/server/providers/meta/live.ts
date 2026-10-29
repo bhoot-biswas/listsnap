@@ -61,7 +61,7 @@ export const liveMeta: MetaProvider = {
     return r.data;
   },
 
-  write: async (ctx, photo, plan, brandVoice) => {
+  write: async (ctx, photo, plan, voice) => {
     const imageUrl = await photoDataUrl(photo);
     const firstLook = JSON.stringify({ product: plan.sam_phrase, category: plan.category_guess });
     const r = await logged(
@@ -71,7 +71,7 @@ export const liveMeta: MetaProvider = {
         sparkJson({
           name: "Listing",
           schema: ListingText,
-          system: writeSystem(brandVoice),
+          system: writeSystem(voice),
           userText: `Write the listing for the product in this photo. A first look found: ${firstLook}.`,
           imageUrl,
         }),

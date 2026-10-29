@@ -34,7 +34,7 @@ export const assistPrompt = (input: AssistInput) => ({
   system:
     input.lang === "bn"
       ? `${BANGLA_SYSTEM} Here you write one field only; the instruction below decides its length.`
-      : writeSystem(input.brandVoice),
+      : writeSystem(input.voice),
   userText: [
     `Field: ${FIELD_RULES[input.field]}.`,
     `Task: ${ACTIONS[input.action]}`,
