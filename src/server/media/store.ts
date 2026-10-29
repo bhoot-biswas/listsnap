@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, constants, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { env } from "@/server/env";
@@ -86,3 +86,15 @@ export async function readMedia(workspaceId: string, id: string): Promise<{ data
 }
 
 export const mediaUrl = (id: string): string => `/media/${id}`;
+
+/** For GET /api/health: the media folder exists (or can be made) and can be written. */
+export async function mediaDirWritable(): Promise<boolean> {
+  const root = env().mediaDir;
+  try {
+    await mkdir(/*turbopackIgnore: true*/ root, { recursive: true });
+    await access(/*turbopackIgnore: true*/ root, constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}

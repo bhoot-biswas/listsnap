@@ -48,6 +48,8 @@ Then set `PROVIDER_MODE_WOO=live` in `.env.local`. Demo shops now save their dra
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
+To put it online on Hostinger, follow [DEPLOY.md](DEPLOY.md). `GET /api/health` reports whether a deploy can reach its database and media folder.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · MariaDB/MySQL via `mysql2` · Better Auth (Google, magic link, demo) · shadcn/ui (Base UI) · Tailwind CSS v4 · next-intl (English and Bangla) · sharp · Vitest. Hosted on Hostinger.
