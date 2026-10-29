@@ -14,5 +14,6 @@ const isLocale = (v: string | undefined): v is Locale => !!v && (LOCALES as read
 export default getRequestConfig(async () => {
   const fromCookie = (await cookies()).get(LOCALE_COOKIE)?.value;
   const locale: Locale = isLocale(fromCookie) ? fromCookie : "en";
-  return { locale, messages: (await import(`../../messages/${locale}.json`)).default };
+  // sellers are in Bangladesh; without this, times follow the server's zone (UTC when hosted)
+  return { locale, timeZone: "Asia/Dhaka", messages: (await import(`../../messages/${locale}.json`)).default };
 });

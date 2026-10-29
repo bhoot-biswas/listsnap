@@ -6,10 +6,12 @@ import { listingQueries } from "./listings";
 import { connectionQueries } from "./connections";
 import { batchQueries } from "./batches";
 import { overviewQueries } from "./overview";
+import { usageQueries } from "./usage";
 
 export type { ListingRow, ListingStatus, RecentListingRow } from "./listings";
 export type { BatchSummaryRow } from "./batches";
 export type { ActivityRow, AttentionRow, Checklist, DashboardStats, ListingListRow } from "./overview";
+export type { UsageCall, UsageDay, UsageStep } from "./usage";
 
 /**
  * Every app query, bound to one workspace (no SQL outside src/server/db,
@@ -176,6 +178,7 @@ export function forWorkspace(workspaceId: string) {
     ...connectionQueries(ws),
     ...batchQueries(ws),
     ...overviewQueries(ws),
+    ...usageQueries(ws),
 
     steps: (jobId: string) =>
       select<StepRowView>(
