@@ -31,6 +31,7 @@ export interface RecentListingRow {
   job_id: string;
   status: ListingStatus;
   title: string | null;
+  title_bn: string | null;
   cutout_media_id: string | null;
   updated_at: Date;
 }
@@ -174,6 +175,7 @@ export function listingQueries(ws: string) {
       select<RecentListingRow>(
         `SELECT l.id, l.job_id, l.status, l.updated_at,
                 JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.en.title')) AS title,
+                JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.bn.title')) AS title_bn,
                 (SELECT i.cutout_media_id FROM items i
                   WHERE i.id = JSON_UNQUOTE(JSON_EXTRACT(l.item_ids_json, '$[0]')) AND i.workspace_id = l.workspace_id) AS cutout_media_id
            FROM listings l WHERE l.workspace_id = ? ORDER BY l.created_at DESC, l.sort LIMIT ?`,

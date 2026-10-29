@@ -91,7 +91,7 @@ export async function WeekBars({ days }: { days: { day: string; n: number }[] })
       <ul className="flex h-28 items-end gap-2">
         {days.map((d) => (
           <li key={d.day} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-            <span className="text-xs text-muted-foreground tabular-nums">{d.n || ""}</span>
+            <span className="text-xs text-muted-foreground tabular-nums">{d.n ? format.number(d.n) : ""}</span>
             <span
               className={cn("w-full rounded-t", d.n ? "bg-primary" : "bg-muted")}
               style={{ height: `${Math.max(4, (d.n / max) * 72)}px` }}

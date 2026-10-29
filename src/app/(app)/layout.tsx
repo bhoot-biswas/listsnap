@@ -3,12 +3,13 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { DemoBanner } from "@/components/app/demo-banner";
 import { KeyboardShortcuts } from "@/components/app/keyboard-shortcuts";
+import { OfflineBanner } from "@/components/app/offline-banner";
 import { SnapFab } from "@/components/app/snap-fab";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 
 /**
- * The signed-in shell: left sidebar, demo banner, phone Snap button. It reads the
+ * The signed-in shell: left sidebar, offline and demo banners, phone Snap button. It reads the
  * viewer only to draw the shell; each page still calls requireWorkspace() itself,
  * because layouts don't re-run on client navigation.
  */
@@ -30,6 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         }}
       />
       <SidebarInset className="min-w-0">
+        <OfflineBanner />
         {viewer.workspace.isDemo && <DemoBanner />}
         {children}
       </SidebarInset>

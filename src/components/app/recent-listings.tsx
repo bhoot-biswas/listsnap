@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getFormatter } from "next-intl/server";
+import { getFormatter, getLocale } from "next-intl/server";
 import { StatusBadge } from "@/components/app/status-badge";
 import { listingHref } from "@/lib/listing-links";
+import { localTitle } from "@/lib/titles";
 import type { RecentListingRow } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
 
@@ -20,6 +21,7 @@ export async function RecentListings({
   action?: React.ReactNode;
 }) {
   const format = await getFormatter();
+  const locale = await getLocale();
   return (
     <section aria-labelledby="recent-listings" className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -48,7 +50,9 @@ export async function RecentListings({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{r.title ?? "…"}</p>
+                  <p lang={localTitle(r, locale).lang} className="truncate text-sm font-medium">
+                    {localTitle(r, locale).text ?? "…"}
+                  </p>
                   <p className="text-xs text-muted-foreground">{format.relativeTime(r.updated_at)}</p>
                 </div>
                 <StatusBadge status={r.status} />
