@@ -7,7 +7,7 @@ export default async function NotFound() {
     <main className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
       <h1 className="text-2xl font-semibold">{t("errors.notFoundTitle")}</h1>
       <p className="text-muted-foreground">{t("errors.notFoundBody")}</p>
-      <ButtonLink href="/dashboard">{t("placeholder.goDashboard")}</ButtonLink>
+      <ButtonLink href="/dashboard">{t("errors.goDashboard")}</ButtonLink>
     </main>
   );
 }
