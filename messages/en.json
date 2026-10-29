@@ -182,6 +182,65 @@
     "previous": "Previous",
     "next": "Next"
   },
+  "usage": {
+    "title": "Usage",
+    "csv": "Download CSV",
+    "today": "Today",
+    "listings": "Listings",
+    "photos": "AI photos",
+    "aiCost": "AI cost today",
+    "aiCalls": "AI calls today",
+    "resets": "Limits reset at {time}, {when}.",
+    "plan": {
+      "title": "Your plan",
+      "free": "Free",
+      "limits": "{listings, number} listings and {photos, number} AI photos a day, 1 store, English and বাংলা.",
+      "pro": "Pro is coming soon: pay per listing, bigger bulk uploads, several stores.",
+      "pricing": "See pricing"
+    },
+    "month": {
+      "title": "Last 30 days",
+      "totals": "{listings} listings · {photos} AI photos · {cost} AI cost",
+      "chart": "Listings per day",
+      "bar": "{day}: {count, plural, =0 {no listings} one {# listing} other {# listings}}"
+    },
+    "steps": {
+      "title": "Cost by step",
+      "intro": "Last 30 days, straight from the API log.",
+      "calls": "{count, plural, one {# call} other {# calls}}",
+      "mock": "{count, number} mock",
+      "avg": "{s} s per live call",
+      "failed": "{count, number} failed",
+      "name": {
+        "plan": "Understanding the photo",
+        "segment": "Cutting out the product",
+        "group": "Grouping the items",
+        "write": "Writing the listing",
+        "translate": "Writing it in Bangla",
+        "render": "Making studio photos",
+        "assist": "AI help on Review",
+        "store": "Saving to the store",
+        "connect": "Checking the store connection"
+      }
+    },
+    "log": {
+      "title": "Latest AI calls",
+      "intro": "Every call to Muse Spark, SAM and Muse Image, with its time and cost.",
+      "empty": "No AI calls yet.",
+      "ok": "Worked",
+      "failed": "Failed"
+    },
+    "days": {
+      "title": "Each day",
+      "csv": "Download CSV",
+      "empty": "Nothing in the last 30 days.",
+      "day": "Day",
+      "listings": "Listings",
+      "photos": "AI photos",
+      "calls": "AI calls",
+      "cost": "AI cost"
+    }
+  },
   "snap": {
     "title": "New listing",
     "intro": "Take or upload up to 5 photos of one product. A plain background and good light work best.",

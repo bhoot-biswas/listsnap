@@ -1,35 +1,9 @@
 import Link from "next/link";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Check, Circle } from "lucide-react";
+import { UsageMeter, nextReset } from "@/components/app/usage-meter";
 import type { Checklist } from "@/server/db/scope";
 import { cn } from "@/lib/utils";
-
-function Meter({ label, used, limit }: { label: string; used: number; limit: number }) {
-  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-  return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between text-sm">
-        <span>{label}</span>
-        <span className="text-muted-foreground tabular-nums">
-          {used}/{limit}
-        </span>
-      </div>
-      <div
-        role="progressbar"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={limit}
-        aria-valuenow={Math.min(used, limit)}
-        className="h-2 overflow-hidden rounded-full bg-muted"
-      >
-        <div
-          className={cn("h-full rounded-full", pct >= 90 ? "bg-warning" : "bg-primary")}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
 
 /** Today's use against the daily limits, which reset at midnight UTC. */
 export async function UsageToday({
@@ -44,14 +18,14 @@ export async function UsageToday({
   const t = await getTranslations("dashboard.usage");
   const format = await getFormatter();
   const now = new Date();
-  const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const reset = nextReset(now);
   return (
     <section aria-labelledby="usage-today" className="space-y-4 rounded-xl border bg-card p-4">
       <h2 id="usage-today" className="text-base font-semibold">
         {t("title")}
       </h2>
-      <Meter label={t("listings")} used={listings} limit={limits.listings} />
-      <Meter label={t("images")} used={images} limit={limits.images} />
+      <UsageMeter label={t("listings")} used={listings} limit={limits.listings} />
+      <UsageMeter label={t("images")} used={images} limit={limits.images} />
       <p className="text-xs text-muted-foreground">{t("resets", { when: format.relativeTime(reset, now) })}</p>
     </section>
   );
