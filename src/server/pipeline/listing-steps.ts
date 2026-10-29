@@ -1,4 +1,5 @@
 import "server-only";
+import { checkFidelity } from "./fidelity";
 import { StepError } from "./run-step";
 import { compositeOnBackground, dimensions } from "@/server/image-ops";
 import { readMedia, saveMedia } from "@/server/media/store";
@@ -118,8 +119,17 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
   const kit = ctx.workspace.settings.brandKit;
   const brief = withBrandColors(sceneBrief(p), kit.colors);
   let image: Buffer;
+  let check: RenderResult["check"];
   if (scene === "lifestyle") {
     image = await meta().editScene(step, main, scene, p.sam_phrase, brief, await shopScene(ctx, kit));
+    // the scene redraws the product, so it is kept only if it is still the seller's product;
+    // a failed attempt is retried by the step rules with a fresh image
+    const fidelity = await checkFidelity(step, product, image, p.sam_phrase);
+    if (!fidelity.same)
+      throw new StepError(
+        `The AI photo changed your product (${fidelity.differences}), so it wasn't kept. Try again for a new one; your other photos are ready.`,
+      );
+    check = { same: true, colorSimilarity: fidelity.colorSimilarity };
   } else {
     const bg = await meta().background(step, scene, p.camera_angle, brief);
     const size =
@@ -140,5 +150,10 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
     // lifestyle edits the white main image; composites place the cutout
     fromMediaId: scene === "lifestyle" ? mainId : productId,
   });
-  return { scene, mediaId: media.id, aiLabel: scene === "lifestyle" ? "ai_scene" : "ai_background" };
+  return {
+    scene,
+    mediaId: media.id,
+    aiLabel: scene === "lifestyle" ? "ai_scene" : "ai_background",
+    ...(check ? { check } : {}),
+  };
 }

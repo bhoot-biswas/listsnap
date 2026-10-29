@@ -62,6 +62,18 @@ export const mockMeta: MetaProvider = {
       (r) => ({ summary: `phrase "${r.sam_phrase}" · ${r.multi_kind} · ${r.camera_angle}`, costUsd: 0 }),
     ),
 
+  // the mock scenes place the real cutout, so they are always the same product
+  compareProduct: (ctx) =>
+    logged(
+      ctx,
+      { ...SPARK, endpoint: "chat/completions" },
+      async () => {
+        await delay();
+        return { same: true, differences: "" };
+      },
+      () => ({ summary: "same product: yes", costUsd: 0 }),
+    ),
+
   segment: (ctx, photo, phrase) =>
     logged(
       ctx,

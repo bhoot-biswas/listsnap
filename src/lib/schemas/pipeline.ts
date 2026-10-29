@@ -149,8 +149,19 @@ export const RenderResult = z.object({
   scene: Scene,
   mediaId: z.string(),
   aiLabel: z.enum(["ai_background", "ai_scene"]),
+  /** Present for scenes that redraw the product: it was checked and kept as the same product. */
+  check: z.object({ same: z.literal(true), colorSimilarity: z.number().nullable() }).optional(),
 });
 export type RenderResult = z.infer<typeof RenderResult>;
+
+/** Muse Spark's answer when it compares an AI photo with the product it is meant to show. */
+export const ProductMatch = z.object({
+  same: z.boolean().describe("True only if image 2 shows the very same item a buyer would receive"),
+  differences: z
+    .string()
+    .describe("If not the same, the visible difference in one short sentence for the seller; empty if the same"),
+});
+export type ProductMatch = z.infer<typeof ProductMatch>;
 
 /** Below this, a written listing lands in Needs review instead of Ready. */
 export const REVIEW_THRESHOLD = 0.7;

@@ -23,3 +23,15 @@ export const BANGLA_SYSTEM =
   "(জরি, কটন, ফেস্টিভ); never leave Latin-script words inside Bangla sentences. Only the tags may mix: give " +
   "mostly Bangla tags plus two or three English ones buyers type (e.g. 'jamdani saree'). Keep facts identical: " +
   "do not add or drop details.";
+
+/**
+ * The fidelity judge. Setting, light, pose and fold may change in an AI photo; the item
+ * itself may not, because the buyer receives the item, not the photo.
+ */
+export const MATCH_SYSTEM =
+  "You check AI product photos for an online shop before a buyer sees them. Image 1 is the product the seller " +
+  "is selling, cut out on white. Image 2 is an AI photo that must show that very same item. Compare the item " +
+  "only: its colours, pattern, motifs, border, print, material look, shape and visible details such as buttons " +
+  "or embroidery. Ignore the background, setting, lighting, camera angle, pose, and how it is folded, draped or " +
+  "placed. Answer same only if a buyer who saw image 2 would receive exactly the item in image 1. A different " +
+  "colour, a changed or missing pattern or motif, a different border, or a different item is not the same.";

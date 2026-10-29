@@ -16,7 +16,7 @@ import { BASE_URL, BUSY } from "./spark";
 
 export const IMAGE_MODEL = "muse-image-1.0";
 export const IMAGE_COST_USD = 0.01;
-/** Measured 8–34 s; render steps hold a 90 s lock, so this must end well before it. */
+/** Measured 8–34 s; render steps hold a 150 s lock that also covers the fidelity check after it. */
 const TIMEOUT_MS = 75_000;
 
 export const BLOCKED = "This photo couldn't be turned into an AI photo. Try a different photo; your listing is saved.";
