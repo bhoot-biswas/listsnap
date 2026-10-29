@@ -1,4 +1,5 @@
 import "server-only";
+import { searchPhrases } from "./phrase-search";
 import { StepError } from "./run-step";
 import { crop, dimensions, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
 import { maskCutout } from "@/server/image-ops/cutout";
@@ -46,7 +47,7 @@ export async function planStep(ctx: JobStepContext): Promise<PlanResult> {
 }
 
 /**
- * SAM with the planned phrase, then Spark's alternatives (the agentic retry). If none
+ * SAM with the planned phrase, then Spark's alternatives together (the agentic retry). If none
  * finds anything, the whole photo becomes the one item, so the seller still gets a
  * listing. Cutouts and the photo check are made here too, in one short request: a
  * transparent PNG from SAM's mask (studio scenes composite it) and the white main image.
@@ -57,20 +58,13 @@ export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
   const plan = await requireResult<PlanResult>(ctx, "plan");
   const { photo, data } = await firstPhoto(ctx);
   const phrases = [plan.sam_phrase, ...plan.alt_phrases].filter(Boolean).slice(0, 3);
-  const tried: string[] = [];
-  let found: SegmentInstance[] = [];
-  let phrase = plan.sam_phrase;
-  for (const p of phrases) {
-    tried.push(p);
+  const search = await searchPhrases(phrases, async (p) =>
     // a faint match is usually something next to the product, not the product
-    found = (await meta().segment(call(ctx, "segment"), data, p)).filter(
-      (f) => f.score === null || f.score >= MIN_SCORE,
-    );
-    if (found.length) {
-      phrase = p;
-      break;
-    }
-  }
+    (await meta().segment(call(ctx, "segment"), data, p)).filter((f) => f.score === null || f.score >= MIN_SCORE),
+  );
+  const { tried } = search;
+  const phrase = search.phrase ?? plan.sam_phrase;
+  let found: SegmentInstance[] = search.found;
   if (!found.length) found = [{ box: { x: 0, y: 0, w: photo.width, h: photo.height }, score: null }];
   found = found.sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h).slice(0, MAX_ITEMS);
   // back in reading order after keeping the largest
