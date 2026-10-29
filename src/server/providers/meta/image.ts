@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { env } from "@/server/env";
 import { StepError } from "@/server/pipeline/run-step";
-import type { PlanResult, Scene } from "@/lib/schemas/pipeline";
+import type { PlanResult, Scene, SceneBrief } from "@/lib/schemas/pipeline";
 import { BASE_URL, BUSY } from "./spark";
 
 /**
@@ -47,18 +47,65 @@ const NO_TEXT = "nothing on it, no objects, no people, no text, no logos.";
 const BACKGROUNDS = {
   flatlay: `Top-down flat lay photograph of an empty smooth light-grey linen surface seen from directly above, soft even daylight, very subtle texture, ${NO_TEXT}`,
   studio: `Empty seamless studio backdrop for product photography, soft light-grey paper sweep, gentle even lighting, subtle floor shadow area, ${NO_TEXT}`,
-  banner: `Wide clean promotional banner background, soft warm gradient with subtle light rays, large empty space, ${NO_TEXT}`,
 } as const;
 
-export function backgroundPrompt(scene: Scene, angle: PlanResult["camera_angle"]): { prompt: string; size: string } {
-  if (scene === "banner") return { prompt: BACKGROUNDS.banner, size: "1536x768" };
+/**
+ * The brief is model output going into another model's prompt: one line each, short,
+ * and only a few items, so a long or odd answer can't take the prompt over.
+ */
+const clean = (s: string, max: number) => s.replace(/\s+/g, " ").trim().slice(0, max);
+const list = (items: string[], n: number, max: number) =>
+  items
+    .map((i) => clean(i, max))
+    .filter(Boolean)
+    .slice(0, n);
+
+/**
+ * Studio stays a plain backdrop whatever the brief says: the real cutout is the point of
+ * it. The banner takes the brief's colours, since it has no product detail to protect.
+ */
+export function backgroundPrompt(
+  scene: Scene,
+  angle: PlanResult["camera_angle"],
+  brief: SceneBrief | null = null,
+): { prompt: string; size: string } {
+  if (scene === "banner") {
+    const palette = brief ? list(brief.palette, 3, 30) : [];
+    const tones = palette.length ? `soft gradient in ${palette.join(", ")} tones` : "soft warm gradient";
+    return {
+      prompt: `Wide clean promotional banner background, ${tones} with subtle light rays, large empty space, ${NO_TEXT}`,
+      size: "1536x768",
+    };
+  }
   return { prompt: angle === "top_down" ? BACKGROUNDS.flatlay : BACKGROUNDS.studio, size: "1024x1024" };
 }
 
-export const lifestylePrompt = (product: string) =>
-  `Lifestyle product photo of this ${product} placed on a warm wooden table near a window with soft daylight, ` +
-  "simple tasteful Bangladeshi home setting, shallow depth of field. Keep the product exactly as it is: same shape, " +
-  "colors, pattern and details. No people, no text.";
+/**
+ * The lifestyle scene. In the spike, a brief without a framing rule put the product small
+ * in a busy scene and added props a buyer could think were included, so both rules are
+ * written out every time.
+ */
+export function lifestylePrompt(product: string, brief: SceneBrief | null = null): string {
+  const keep =
+    "The product is the hero: it fills most of the frame and its details are clearly visible. Keep the product " +
+    "exactly as it is: same shape, colors, pattern and details.";
+  if (!brief || !clean(brief.setting, 200)) {
+    return (
+      `Lifestyle product photo of this ${product} placed on a warm wooden table near a window with soft daylight, ` +
+      `simple tasteful Bangladeshi home setting, shallow depth of field. ${keep} No people, no text.`
+    );
+  }
+  const palette = list(brief.palette, 3, 30);
+  const avoid = list(brief.avoid, 3, 60);
+  // the setting continues a sentence, and Spark sometimes writes it as its own ("Folded neatly …")
+  const setting = clean(brief.setting, 200).replace(/\.$/, "");
+  return (
+    `Lifestyle product photo of this ${product}, ${setting.charAt(0).toLowerCase()}${setting.slice(1)}. Soft natural light, ` +
+    `shallow depth of field${palette.length ? `, background and props in ${palette.join(", ")} tones` : ""}. ${keep} ` +
+    "No people, no text, no props that could be mistaken for part of the product." +
+    (avoid.length ? ` Leave out: ${avoid.join(", ")}.` : "")
+  );
+}
 
 const ImagesResponse = z.object({
   data: z.array(z.object({ b64_json: z.string().nullish(), url: z.string().nullish() })).min(1),

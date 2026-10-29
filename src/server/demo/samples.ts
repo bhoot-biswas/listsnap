@@ -46,6 +46,12 @@ export const DEMO_SAMPLES: DemoSample[] = [
       multi_kind: "same_design_different_colors",
       camera_angle: "top_down",
       photo_notes: "Flat lay on tiled floor with uneven natural light and slight wrinkles.",
+      // written by hand: these plans were recorded before the plan step wrote briefs
+      scene_brief: {
+        setting: "hanging on a wooden hanger against a warm off-white wall in soft daylight",
+        palette: ["off-white", "light oak", "sage"],
+        avoid: ["trousers or a dupatta", "other kurtis"],
+      },
     },
     boxes: [
       box(0, 303, 461, 1433, 0.957),
@@ -109,6 +115,11 @@ export const DEMO_SAMPLES: DemoSample[] = [
       multi_kind: "different_designs",
       camera_angle: "top_down",
       photo_notes: "Bright top-down shot on wrinkled white cloth with brush and mirror as props.",
+      scene_brief: {
+        setting: "arranged on dark green velvet on a wooden dressing table",
+        palette: ["deep green", "warm gold", "ivory"],
+        avoid: ["a brush or mirror", "other jewellery"],
+      },
     },
     boxes: [
       box(31, 636, 280, 970, 0.899),
@@ -173,6 +184,11 @@ export const DEMO_SAMPLES: DemoSample[] = [
       multi_kind: "single",
       camera_angle: "top_down",
       photo_notes: "Overhead shot in natural light with heavy desk clutter around the fabric.",
+      scene_brief: {
+        setting: "draped over the arm of a carved wooden chair by a sunlit window",
+        palette: ["cream", "warm wood", "soft green"],
+        avoid: ["a matching blouse", "jewellery"],
+      },
     },
     boxes: [box(171, 57, 1092, 1011, 0.808)],
     mode: "single",

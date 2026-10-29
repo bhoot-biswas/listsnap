@@ -18,6 +18,7 @@ const plan: PlanResult = {
   multi_kind: "single",
   camera_angle: "top_down",
   photo_notes: "Even light.",
+  scene_brief: { setting: "on a carved wooden chair by a window", palette: ["cream"], avoid: [] },
 };
 
 const completion = (content: string) =>
@@ -46,6 +47,16 @@ describe("strictSchema", () => {
     const root = strictSchema(ListingText) as { required: string[]; additionalProperties: boolean };
     expect(root.additionalProperties).toBe(false);
     expect(root.required).toEqual(Object.keys(ListingText.shape));
+  });
+
+  it("requires the plan's scene brief and all its fields, as strict mode needs", () => {
+    const root = strictSchema(PlanResult) as {
+      required: string[];
+      properties: { scene_brief: { required: string[]; additionalProperties: boolean } };
+    };
+    expect(root.required).toContain("scene_brief");
+    expect(root.properties.scene_brief.required).toEqual(["setting", "palette", "avoid"]);
+    expect(root.properties.scene_brief.additionalProperties).toBe(false);
   });
 });
 

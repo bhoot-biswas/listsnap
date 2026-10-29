@@ -27,7 +27,9 @@ const PLAN_SYSTEM =
   SELLER_CONTEXT +
   " Your first job is to decide what a segmentation model should look for. SAM 3.1 takes a short noun phrase " +
   "(like 'jamdani saree' or 'gold bangle') and returns every matching object, so choose the phrase that matches " +
-  "the sellable product and nothing else on the table.";
+  "the sellable product and nothing else on the table. Then brief the photographer: where this product would " +
+  "look its best for a Bangladeshi buyer, which colours flatter it, and what must stay out of the picture so " +
+  "nobody thinks it comes with the product.";
 
 const GROUP_SYSTEM =
   SELLER_CONTEXT +
@@ -149,8 +151,8 @@ export const liveMeta: MetaProvider = {
     }
   },
 
-  background: async (ctx, scene, angle) => {
-    const { prompt, size } = backgroundPrompt(scene, angle);
+  background: async (ctx, scene, angle, brief) => {
+    const { prompt, size } = backgroundPrompt(scene, angle, brief);
     const r = await logged(
       ctx,
       { provider: "meta", model: IMAGE_MODEL, endpoint: "images/generations", mode: "live" },
@@ -160,13 +162,16 @@ export const liveMeta: MetaProvider = {
     return r.image;
   },
 
-  editScene: async (ctx, main, scene, phrase) => {
+  editScene: async (ctx, main, scene, phrase, brief) => {
     const image = await photoDataUrl(main, 1024);
     const r = await logged(
       ctx,
       { provider: "meta", model: IMAGE_MODEL, endpoint: "images/edits", mode: "live" },
-      () => editImage(image, lifestylePrompt(phrase), endUser(ctx.workspaceId)),
-      (r) => ({ summary: `${scene} scene from the cutout${tokens(r)}`, costUsd: IMAGE_COST_USD }),
+      () => editImage(image, lifestylePrompt(phrase, brief), endUser(ctx.workspaceId)),
+      (r) => ({
+        summary: `${scene} scene from the cutout${brief ? " · brief" : ""}${tokens(r)}`,
+        costUsd: IMAGE_COST_USD,
+      }),
     );
     return r.image;
   },
