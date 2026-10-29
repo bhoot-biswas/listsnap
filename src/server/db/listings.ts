@@ -43,11 +43,14 @@ export function listingQueries(ws: string) {
   return {
     /**
      * Creates the job's listings once. If they already exist (a repeated request), the
-     * existing ids come back unchanged, so a double click never makes duplicates.
+     * existing ids come back unchanged, so a double click never makes duplicates. Another
+     * shop's job id gets nothing: the scoped reads would hide such rows, but they must not
+     * be written at all.
      */
     async createListings(jobId: string, groups: { itemIds: string[]; stockQty?: number | null }[]): Promise<string[]> {
       return transaction(async (conn) => {
-        await conn.query("SELECT id FROM jobs WHERE id = ? AND workspace_id = ? FOR UPDATE", [jobId, ws]);
+        const [job] = await conn.query("SELECT id FROM jobs WHERE id = ? AND workspace_id = ? FOR UPDATE", [jobId, ws]);
+        if (!(job as unknown[]).length) return [];
         const [existing] = await conn.query(
           "SELECT id FROM listings WHERE job_id = ? AND workspace_id = ? ORDER BY sort",
           [jobId, ws],
