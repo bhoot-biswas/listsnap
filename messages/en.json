@@ -241,6 +241,16 @@
       "cost": "AI cost"
     }
   },
+  "limits": {
+    "title": "You've made {count, number} listings today, nice work!",
+    "body": "Your limit resets at {time}, {when}. Everything you've made is saved.",
+    "demo": "This is a demo shop. Sign in to keep your own shop and store.",
+    "review": "Review your listings",
+    "usage": "See usage",
+    "toast": "You've reached today's listing limit.",
+    "left": "{count, plural, one {You can start # more listing today.} other {You can start # more listings today.}}",
+    "leftOut": "{count, plural, one {# photo was left out: today's limit is reached.} other {# photos were left out: today's limit is reached.}}"
+  },
   "snap": {
     "title": "New listing",
     "intro": "Take or upload up to 5 photos of one product. A plain background and good light work best.",

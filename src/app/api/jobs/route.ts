@@ -2,6 +2,7 @@ import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { normalisePhoto, saveMedia } from "@/server/media/store";
 import { fail, ok, unauthorized } from "@/server/http";
+import { reserveListingSlot } from "@/server/limits";
 
 const MAX_PHOTOS = 5;
 const MAX_BYTES = 15 * 1024 * 1024;
@@ -11,7 +12,8 @@ const TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "i
  * Starts a job from 1–5 photos of one product (multipart field "photos"). The browser
  * has already shrunk them to 2048 px; here each is re-encoded, which also strips EXIF
  * and GPS, and stored under MEDIA_DIR. The pipeline steps are then driven by the page.
- * With a `batchId` field the job joins that bulk upload.
+ * With a `batchId` field the job joins that bulk upload. Each job takes one of today's
+ * listing slots.
  */
 export async function POST(request: Request) {
   const viewer = await apiViewer();
@@ -36,21 +38,30 @@ export async function POST(request: Request) {
     if (f.size > MAX_BYTES) return fail(413, "too_large", "That photo is over 15 MB. Try a smaller one.");
   }
 
-  const saved: { mediaId: string; width: number; height: number }[] = [];
-  for (const f of files) {
-    let photo;
-    try {
-      photo = await normalisePhoto(Buffer.from(await f.arrayBuffer()));
-    } catch {
-      return fail(415, "unsupported_file", "That file isn't a photo we can read. Use JPG, PNG or HEIC.");
+  // the slot is taken before any work, and given back if the photo never becomes a job
+  const slot = await reserveListingSlot(ws, viewer.workspace, request);
+  if (!slot.ok) return slot.response;
+  try {
+    const saved: { mediaId: string; width: number; height: number }[] = [];
+    for (const f of files) {
+      let photo;
+      try {
+        photo = await normalisePhoto(Buffer.from(await f.arrayBuffer()));
+      } catch {
+        await slot.release();
+        return fail(415, "unsupported_file", "That file isn't a photo we can read. Use JPG, PNG or HEIC.");
+      }
+      const media = await saveMedia(ws.id, "original", photo.data, {
+        mime: "image/jpeg",
+        width: photo.width,
+        height: photo.height,
+      });
+      saved.push({ mediaId: media.id, width: photo.width, height: photo.height });
     }
-    const media = await saveMedia(ws.id, "original", photo.data, {
-      mime: "image/jpeg",
-      width: photo.width,
-      height: photo.height,
-    });
-    saved.push({ mediaId: media.id, width: photo.width, height: photo.height });
+    const id = await ws.createJob(saved, batchId ?? undefined);
+    return ok({ id }, 201);
+  } catch (err) {
+    await slot.release();
+    throw err;
   }
-  const id = await ws.createJob(saved, batchId ?? undefined);
-  return ok({ id }, 201);
 }

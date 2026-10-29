@@ -28,13 +28,13 @@ export default async function UsagePage() {
   const t = await getTranslations("usage");
   const format = await getFormatter();
   const ws = forWorkspace(viewer.workspace.id);
-  const [days, today, steps, calls] = await Promise.all([
+  const [days, today, steps, calls, used] = await Promise.all([
     ws.usageDays(),
     ws.callsToday(),
     ws.usageBySteps(),
     ws.recentCalls(25),
+    ws.usageToday(),
   ]);
-  const last = days.at(-1)!;
   const total = days.reduce(
     (a, d) => ({ listings: a.listings + d.listings, photos: a.photos + d.photos, cost: a.cost + d.cost }),
     { listings: 0, photos: 0, cost: 0 },
@@ -61,8 +61,8 @@ export default async function UsagePage() {
               {t("today")}
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              <UsageMeter label={t("listings")} used={last.listings} limit={limits.listings} />
-              <UsageMeter label={t("photos")} used={last.photos} limit={limits.images} />
+              <UsageMeter label={t("listings")} used={used.listings} limit={limits.listings} />
+              <UsageMeter label={t("photos")} used={used.images} limit={limits.images} />
             </div>
             <dl className="grid grid-cols-2 gap-4 border-t pt-4">
               <div>

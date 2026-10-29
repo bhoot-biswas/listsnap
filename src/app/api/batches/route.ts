@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { fail, ok, unauthorized } from "@/server/http";
+import { limitReached } from "@/server/limits";
 import { MAX_BULK } from "@/lib/batch-state";
 
 const Body = z.object({ total: z.number().int().min(1).max(MAX_BULK) });
@@ -12,6 +13,12 @@ export async function POST(request: Request) {
   if (!viewer) return unauthorized();
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail(400, "bad_request", `Choose 1 to ${MAX_BULK} photos.`);
-  const id = await forWorkspace(viewer.workspace.id).createBatch(parsed.data.total);
+  const ws = forWorkspace(viewer.workspace.id);
+  // each photo still takes its own slot; this only stops a batch that can't fit today
+  const left = viewer.workspace.limits.listings - (await ws.usageToday()).listings;
+  if (left <= 0) return limitReached();
+  if (parsed.data.total > left)
+    return ok({ error: { code: "over_limit", message: `You can start ${left} more today.`, left } }, 409);
+  const id = await ws.createBatch(parsed.data.total);
   return ok({ id }, 201);
 }

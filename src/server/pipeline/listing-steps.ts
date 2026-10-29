@@ -80,6 +80,11 @@ export async function translateStep(ctx: ListingStepContext): Promise<BanglaText
 export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise<RenderResult> {
   const p = await plan(ctx);
   const { main, product } = await itemImages(ctx);
+  // the slot is taken before Muse Image is paid for; the listing itself is unaffected
+  if (!(await ctx.ws.reserveImage(ctx.workspace.limits.images)))
+    throw new StepError(
+      "You've made today's AI photos. More can be made after 6:00 AM Bangladesh time; your listing is saved.",
+    );
   const step = call(ctx, "render");
   let image: Buffer;
   if (scene === "lifestyle") {

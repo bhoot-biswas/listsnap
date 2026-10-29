@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { LimitReached } from "@/components/app/limit-reached";
 import { RecentListings } from "@/components/app/recent-listings";
 import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
@@ -17,19 +18,23 @@ const SAMPLES = ["saree", "bangles", "kurti"] as const;
 export default async function SnapPage() {
   const viewer = await requireWorkspace();
   const t = await getTranslations("snap");
-  const recent = await forWorkspace(viewer.workspace.id).recentListings(5);
-  const samples = viewer.workspace.isDemo
-    ? SAMPLES.map((key) => ({ url: `/samples/${key}.jpg`, label: t(`samples.${key}`) }))
-    : [];
+  const ws = forWorkspace(viewer.workspace.id);
+  const [recent, used] = await Promise.all([ws.recentListings(5), ws.usageToday()]);
+  const { limits, isDemo } = viewer.workspace;
+  const samples = isDemo ? SAMPLES.map((key) => ({ url: `/samples/${key}.jpg`, label: t(`samples.${key}`) })) : [];
   return (
     <>
       <TopBar title={t("title")} />
       <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-8 px-4 py-6 md:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-6">
-          <p className="text-muted-foreground">{t("intro")}</p>
-          <SnapForm samples={samples} />
-          <p className="text-sm text-muted-foreground">{t("tips")}</p>
-        </div>
+        {used.listings >= limits.listings ? (
+          <LimitReached limit={limits.listings} isDemo={isDemo} />
+        ) : (
+          <div className="space-y-6">
+            <p className="text-muted-foreground">{t("intro")}</p>
+            <SnapForm samples={samples} />
+            <p className="text-sm text-muted-foreground">{t("tips")}</p>
+          </div>
+        )}
         <RecentListings rows={recent} heading={t("recent")} empty={t("recentEmpty")} />
       </div>
     </>
