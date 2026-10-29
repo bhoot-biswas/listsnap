@@ -106,7 +106,12 @@ function build() {
     plugins: [
       magicLink({
         expiresIn: 15 * 60,
-        sendMagicLink: async ({ email, url }) => sendMagicLinkMail(email, url),
+        // mail scanners open links, and the token works once: send them to a page with a button instead
+        sendMagicLink: async ({ email, url }) => {
+          const confirm = new URL(url);
+          confirm.pathname = "/sign-in/confirm";
+          sendMagicLinkMail(email, confirm.toString());
+        },
       }),
       anonymous({ emailDomainName: "demo.listsnap.invalid", generateName: () => "Demo seller" }),
       // must stay last: lets Server Actions set the session cookie

@@ -59,7 +59,8 @@ export function env(): Env {
             port: Number.isFinite(port) ? port : 465,
             user: smtpUser,
             pass: smtpPass,
-            from: read("MAIL_FROM") || smtpUser,
+            // a full sender ("ListSnap <hello@…>"), as DEPLOY.md sets it
+            from: read("MAIL_FROM") || `ListSnap <${smtpUser}>`,
           }
         : null,
     ipHeader: (read("AUTH_IP_HEADER") || "x-forwarded-for").toLowerCase(),
