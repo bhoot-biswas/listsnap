@@ -5,9 +5,11 @@ import { execute, json, select, selectOne, transaction } from "./pool";
 import { listingQueries } from "./listings";
 import { connectionQueries } from "./connections";
 import { batchQueries } from "./batches";
+import { overviewQueries } from "./overview";
 
 export type { ListingRow, ListingStatus, RecentListingRow } from "./listings";
 export type { BatchSummaryRow } from "./batches";
+export type { ActivityRow, AttentionRow, Checklist, DashboardStats, ListingListRow } from "./overview";
 
 /**
  * Every app query, bound to one workspace (no SQL outside src/server/db,
@@ -173,6 +175,7 @@ export function forWorkspace(workspaceId: string) {
     ...listingQueries(ws),
     ...connectionQueries(ws),
     ...batchQueries(ws),
+    ...overviewQueries(ws),
 
     steps: (jobId: string) =>
       select<StepRowView>(
@@ -211,15 +214,6 @@ export function forWorkspace(workspaceId: string) {
       );
       return Number(row?.n ?? 0);
     },
-
-    recentJobs: (limit = 10) =>
-      select<JobRow & { photo_media_id: string | null; listings: number }>(
-        `SELECT j.id, j.status, j.group_mode, j.camera_angle, j.created_at,
-                (SELECT media_id FROM photos p WHERE p.job_id = j.id ORDER BY sort LIMIT 1) AS photo_media_id,
-                (SELECT COUNT(*) FROM listings l WHERE l.job_id = j.id) AS listings
-           FROM jobs j WHERE j.workspace_id = ? ORDER BY j.created_at DESC LIMIT ?`,
-        [ws, limit],
-      ),
   };
 }
 

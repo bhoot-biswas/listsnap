@@ -100,17 +100,87 @@
   "dashboard": {
     "title": "Dashboard",
     "hello": "Hello, {name}",
-    "intro": "Snap a product to make your next listing.",
-    "recent": "Recent jobs",
+    "storeConnected": "Store connected",
+    "storeMissing": "No store connected yet",
+    "storeDemo": "Demo store",
+    "storeBroken": "Your WooCommerce store isn't connecting. New listings can't be saved to it.",
+    "fixConnection": "Fix connection",
+    "recent": "Recent listings",
+    "allListings": "All listings",
     "empty": "No listings yet. Your first one takes about a minute.",
     "snapFirst": "Snap your first product",
-    "listingsCount": "{count, plural, =0 {No listings} one {# listing} other {# listings}}",
-    "jobStatus": {
-      "processing": "Processing",
-      "awaiting_choice": "Choose items",
-      "ready": "Done",
-      "failed": "Failed"
+    "stats": {
+      "label": "Today at a glance",
+      "listedToday": "Listed today",
+      "sameAsYesterday": "Same as yesterday",
+      "vsYesterday": "{diff} vs yesterday",
+      "waiting": "Waiting for review",
+      "waitingNote": "Check before saving",
+      "inStoreWeek": "In store this week",
+      "asDrafts": "Saved as drafts",
+      "avgTime": "Time per listing",
+      "seconds": "{s} s",
+      "costToday": "AI cost today {cost}"
+    },
+    "attention": {
+      "title": "Needs your attention",
+      "allClear": "All clear. Nothing needs you right now.",
+      "review": "The AI is unsure about something",
+      "failed": "A step didn't finish",
+      "check": "Review",
+      "open": "Open",
+      "untitled": "Untitled listing"
+    },
+    "usage": {
+      "title": "Usage today",
+      "listings": "Listings",
+      "images": "AI photos",
+      "resets": "Resets {when}"
+    },
+    "getStarted": {
+      "title": "Get started",
+      "progress": "{count}/{total}",
+      "done": "Done:",
+      "store": "Connect your store",
+      "listing": "Make your first listing",
+      "bulk": "Try a bulk upload",
+      "colors": "Sell one product in several colors"
+    },
+    "week": {
+      "title": "Listings this week",
+      "day": "{day}: {count, plural, =0 {none} one {# listing} other {# listings}}"
+    },
+    "activity": {
+      "title": "Activity",
+      "sent_to_store": "Draft “{title}” saved to the store",
+      "saved": "{kind, select, instagram {Instagram connected} other {Store connected}}",
+      "removed": "{kind, select, instagram {Instagram disconnected} other {Store disconnected}}",
+      "untitled": "Untitled listing"
     }
+  },
+  "listings": {
+    "empty": "No listings yet. Snap your first product.",
+    "snap": "Snap a product",
+    "filters": "Filter by status",
+    "all": "All",
+    "search": "Search titles",
+    "searchGo": "Search",
+    "noMatch": "No listings match.",
+    "clear": "Show all listings",
+    "untitled": "Untitled listing",
+    "colors": "{count} colors",
+    "photo": "Photo",
+    "product": "Product",
+    "price": "Price",
+    "category": "Category",
+    "status": "Status",
+    "confidence": "AI confidence",
+    "created": "Made",
+    "open": "Open",
+    "pages": "Pages",
+    "range": "{from}–{to} of {total}",
+    "previous": "Previous",
+    "next": "Next"
   },
   "snap": {
     "title": "New listing",

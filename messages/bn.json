@@ -100,17 +100,87 @@
   "dashboard": {
     "title": "ড্যাশবোর্ড",
     "hello": "স্বাগতম, {name}",
-    "intro": "পরের লিস্টিং বানাতে একটি পণ্যের ছবি তুলুন।",
-    "recent": "সাম্প্রতিক কাজ",
+    "storeConnected": "স্টোর যুক্ত আছে",
+    "storeMissing": "এখনো কোনো স্টোর যুক্ত হয়নি",
+    "storeDemo": "ডেমো স্টোর",
+    "storeBroken": "আপনার WooCommerce স্টোরে যোগাযোগ হচ্ছে না। নতুন লিস্টিং স্টোরে রাখা যাবে না।",
+    "fixConnection": "সংযোগ ঠিক করুন",
+    "recent": "সাম্প্রতিক লিস্টিং",
+    "allListings": "সব লিস্টিং",
     "empty": "এখনো কোনো লিস্টিং নেই। প্রথমটা বানাতে মোটে এক মিনিট লাগে।",
     "snapFirst": "প্রথম পণ্যের ছবি তুলুন",
-    "listingsCount": "{count, plural, =0 {কোনো লিস্টিং নেই} other {#টি লিস্টিং}}",
-    "jobStatus": {
-      "processing": "কাজ চলছে",
-      "awaiting_choice": "পণ্য বেছে নিন",
-      "ready": "শেষ",
-      "failed": "হয়নি"
+    "stats": {
+      "label": "আজকের হিসাব",
+      "listedToday": "আজ লিস্টিং",
+      "sameAsYesterday": "গতকালের সমান",
+      "vsYesterday": "গতকালের চেয়ে {diff}",
+      "waiting": "দেখার অপেক্ষায়",
+      "waitingNote": "সেভ করার আগে দেখে নিন",
+      "inStoreWeek": "এই সপ্তাহে স্টোরে",
+      "asDrafts": "ড্রাফট হিসেবে রাখা",
+      "avgTime": "প্রতি লিস্টিংয়ে সময়",
+      "seconds": "{s} সেকেন্ড",
+      "costToday": "আজ AI খরচ {cost}"
+    },
+    "attention": {
+      "title": "আপনার দেখা দরকার",
+      "allClear": "সব ঠিক আছে। এখন কিছু করার নেই।",
+      "review": "AI কিছু একটা নিয়ে নিশ্চিত নয়",
+      "failed": "একটি ধাপ শেষ হয়নি",
+      "check": "দেখে নিন",
+      "open": "খুলুন",
+      "untitled": "নামহীন লিস্টিং"
+    },
+    "usage": {
+      "title": "আজকের ব্যবহার",
+      "listings": "লিস্টিং",
+      "images": "AI ছবি",
+      "resets": "আবার শুরু হবে {when}"
+    },
+    "getStarted": {
+      "title": "শুরু করুন",
+      "progress": "{count}/{total}",
+      "done": "হয়েছে:",
+      "store": "আপনার স্টোর যুক্ত করুন",
+      "listing": "প্রথম লিস্টিং বানান",
+      "bulk": "একসাথে অনেক ছবি আপলোড করে দেখুন",
+      "colors": "একটি পণ্য কয়েক রঙে বিক্রি করুন"
+    },
+    "week": {
+      "title": "এই সপ্তাহের লিস্টিং",
+      "day": "{day}: {count, plural, =0 {কোনোটি নয়} other {#টি লিস্টিং}}"
+    },
+    "activity": {
+      "title": "সাম্প্রতিক কাজ",
+      "sent_to_store": "“{title}” ড্রাফট স্টোরে রাখা হয়েছে",
+      "saved": "{kind, select, instagram {Instagram যুক্ত হয়েছে} other {স্টোর যুক্ত হয়েছে}}",
+      "removed": "{kind, select, instagram {Instagram সরানো হয়েছে} other {স্টোর সরানো হয়েছে}}",
+      "untitled": "নামহীন লিস্টিং"
     }
+  },
+  "listings": {
+    "empty": "এখনো কোনো লিস্টিং নেই। প্রথম পণ্যের ছবি তুলুন।",
+    "snap": "পণ্যের ছবি তুলুন",
+    "filters": "অবস্থা দিয়ে বাছাই",
+    "all": "সব",
+    "search": "শিরোনামে খুঁজুন",
+    "searchGo": "খুঁজুন",
+    "noMatch": "কোনো লিস্টিং মেলেনি।",
+    "clear": "সব লিস্টিং দেখুন",
+    "untitled": "নামহীন লিস্টিং",
+    "colors": "{count}টি রং",
+    "photo": "ছবি",
+    "product": "পণ্য",
+    "price": "দাম",
+    "category": "ক্যাটাগরি",
+    "status": "অবস্থা",
+    "confidence": "AI-এর নিশ্চয়তা",
+    "created": "বানানো",
+    "open": "খুলুন",
+    "pages": "পাতা",
+    "range": "{total}টির মধ্যে {from}–{to}",
+    "previous": "আগের",
+    "next": "পরের"
   },
   "snap": {
     "title": "নতুন লিস্টিং",

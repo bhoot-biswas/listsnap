@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { RecentListings } from "@/components/app/recent-listings";
 import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { SnapForm } from "./_components/snap-form";
-import { RecentListings } from "./_components/recent-listings";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("snap"))("title") };
@@ -30,7 +30,7 @@ export default async function SnapPage() {
           <SnapForm samples={samples} />
           <p className="text-sm text-muted-foreground">{t("tips")}</p>
         </div>
-        <RecentListings rows={recent} />
+        <RecentListings rows={recent} heading={t("recent")} empty={t("recentEmpty")} />
       </div>
     </>
   );
