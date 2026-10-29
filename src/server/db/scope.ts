@@ -7,6 +7,7 @@ import { connectionQueries } from "./connections";
 import { batchQueries } from "./batches";
 import { overviewQueries } from "./overview";
 import { usageQueries } from "./usage";
+import { limitQueries } from "./limits";
 
 export type { ListingRow, ListingStatus, RecentListingRow } from "./listings";
 export type { BatchSummaryRow } from "./batches";
@@ -179,6 +180,7 @@ export function forWorkspace(workspaceId: string) {
     ...batchQueries(ws),
     ...overviewQueries(ws),
     ...usageQueries(ws),
+    ...limitQueries(ws),
 
     steps: (jobId: string) =>
       select<StepRowView>(
@@ -200,11 +202,12 @@ export function forWorkspace(workspaceId: string) {
         [jobId, ws],
       ),
 
-    /** Sidebar badges: listings waiting for review, and listings made today (UTC) against the limit. */
+    /** Sidebar badges: listings waiting for review, and today's listing slots used (the limit's own count). */
     async counts(): Promise<{ needsReview: number; listingsToday: number }> {
       const row = await selectOne<{ needs_review: number; today: number }>(
-        `SELECT SUM(status = 'needs_review') AS needs_review, SUM(created_at >= UTC_DATE()) AS today FROM listings WHERE workspace_id = ?`,
-        [ws],
+        `SELECT (SELECT COUNT(*) FROM listings WHERE workspace_id = ? AND status = 'needs_review') AS needs_review,
+                (SELECT listings FROM usage_daily WHERE workspace_id = ? AND date = UTC_DATE()) AS today`,
+        [ws, ws],
       );
       return { needsReview: Number(row?.needs_review ?? 0), listingsToday: Number(row?.today ?? 0) };
     },

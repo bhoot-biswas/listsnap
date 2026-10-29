@@ -16,6 +16,7 @@ const isPhoto = (f: File) => f.type.startsWith("image/") || /\.(heic|heif)$/i.te
 /** Picks photos (camera, files, drag and drop, paste), shrinks them, uploads, then opens the job. */
 export function SnapForm({ samples = [] }: { samples?: { url: string; label: string }[] }) {
   const t = useTranslations("snap");
+  const tLimits = useTranslations("limits");
   const router = useRouter();
   const [files, setFiles] = useState<{ file: File; url: string }[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -65,8 +66,14 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
     );
     if (!r.ok) {
       setUploading(false);
-      return r.status === 401 ? router.push("/sign-in") : toast.error(t("uploadFailed"));
+      if (r.status === 401) return router.push("/sign-in");
+      if (r.code === "limit_reached" || r.code === "over_limit") {
+        toast.error(tLimits("toast"));
+        return router.refresh();
+      }
+      return toast.error(t("uploadFailed"));
     }
+    if (r.limited) toast.error(tLimits("leftOut", { count: r.limited }));
     router.push(`/bulk/${r.batchId}?start=1`);
   };
 
@@ -80,6 +87,12 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
       const res = await fetch("/api/jobs", { method: "POST", body: form });
       const body = await res.json().catch(() => null);
       if (res.status === 401) return router.push("/sign-in");
+      if (res.status === 429) {
+        // the page swaps the form for the limit card
+        toast.error(tLimits("toast"));
+        setUploading(false);
+        return router.refresh();
+      }
       if (!res.ok) throw new Error(body?.error?.message ?? t("uploadFailed"));
       router.push(`/job/${body.id}`);
     } catch (err) {

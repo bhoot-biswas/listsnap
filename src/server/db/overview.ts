@@ -47,7 +47,6 @@ export interface DashboardStats {
   listedYesterday: number;
   waiting: number;
   inStoreWeek: number;
-  imagesToday: number;
   costToday: number;
   /** Photo in to listing written, averaged over the last 7 days' finished jobs. */
   avgSeconds: number | null;
@@ -121,11 +120,9 @@ export function overviewQueries(ws: string) {
              FROM listings WHERE workspace_id = ?`,
           [ws],
         ),
-        selectOne<{ images: number | null; cost: number | null }>(
-          `SELECT (SELECT COUNT(*) FROM media WHERE workspace_id = ? AND kind IN ('studio', 'lifestyle', 'banner')
-                     AND created_at >= UTC_DATE()) AS images,
-                  (SELECT SUM(cost_usd) FROM api_calls WHERE workspace_id = ? AND created_at >= UTC_DATE()) AS cost`,
-          [ws, ws],
+        selectOne<{ cost: number | null }>(
+          "SELECT SUM(cost_usd) AS cost FROM api_calls WHERE workspace_id = ? AND created_at >= UTC_DATE()",
+          [ws],
         ),
         // photo in to listing written: the job's steps before the seller's own review and save
         selectOne<{ s: number | null }>(
@@ -144,7 +141,6 @@ export function overviewQueries(ws: string) {
         listedYesterday: n(listings?.yesterday),
         waiting: n(listings?.waiting),
         inStoreWeek: n(listings?.in_store_week),
-        imagesToday: n(usage?.images),
         costToday: n(usage?.cost),
         avgSeconds: timing?.s == null ? null : Math.round(Number(timing.s)),
       };

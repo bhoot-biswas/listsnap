@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { ChevronRight, Layers } from "lucide-react";
+import { LimitReached } from "@/components/app/limit-reached";
 import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
@@ -18,15 +19,22 @@ export default async function BulkPage() {
   const t = await getTranslations("bulk");
   const tStatus = await getTranslations("status");
   const format = await getFormatter();
-  const batches = await forWorkspace(viewer.workspace.id).batches();
+  const ws = forWorkspace(viewer.workspace.id);
+  const [batches, used] = await Promise.all([ws.batches(), ws.usageToday()]);
+  const { limits } = viewer.workspace;
+  const left = limits.listings - used.listings;
   return (
     <>
       <TopBar title={t("title")} />
       <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 md:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-muted-foreground">{t("intro", { max: MAX_BULK })}</p>
-          <BulkUploadButton />
-        </div>
+        {left <= 0 ? (
+          <LimitReached limit={limits.listings} isDemo={viewer.workspace.isDemo} />
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-muted-foreground">{t("intro", { max: Math.min(MAX_BULK, left) })}</p>
+            <BulkUploadButton max={Math.min(MAX_BULK, left)} />
+          </div>
+        )}
         {batches.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-12 text-center">
             <Layers className="size-10 text-primary" aria-hidden="true" />

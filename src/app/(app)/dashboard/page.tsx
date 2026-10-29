@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   const tNav = await getTranslations("nav");
   const ws = forWorkspace(viewer.workspace.id);
   const { isDemo } = viewer.workspace;
-  const [stats, attention, recent, activity, days, checklist, store] = await Promise.all([
+  const [stats, attention, recent, activity, days, checklist, store, used] = await Promise.all([
     ws.dashboardStats(),
     ws.attention(5),
     ws.recentListings(5),
@@ -31,6 +31,7 @@ export default async function DashboardPage() {
     ws.listingsPerDay(),
     ws.checklist(),
     isDemo ? null : ws.storeConnection("woo"),
+    ws.usageToday(),
   ]);
   // the demo shop saves to our test store, so it counts as connected
   const done = { ...checklist, store: checklist.store || isDemo };
@@ -101,7 +102,7 @@ export default async function DashboardPage() {
             <Activity rows={activity} />
           </div>
           <div className="space-y-6">
-            <UsageToday listings={stats.listedToday} images={stats.imagesToday} limits={viewer.workspace.limits} />
+            <UsageToday listings={used.listings} images={used.images} limits={viewer.workspace.limits} />
             {!allDone && <GetStarted done={done} />}
             {!brandNew && <WeekBars days={days} />}
           </div>
