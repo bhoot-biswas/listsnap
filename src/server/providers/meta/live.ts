@@ -3,8 +3,10 @@ import { z } from "zod";
 import { BanglaText, ListingText, PlanResult } from "@/lib/schemas/pipeline";
 import { logged } from "../log";
 import type { MetaProvider } from "../types";
+import { paletteSwatch } from "@/server/image-ops";
 import {
   backgroundPrompt,
+  brandKitPrompt,
   editImage,
   endUser,
   generateImage,
@@ -162,14 +164,24 @@ export const liveMeta: MetaProvider = {
     return r.image;
   },
 
-  editScene: async (ctx, main, scene, phrase, brief) => {
-    const image = await photoDataUrl(main, 1024);
+  editScene: async (ctx, main, scene, phrase, brief, kit) => {
+    const cutout = await photoDataUrl(main, 1024);
+    // in the seller's shop: original, cutout, shop, then the swatch, as brandKitPrompt names them
+    const images = kit
+      ? [
+          await photoDataUrl(kit.original, 1024),
+          cutout,
+          await photoDataUrl(kit.setting, 1024),
+          ...(kit.colors.length ? [await photoDataUrl(await paletteSwatch(kit.colors), 600)] : []),
+        ]
+      : cutout;
+    const prompt = kit ? brandKitPrompt(phrase, brief, kit.colors.length > 0) : lifestylePrompt(phrase, brief);
     const r = await logged(
       ctx,
       { provider: "meta", model: IMAGE_MODEL, endpoint: "images/edits", mode: "live" },
-      () => editImage(image, lifestylePrompt(phrase, brief), endUser(ctx.workspaceId)),
+      () => editImage(images, prompt, endUser(ctx.workspaceId)),
       (r) => ({
-        summary: `${scene} scene from the cutout${brief ? " · brief" : ""}${tokens(r)}`,
+        summary: `${scene} scene ${kit ? "in the shop setting" : "from the cutout"}${brief ? " · brief" : ""}${tokens(r)}`,
         costUsd: IMAGE_COST_USD,
       }),
     );

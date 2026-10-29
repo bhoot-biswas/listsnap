@@ -133,6 +133,20 @@ export async function gradient(width: number, height: number, from: string, to: 
   return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
+/**
+ * The brand colours as one image of equal bands, the reference Muse Image reads a palette
+ * from. Drawn here, so a kit's colours cost no model call. Colours are checked hex codes.
+ */
+export async function paletteSwatch(colors: string[], size = 600): Promise<Buffer> {
+  const safe = colors.filter((c) => /^#[0-9A-Fa-f]{6}$/.test(c));
+  const w = size / Math.max(1, safe.length);
+  const bands = safe.map(
+    (c, i) => `<rect x="${Math.round(i * w)}" y="0" width="${Math.ceil(w)}" height="${size}" fill="${c}"/>`,
+  );
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">${bands.join("")}</svg>`;
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
 export async function dimensions(img: Buffer): Promise<{ width: number; height: number }> {
   const m = await sharp(img).metadata();
   return { width: m.width ?? 0, height: m.height ?? 0 };

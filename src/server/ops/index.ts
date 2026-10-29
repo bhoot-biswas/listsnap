@@ -3,6 +3,7 @@ import { z } from "zod";
 import { defineOp, type Op } from "./define-op";
 import { editListingFields, getListingSummary, saveListingEdit, undoLast } from "./listing-ops";
 import { renderScene, saveDraftToStore } from "./pipeline-ops";
+import { setBrandKit } from "./brand-ops";
 
 export type { Effect, Op, OpError, OpMeta, OpResult } from "./define-op";
 
@@ -11,7 +12,15 @@ export type { Effect, Op, OpError, OpMeta, OpResult } from "./define-op";
  * chat will expose the same registry as its tools, so a new capability is added here
  * once and both get it.
  */
-const base = { getListingSummary, saveListingEdit, editListingFields, undoLast, renderScene, saveDraftToStore };
+const base = {
+  getListingSummary,
+  saveListingEdit,
+  editListingFields,
+  undoLast,
+  renderScene,
+  saveDraftToStore,
+  setBrandKit,
+};
 
 export const estimateCost = defineOp({
   name: "estimateCost",

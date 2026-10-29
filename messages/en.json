@@ -311,6 +311,26 @@
       "intro": "Which languages each listing is written in.",
       "always": "always on",
       "banglaHint": "A Bangla version of every listing, written for Bangladeshi buyers"
+    },
+    "brandKit": {
+      "title": "Brand kit",
+      "intro": "Your shop's look for AI photos, so every listing looks like it comes from the same shop.",
+      "colors": "Brand colours",
+      "useColors": "Use my brand colours in AI photos",
+      "colorLabel": "Brand colour {n}",
+      "setting": "Shop photo",
+      "settingHint": "A photo of your shop, table or display corner with nothing for sale in it. Lifestyle photos are set there. JPG, PNG or HEIC, up to 8 MB.",
+      "settingAlt": "Your shop photo",
+      "upload": "Choose a photo",
+      "replace": "Replace photo",
+      "remove": "Remove photo",
+      "uploading": "Uploading…",
+      "uploadFailed": "That photo couldn't be used. Try a JPG, PNG or HEIC under 8 MB.",
+      "note": "Lifestyle and banner photos use the brand kit. Studio photos always stay on a plain background.",
+      "save": "Save brand kit",
+      "saved": "Brand kit saved. New AI photos use it.",
+      "invalid": "Check the colours and try again.",
+      "photoMissing": "That shop photo is gone. Choose it again."
     }
   },
   "profile": {

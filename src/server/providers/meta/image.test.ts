@@ -6,7 +6,7 @@ beforeAll(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-const { BLOCKED, backgroundPrompt, editImage, endUser, generateImage, imagesBody, lifestylePrompt } =
+const { BLOCKED, backgroundPrompt, brandKitPrompt, editImage, endUser, generateImage, imagesBody, lifestylePrompt } =
   await import("./image");
 const { BUSY } = await import("./spark");
 const { sceneBrief } = await import("@/lib/schemas/pipeline");
@@ -52,6 +52,39 @@ describe("lifestylePrompt", () => {
     expect(p).not.toContain("\n");
     expect(p).not.toContain("colour 3");
     expect(p.length).toBeLessThan(900);
+  });
+});
+
+describe("brandKitPrompt", () => {
+  it("names the four images in the order they are sent and keeps the product the hero", () => {
+    const p = brandKitPrompt("jamdani saree", brief, true);
+    const order = [
+      "Image 1 is the seller's original photo",
+      "Image 2 is the same jamdani saree",
+      "Image 3 is the seller's shop",
+      "Image 4 is the shop's brand colours",
+    ];
+    const at = order.map((o) => p.indexOf(o));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((x, y) => x - y)).toEqual(at);
+    expect(p).toContain("fills most of the frame");
+    expect(p).toContain("No props that could be mistaken for part of the product");
+    expect(p).toContain("Leave out: a matching blouse, jewellery.");
+  });
+
+  it("leaves out the colour image when the kit has no colours", () => {
+    expect(brandKitPrompt("saree", null, false)).not.toContain("Image 4");
+  });
+});
+
+describe("editImage with several images", () => {
+  it("sends them in order", async () => {
+    const edit = stubFetch(image.clone());
+    await editImage(["data:image/jpeg;base64,AAAA", "data:image/jpeg;base64,BBBB"], "scene", "u");
+    expect(sentBody(edit).images).toEqual([
+      { image_url: "data:image/jpeg;base64,AAAA" },
+      { image_url: "data:image/jpeg;base64,BBBB" },
+    ]);
   });
 });
 

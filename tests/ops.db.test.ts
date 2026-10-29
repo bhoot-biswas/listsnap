@@ -17,6 +17,7 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
   const b = await createTestWorkspace();
   const A = forWorkspace(a.workspace.id);
   let listingId = "";
+  let brandPhotoId = "";
 
   /** A valid input for each op, aimed at shop A's listing. A new op must add one here. */
   const fixtures = (): Record<string, unknown> => ({
@@ -27,6 +28,8 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     renderScene: { listingId, scene: "studio" },
     saveDraftToStore: { listingId },
     estimateCost: { op: "renderScene", input: { listingId, scene: "lifestyle" } },
+    // aimed at shop A's brand photo rather than a listing; shop B must not be able to use it
+    setBrandKit: { colors: ["#7a1f2b"], settingMediaId: brandPhotoId },
   });
   const validEdit = () => ({
     en: { title: "Edited", short_description: "", description: "", attributes: [], tags: [], category: "Sarees" },
@@ -41,6 +44,10 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
   beforeAll(async () => {
     const jobId = await createTestJob(a.workspace.id, await samplePhoto("saree.jpg"));
     listingId = (await runJob(a.workspace, jobId)).listings[0]!.id;
+    const { saveMedia } = await import("@/server/media/store");
+    const photo = await samplePhoto("kurti.jpg");
+    brandPhotoId = (await saveMedia(a.workspace.id, "brand", photo, { mime: "image/jpeg", width: 1280, height: 1280 }))
+      .id;
   });
 
   afterAll(async () => {
@@ -179,5 +186,40 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     expect(first).toMatchObject({ ok: true, replayed: false, value: { outcome: { state: "done" } } });
     expect(again).toMatchObject({ ok: true, replayed: true });
     expect((await A.getListing(listingId))!.status).toBe("in_store");
+  });
+  it("saves a brand kit only with this shop's own brand photo", async () => {
+    const { selectOne } = await import("@/server/db/pool");
+    const stored = async () =>
+      (
+        await selectOne<{ settings_json: { brandKit?: unknown } | string }>(
+          "SELECT settings_json FROM workspaces WHERE id = ?",
+          [a.workspace.id],
+        )
+      )?.settings_json;
+    const kit = (raw: unknown) => (typeof raw === "string" ? JSON.parse(raw) : raw).brandKit;
+
+    const r = await ops.setBrandKit.call(
+      a.workspace,
+      { colors: ["#7a1f2b", "#d9a441"], settingMediaId: brandPhotoId },
+      { via: "ui" },
+    );
+    expect(r).toMatchObject({ ok: true });
+    expect(kit(await stored())).toEqual({ colors: ["#7A1F2B", "#D9A441"], settingMediaId: brandPhotoId });
+
+    // a listing's own photo is not a shop photo
+    const mainId = (await A.items((await A.getListing(listingId))!.job_id))[0]!.cutout_media_id!;
+    expect(
+      await ops.setBrandKit.call(a.workspace, { colors: [], settingMediaId: mainId }, { via: "ui" }),
+    ).toMatchObject({
+      ok: false,
+      error: "not_found",
+    });
+    // bad colours and too many are refused before anything is saved
+    for (const colors of [["red"], ["#12345"], ["#111111", "#222222", "#333333", "#444444"]])
+      expect(await ops.setBrandKit.call(a.workspace, { colors, settingMediaId: null }, { via: "ui" })).toEqual({
+        ok: false,
+        error: "invalid",
+      });
+    expect(kit(await stored())).toEqual({ colors: ["#7A1F2B", "#D9A441"], settingMediaId: brandPhotoId });
   });
 });

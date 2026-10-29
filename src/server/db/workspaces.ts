@@ -1,5 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import { BrandKit, EMPTY_BRAND_KIT } from "@/lib/schemas/brand-kit";
 import { execute, json, selectOne, transaction } from "./pool";
 
 export interface WorkspaceSettings {
@@ -12,6 +13,7 @@ export interface WorkspaceSettings {
   priceRounding: number;
   timeZone: string;
   currency: "BDT";
+  brandKit: BrandKit;
 }
 
 export const DEFAULT_SETTINGS: WorkspaceSettings = {
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: WorkspaceSettings = {
   priceRounding: 10,
   timeZone: "Asia/Dhaka",
   currency: "BDT",
+  brandKit: EMPTY_BRAND_KIT,
 };
 
 /** The tone and note the writer gets with every listing and AI help call. */
@@ -57,7 +60,12 @@ const toWorkspace = (r: WorkspaceRow): Workspace => ({
   expiresAt: r.expires_at,
   // demo shops skip onboarding
   onboarded: !!r.onboarded_at || !!r.is_demo,
-  settings: { ...DEFAULT_SETTINGS, ...(r.settings_json ?? {}) },
+  settings: {
+    ...DEFAULT_SETTINGS,
+    ...(r.settings_json ?? {}),
+    // stored JSON from before the kit existed, or edited by hand, must not break renders
+    brandKit: BrandKit.safeParse(r.settings_json?.brandKit).data ?? EMPTY_BRAND_KIT,
+  },
   limits: { listings: r.daily_listing_limit, images: r.daily_image_limit },
 });
 

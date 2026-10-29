@@ -94,6 +94,53 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
     }
   });
 
+  it("sets the lifestyle scene in the shop's own photo when the brand kit has one", async () => {
+    const kitShop = await createTestWorkspace({ scenes: ["lifestyle", "banner"], listingLanguages: ["en"] });
+    try {
+      const { saveMedia } = await import("@/server/media/store");
+      const room = await samplePhoto("kurti.jpg");
+      const brand = await saveMedia(kitShop.workspace.id, "brand", room, {
+        mime: "image/jpeg",
+        width: 1280,
+        height: 1280,
+      });
+      // the runner is handed the workspace, as a page would load it after the kit was saved
+      const workspace = {
+        ...kitShop.workspace,
+        settings: { ...kitShop.workspace.settings, brandKit: { colors: ["#7A1F2B"], settingMediaId: brand.id } },
+      };
+      const jobId = await createTestJob(workspace.id, await samplePhoto("saree.jpg"));
+      const state = await runJob(workspace, jobId);
+
+      expect(state.status).toBe("ready");
+      expect(state.listings[0]!.images.map((i) => i.kind)).toEqual(["main", "lifestyle", "banner"]);
+      const lifestyle = state.calls.find((c) => c.step === "render" && c.summary?.startsWith("lifestyle"));
+      expect(lifestyle?.summary).toContain("in the shop setting");
+    } finally {
+      await kitShop.remove();
+    }
+  });
+
+  it("falls back to the brief's scene when the shop photo has gone", async () => {
+    const kitShop = await createTestWorkspace({ scenes: ["lifestyle"], listingLanguages: ["en"] });
+    try {
+      const workspace = {
+        ...kitShop.workspace,
+        settings: {
+          ...kitShop.workspace.settings,
+          brandKit: { colors: [], settingMediaId: "00000000-0000-4000-8000-000000000000" },
+        },
+      };
+      const jobId = await createTestJob(workspace.id, await samplePhoto("saree.jpg"));
+      const state = await runJob(workspace, jobId);
+      expect(state.status).toBe("ready");
+      const lifestyle = state.calls.find((c) => c.step === "render");
+      expect(lifestyle?.summary).toContain("from the cutout");
+    } finally {
+      await kitShop.remove();
+    }
+  });
+
   it("reports an unknown job as missing rather than failing", async () => {
     expect(await loadJobState(shop.workspace, "00000000-0000-0000-0000-000000000000")).toBeNull();
   });
