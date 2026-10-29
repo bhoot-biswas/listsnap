@@ -5,6 +5,8 @@ import { logged } from "../log";
 import type { MetaProvider } from "../types";
 import { backgroundPrompt, editImage, generateImage, IMAGE_COST_USD, IMAGE_MODEL, lifestylePrompt } from "./image";
 import { SAM_COST_USD, SAM_MODEL, samSegment } from "./sam";
+import { liveAssist } from "./assist";
+import { BANGLA_SYSTEM, SELLER_CONTEXT, writeSystem } from "./prompts";
 import { photoDataUrl, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
 
 /**
@@ -12,33 +14,11 @@ import { photoDataUrl, SPARK_MODEL, sparkJson, type SparkResult } from "./spark"
  * finds and masks the products; Muse Image makes empty backgrounds and lifestyle edits.
  */
 
-// Prompts tuned during the Phase 0a spike runs; see the field descriptions in the schemas too.
-const SELLER_CONTEXT =
-  "You help small social-commerce sellers in Bangladesh list products on their WooCommerce store. " +
-  "Be accurate: describe only what the photo shows or what is very likely, and never invent brand names, " +
-  "measurements or materials you cannot see.";
-
 const PLAN_SYSTEM =
   SELLER_CONTEXT +
   " Your first job is to decide what a segmentation model should look for. SAM 3.1 takes a short noun phrase " +
   "(like 'jamdani saree' or 'gold bangle') and returns every matching object, so choose the phrase that matches " +
   "the sellable product and nothing else on the table.";
-
-const writeSystem = (brandVoice: string) =>
-  SELLER_CONTEXT +
-  ` Write a store listing in clear, ${brandVoice.trim().toLowerCase() || "friendly"} English. Prices are in BDT (৳) ` +
-  "for Bangladesh social-commerce buyers. The title, descriptions and tags are read by BUYERS: write them as the " +
-  "shop speaking to a customer, never as notes to the seller (no 'please confirm', 'not confirmed from photo', " +
-  "'check if'). When something is uncertain, leave it out of the buyer text or describe it neutrally ('see photos " +
-  "for detail'), lower the confidence, and put the exact thing to verify in check_notes, which only the seller sees.";
-
-const BANGLA_SYSTEM =
-  "You are a native Bangla copywriter for Bangladeshi online shops (Facebook and Instagram sellers). " +
-  "Rewrite the listing in natural, warm Bangla as a real seller would write it, not word-for-word. Write " +
-  "everything in Bangla script, including product words (শাড়ি, কুর্তি, চুড়ি, মগ) and common English loanwords " +
-  "(জরি, কটন, ফেস্টিভ); never leave Latin-script words inside Bangla sentences. Only the tags may mix: give " +
-  "mostly Bangla tags plus two or three English ones buyers type (e.g. 'jamdani saree'). Keep facts identical: " +
-  "do not add or drop details.";
 
 const GROUP_SYSTEM =
   SELLER_CONTEXT +
@@ -116,6 +96,8 @@ export const liveMeta: MetaProvider = {
     );
     return r.data;
   },
+
+  assist: liveAssist,
 
   group: async (ctx, crops, plan) => {
     const images = await Promise.all(crops.map((c) => photoDataUrl(c, 384)));
