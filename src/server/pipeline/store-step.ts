@@ -48,7 +48,7 @@ export async function executeStoreStep(
 
 async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: ListingRow): Promise<StoreResult> {
   const en = ListingText.safeParse(listing.fields_json?.en);
-  if (!en.success) throw new StepError("The listing text is missing. Make the listing again.");
+  if (!en.success) throw new StepError("textMissing");
   const text = en.data;
   const step = { workspaceId: ws.id, jobId: listing.job_id, step: "store" };
   // mock mode needs no store, so a shop without a connection can still try the flow

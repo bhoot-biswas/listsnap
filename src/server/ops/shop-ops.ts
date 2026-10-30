@@ -6,6 +6,7 @@ import { executeStoreStep } from "@/server/pipeline/store-step";
 import { metaConnection } from "@/server/social/connection";
 import { defineOp } from "./define-op";
 import { ListingId } from "./listing-ops";
+import { errorText } from "@/server/step-text";
 
 /**
  * Ops over the whole shop, for the shop chat: find listings, see where the shop stands,
@@ -130,7 +131,8 @@ export const saveDraftsToStore = defineOp({
       else if ("invalid" in r) failed.push({ id, message: r.invalid });
       else if (r.outcome.state === "done") saved.push(id);
       else if (r.outcome.state === "running") failed.push({ id, message: "Still saving; check again in a moment." });
-      else failed.push({ id, message: r.outcome.error });
+      // only the chat calls this, and the model reads English
+      else failed.push({ id, message: errorText(r.outcome.error, "en") });
     }
     return { ok: true, value: { saved, failed }, summary: `${saved.length} saved, ${failed.length} not` };
   },

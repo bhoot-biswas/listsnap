@@ -26,15 +26,15 @@ const MIN_SCORE = 0.3;
 
 async function firstPhoto(ctx: JobStepContext) {
   const [photo] = await ctx.ws.photos(ctx.jobId);
-  if (!photo) throw new StepError("This job has no photo.");
+  if (!photo) throw new StepError("noPhoto");
   const file = await readMedia(ctx.ws.id, photo.media_id);
-  if (!file) throw new StepError("The photo file is missing.");
+  if (!file) throw new StepError("photoMissing");
   return { photo, data: file.data };
 }
 
 async function requireResult<T>(ctx: JobStepContext, step: string): Promise<T> {
   const r = await ctx.ws.stepResult<T>(ctx.jobId, step);
-  if (!r) throw new StepError(`The ${step} step hasn't finished yet.`);
+  if (!r) throw new StepError("stepNotDone");
   return r;
 }
 

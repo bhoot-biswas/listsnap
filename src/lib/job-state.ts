@@ -12,6 +12,8 @@ export interface StepView {
   attempts: number;
   exhausted: boolean;
   error: string | null;
+  /** Which error it is, so the page can offer the right way out (no Try again on a used-up limit). */
+  errorKey: string | null;
   /** One line on what the AI decided, e.g. 'Looking for: "jamdani saree"'. */
   detail: string | null;
 }

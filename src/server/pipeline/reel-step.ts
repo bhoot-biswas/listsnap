@@ -14,17 +14,12 @@ import { REEL_LANGS, type ReelLang, type ReelResult, type ReelTemplate } from "@
 export async function reelStep(ctx: ListingStepContext, lang: ReelLang, template: ReelTemplate): Promise<ReelResult> {
   const { ws, workspace, listing } = ctx;
   const text = listing.fields_json?.[lang] as { title?: string } | undefined;
-  if (!text?.title)
-    throw new StepError(
-      lang === "bn"
-        ? "This listing has no Bangla text yet, so a Bangla reel can't be made."
-        : "This listing has no title yet.",
-    );
-  if (listing.price_bdt === null) throw new StepError("Add a price first; the reel shows it.");
+  if (!text?.title) throw new StepError(lang === "bn" ? "noBanglaText" : "noTitle");
+  if (listing.price_bdt === null) throw new StepError("addPriceFirst");
 
   const [items, media] = await Promise.all([ws.items(listing.job_id), ws.listingMedia([listing.id])]);
   const mainId = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id;
-  if (!mainId) throw new StepError("The main image for this listing is missing.");
+  if (!mainId) throw new StepError("mainImageMissing");
   const photos = pickPhotos(
     media.map((m) => ({ id: m.id, kind: m.kind, selected: m.selected === 1 })),
     mainId,
@@ -32,7 +27,7 @@ export async function reelStep(ctx: ListingStepContext, lang: ReelLang, template
   const files = await Promise.all(
     [photos.hero, photos.look1, photos.look2, photos.product].map((id) => readMedia(ws.id, id)),
   );
-  if (files.some((f) => !f)) throw new StepError("One of the photos for this reel is missing.");
+  if (files.some((f) => !f)) throw new StepError("reelPhotoMissing");
   const [hero, look1, look2, product] = files.map((f) => f!.data);
 
   const variables = reelVariables({
@@ -44,8 +39,7 @@ export async function reelStep(ctx: ListingStepContext, lang: ReelLang, template
     kit: workspace.settings.brandKit.colors,
   });
 
-  if (!(await ws.reserveReel()))
-    throw new StepError("You've made today's reels. More can be made after 6:00 AM Bangladesh time.");
+  if (!(await ws.reserveReel())) throw new StepError("reelsUsedUp", { permanent: true });
   const reel = await video()
     .renderReel(
       { workspaceId: ws.id, jobId: listing.job_id, step: "reel" },

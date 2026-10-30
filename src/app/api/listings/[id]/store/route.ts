@@ -1,6 +1,7 @@
 import { apiViewer } from "@/server/auth/session";
 import { ops } from "@/server/ops";
 import { fail, notFound, stepResponse, unauthorized } from "@/server/http";
+import { requestLocale, text } from "@/server/step-text";
 
 /** Saves the listing to the shop's store as a draft (never published). Safe to repeat; `?update=1` sends edits again. */
 export async function POST(request: Request, ctx: RouteContext<"/api/listings/[id]/store">) {
@@ -16,6 +17,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
   );
   if (r.ok) return stepResponse(r.value.outcome);
   if (r.error === "not_found") return notFound();
-  if (r.error === "not_ready") return fail(409, "not_ready", r.message ?? "This listing isn't finished yet.");
+  if (r.error === "not_ready")
+    return fail(409, "not_ready", text(await requestLocale(), "stepText.errors.notFinished"));
   return fail(400, "invalid", "Invalid request.");
 }

@@ -8,6 +8,7 @@ import {
   type StepRow,
   type StepStore,
 } from "./run-step";
+import { parseStoredError, storedError } from "@/server/step-text";
 
 /** The same semantics as job_steps, in memory, with a clock the test controls. */
 function memoryStore() {
@@ -119,11 +120,11 @@ describe("runStep step rules", () => {
   it("allows 3 attempts after failures, then waits for Try again", async () => {
     const { store, row } = memoryStore();
     const boom = vi.fn(async () => {
-      throw new StepError("Service busy");
+      throw new StepError("busy");
     });
     expect(await runStep(store, key, opts, boom)).toEqual({
       state: "failed",
-      error: "Service busy",
+      error: storedError("busy"),
       attempts: 1,
       exhausted: false,
     });
@@ -153,12 +154,14 @@ describe("runStep step rules", () => {
     expect(row(key)?.status).toBe("failed");
   });
 
-  it("shows the seller's message for a StepError, cut short", async () => {
+  it("keeps a StepError as its key and values, with a long quoted value cut short", async () => {
     const { store } = memoryStore();
     const out = await runStep(store, key, opts, async () => {
-      throw new StepError("x".repeat(2000));
+      throw new StepError("productChanged", { params: { differences: "x".repeat(2000) } });
     });
-    expect(out.state === "failed" && out.error.length).toBe(480);
+    const error = out.state === "failed" ? out.error : "";
+    expect(error.length).toBeLessThan(500); // job_steps.last_error is VARCHAR(500)
+    expect(parseStoredError(error)).toEqual({ key: "productChanged", params: { differences: "x".repeat(200) } });
   });
 
   it("never shows an unexpected error's text (a SQL error, a bug)", async () => {
@@ -182,11 +185,11 @@ describe("runStep step rules", () => {
       exhausted: true,
     });
     const blocked = async () => {
-      throw new StepError("This photo couldn't be turned into an AI photo.", { permanent: true });
+      throw new StepError("blocked", { permanent: true });
     };
     const other = { ...key, step: "render" };
     expect(await runStep(store, other, opts, blocked)).toMatchObject({
-      error: "This photo couldn't be turned into an AI photo.",
+      error: storedError("blocked"),
       exhausted: true,
     });
   });
@@ -194,7 +197,7 @@ describe("runStep step rules", () => {
   it("gives the attempt back when the service was never called", async () => {
     const { store } = memoryStore();
     const open = async () => {
-      throw new StepError("The AI service is busy.", { notAttempted: true });
+      throw new StepError("busy", { notAttempted: true });
     };
     for (let i = 0; i < 5; i++)
       expect(await runStep(store, key, opts, open)).toMatchObject({ state: "failed", attempts: 0, exhausted: false });

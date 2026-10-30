@@ -3,6 +3,7 @@ import { createHmac, randomBytes } from "node:crypto";
 import { env } from "@/server/env";
 import { isPublicHost } from "@/server/net/public-host";
 import { StepError } from "@/server/pipeline/run-step";
+import type { StepErrorKey, TextParams } from "@/server/step-text";
 import { logged } from "../log";
 import type { CallContext, WooStore } from "../types";
 
@@ -23,10 +24,11 @@ export class WooHttpError extends StepError {
   constructor(
     readonly status: number,
     readonly code: string,
-    message: string,
+    key: StepErrorKey,
+    params?: TextParams,
     readonly data: Record<string, unknown> = {},
   ) {
-    super(message);
+    super(key, { params });
   }
 }
 
@@ -60,7 +62,7 @@ export interface WooApi {
 
 export function wooApi(ctx: CallContext, store: WooStore): WooApi {
   const https = store.url.startsWith("https://");
-  if (!https && env().prod) throw new WooHttpError(0, "http", "Your store address must start with https://.");
+  if (!https && env().prod) throw new WooHttpError(0, "http", "storeHttps");
   let publicCheck: Promise<boolean> | null = null;
 
   const call = async <T>(method: string, path: string, query: Query, body: unknown, timeoutMs: number): Promise<T> =>
@@ -69,7 +71,7 @@ export function wooApi(ctx: CallContext, store: WooStore): WooApi {
       { provider: "woo", model: "woocommerce", endpoint: `${method} ${path.replace(/\/\d+/g, "/:id")}`, mode: "live" },
       async () => {
         if (env().prod && !(await (publicCheck ??= isPublicHost(new URL(store.url).hostname))))
-          throw new WooHttpError(0, "private", "That store address isn't reachable from the internet.");
+          throw new WooHttpError(0, "private", "storePrivate");
         const url = `${store.url}/wp-json/wc/v3/${path}`;
         const qs = https
           ? new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)])).toString()
@@ -87,11 +89,7 @@ export function wooApi(ctx: CallContext, store: WooStore): WooApi {
             redirect: "error",
           });
         } catch {
-          throw new WooHttpError(
-            0,
-            "unreachable",
-            "Your store didn't answer. Your listing is safe here; try again in a moment.",
-          );
+          throw new WooHttpError(0, "unreachable", "storeNoAnswer");
         }
         const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
         if (!res.ok) throw httpError(res.status, data);
@@ -112,31 +110,12 @@ function httpError(status: number, data: Record<string, unknown> | null): WooHtt
   const code = typeof data?.code === "string" ? data.code : "";
   const message = typeof data?.message === "string" ? data.message : "";
   const extra = (data?.data as Record<string, unknown> | undefined) ?? {};
-  if (status === 401 || status === 403)
-    return new WooHttpError(
-      status,
-      code,
-      "Your store didn't accept ListSnap's keys. Check them in Connections (read/write access).",
-    );
-  if (status === 404 && (code === "rest_no_route" || !data))
-    return new WooHttpError(
-      status,
-      "not_woo",
-      "ListSnap couldn't find WooCommerce at your store address. Check it in Connections.",
-    );
-  if (status >= 500)
-    return new WooHttpError(status, code, `Your store had a problem (error ${status}). Your listing is safe here.`);
+  if (status === 401 || status === 403) return new WooHttpError(status, code, "storeKeys");
+  if (status === 404 && (code === "rest_no_route" || !data)) return new WooHttpError(status, "not_woo", "storeNotWoo");
+  if (status >= 500) return new WooHttpError(status, code, "storeProblem", { status });
   // WooCommerce quotes the image link here, which must not reach the seller or the log
-  if (code === "woocommerce_product_image_upload_error")
-    return new WooHttpError(
-      status,
-      code,
-      "Your store couldn't download the product photos. Check that it can reach ListSnap, then try again.",
-    );
-  return new WooHttpError(
-    status,
-    code,
-    message ? `Your store said: ${message.slice(0, 200)}` : `Store error ${status}`,
-    extra,
-  );
+  if (code === "woocommerce_product_image_upload_error") return new WooHttpError(status, code, "storePhotos");
+  return message
+    ? new WooHttpError(status, code, "storeSaid", { message: message.slice(0, 200) }, extra)
+    : new WooHttpError(status, code, "storeError", { status }, extra);
 }

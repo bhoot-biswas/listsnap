@@ -29,8 +29,9 @@ const RETRY_MIN_MS = 16_000;
  */
 const PHOTO_PX = 1280;
 
-export const BUSY = "The AI service is busy right now. Try again in a minute; your photo is saved.";
-export const UNREADABLE = "The AI gave an answer we couldn't read. Try again.";
+// StepError keys; the words are in the messages files, in English and Bangla
+export const BUSY = "busy" as const;
+export const UNREADABLE = "unreadable" as const;
 
 const Completion = z.object({
   model: z.string().optional(),

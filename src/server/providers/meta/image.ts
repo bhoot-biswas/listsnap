@@ -20,7 +20,7 @@ export const IMAGE_COST_USD = 0.01;
 /** Measured 8–34 s; render steps hold a 150 s lock that also covers the fidelity check after it. */
 const TIMEOUT_MS = 75_000;
 
-export const BLOCKED = "This photo couldn't be turned into an AI photo. Try a different photo; your listing is saved.";
+export const BLOCKED = "blocked" as const;
 
 /**
  * Its built-in web and image search could pull other sellers' pictures of "jamdani saree"

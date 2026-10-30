@@ -9,6 +9,7 @@ import type { ToolCall } from "@/lib/schemas/chat";
 import type { StepOutcome } from "@/server/pipeline/run-step";
 import { defaultCaption } from "@/server/social/caption";
 import type { ChatTool } from "@/server/providers/types";
+import { errorText } from "@/server/step-text";
 
 /**
  * The chat's tools are ops from the registry, so they keep every op rule: auth by
@@ -188,5 +189,6 @@ export async function runTool(
   const outcome = value.outcome;
   if (outcome.state === "done") return { ok: true, done: true, result: outcome.result };
   if (outcome.state === "running") return { ok: true, stillWorking: true, message: ERROR_TEXT.busy };
-  return { ok: false, error: "failed", message: outcome.error };
+  // the model reads the English; the seller sees the step's own card in their language
+  return { ok: false, error: "failed", message: errorText(outcome.error, "en") };
 }

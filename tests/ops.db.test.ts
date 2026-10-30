@@ -271,9 +271,9 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
         { via: "chat", confirmed },
       );
     expect(await post("facebook", false)).toEqual({ ok: false, error: "needs_confirmation" });
-    // nothing connected yet: the step fails with words for the seller
+    // nothing connected yet: the step fails with words for the seller, kept as their key
     expect(await post("facebook")).toMatchObject({
-      value: { outcome: { state: "failed", error: expect.stringContaining("Connect your Facebook Page") } },
+      value: { outcome: { state: "failed", error: expect.stringContaining('"key":"connectFacebook"') } },
     });
 
     const { encryptSecret } = await import("@/server/crypto");

@@ -6,6 +6,7 @@ import { StepError } from "@/server/pipeline/run-step";
 import { meta } from "@/server/providers";
 import { AssistRequest } from "@/lib/schemas/assist";
 import { ListingText } from "@/lib/schemas/pipeline";
+import { errorWords, requestLocale } from "@/server/step-text";
 
 /** About a cent a click, five per listing on a full day; the cap stops a runaway loop or abuse. */
 const DAILY_ASSISTS = 100;
@@ -38,7 +39,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
     );
     return ok({ text });
   } catch (err) {
-    if (err instanceof StepError) return fail(503, "busy", err.message);
+    if (err instanceof StepError) return fail(503, "busy", errorWords(err, await requestLocale()));
     console.error("[assist] unexpected error:", err);
     return fail(500, "error", "Something went wrong. Your text hasn't changed; try again.");
   }

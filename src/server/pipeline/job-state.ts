@@ -7,6 +7,8 @@ import type { GroupResult, PlanResult, SegmentResult } from "@/lib/schemas/pipel
 import { autoScenes } from "./execute";
 import { nextCalls, type NextCall } from "./next-calls";
 import { MAX_ATTEMPTS } from "./run-step";
+import { errorText, parseStoredError, text } from "@/server/step-text";
+import type { Locale } from "@/i18n/request";
 
 const callUrl = (jobId: string, c: NextCall): string => {
   if (c.kind === "job") return `/api/jobs/${jobId}/steps/${c.step}`;
@@ -17,23 +19,30 @@ const callUrl = (jobId: string, c: NextCall): string => {
 const callKey = (c: NextCall) =>
   c.kind === "job" ? c.step : `${c.step}:${c.listingId}${c.scene ? `:${c.scene}` : ""}`;
 
-/** The one-line "what the AI decided" under each finished step. */
-function detail(step: string, result: unknown): string | null {
+/** The one-line "what the AI decided" under each finished step, in the seller's language. */
+function detail(step: string, result: unknown, locale: Locale): string | null {
   if (!result) return null;
-  if (step === "plan") return `Looking for: "${(result as PlanResult).sam_phrase}"`;
+  const t = (key: string, params?: Record<string, string | number>) => text(locale, `stepText.details.${key}`, params);
+  if (step === "plan") return t("lookingFor", { phrase: (result as PlanResult).sam_phrase });
   if (step === "segment") {
     const r = result as SegmentResult;
-    const retried = r.tried.length > 1 ? ` (after trying "${r.tried[0]}")` : "";
-    return `${r.instances.length} item(s) for "${r.phrase}"${retried} · fills ${r.check.fillPercent}% of the frame`;
+    const found = { count: r.instances.length, phrase: r.phrase, fill: r.check.fillPercent };
+    return r.tried.length > 1 ? t("foundRetried", { ...found, first: r.tried[0]! }) : t("found", found);
   }
+  // the model writes this reason in English; it is shown as written
   if (step === "group") return (result as GroupResult).reason;
-  if (step === "write") return `"${(result as { title?: string }).title ?? ""}"`;
-  if (step === "translate") return `"${(result as { title?: string }).title ?? ""}"`;
-  if (step === "render") return (result as { scene?: string }).scene ?? null;
-  return null;
+  if (step === "write" || step === "translate")
+    return t("quoted", { title: (result as { title?: string }).title ?? "" });
+  const scene = step === "render" ? (result as { scene?: string }).scene : undefined;
+  return scene ? text(locale, `job.scenes.${scene}`) : null;
 }
 
-export async function loadJobState(workspace: Workspace, jobId: string): Promise<JobState | null> {
+/** `locale` is the seller's UI language, for the step errors and details. */
+export async function loadJobState(
+  workspace: Workspace,
+  jobId: string,
+  locale: Locale = "en",
+): Promise<JobState | null> {
   const ws = forWorkspace(workspace.id);
   const job = await ws.getJob(jobId);
   if (!job) return null;
@@ -58,8 +67,9 @@ export async function loadJobState(workspace: Workspace, jobId: string): Promise
     status: s.status,
     attempts: s.attempts,
     exhausted: s.status === "failed" && s.attempts >= MAX_ATTEMPTS,
-    error: s.status === "failed" ? s.last_error : null,
-    detail: s.status === "done" ? detail(s.step, s.result_json) : null,
+    error: s.status === "failed" && s.last_error ? errorText(s.last_error, locale) : null,
+    errorKey: s.status === "failed" && s.last_error ? (parseStoredError(s.last_error)?.key ?? null) : null,
+    detail: s.status === "done" ? detail(s.step, s.result_json, locale) : null,
   }));
 
   return {

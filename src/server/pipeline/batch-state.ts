@@ -5,20 +5,25 @@ import type { BatchRow, BatchState } from "@/lib/batch-state";
 import { ListingText } from "@/lib/schemas/pipeline";
 import { suggestedPrice } from "@/lib/schemas/review";
 import { loadJobState } from "./job-state";
+import type { Locale } from "@/i18n/request";
 
 /**
  * A batch as the bulk page sees it. Each row comes from the job's own saved state, so
  * the batch runner calls exactly what the single-job page would, and a refresh or a
  * second tab picks up where the batch stopped.
  */
-export async function loadBatchState(workspace: Workspace, batchId: string): Promise<BatchState | null> {
+export async function loadBatchState(
+  workspace: Workspace,
+  batchId: string,
+  locale: Locale = "en",
+): Promise<BatchState | null> {
   const ws = forWorkspace(workspace.id);
   const batch = await ws.getBatch(batchId);
   if (!batch) return null;
   const ids = await ws.batchJobIds(batchId);
   const rows: BatchRow[] = [];
   for (const id of ids) {
-    const [state, listings] = await Promise.all([loadJobState(workspace, id), ws.listings(id)]);
+    const [state, listings] = await Promise.all([loadJobState(workspace, id, locale), ws.listings(id)]);
     if (!state) continue;
     const view = state.listings[0];
     const row = listings[0];

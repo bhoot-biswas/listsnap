@@ -10,6 +10,7 @@ import type { ChatEvent, ChatMessage, ChatRequest, ToolCall } from "@/lib/schema
 import { chatSystem } from "./prompt";
 import { changesListing, chatTools, checkArgs, makesMedia, needsApproval, runTool, type ChatScope } from "./tools";
 import { approvalItem, pendingCalls, toolExtras } from "./view";
+import { errorWords, requestLocale } from "@/server/step-text";
 
 /** Model turns per seller message: enough to read, act and answer, not enough to wander. */
 const MAX_TURNS = 6;
@@ -148,7 +149,8 @@ export async function runChat(
     }
     emit({ type: "error", code: "steps" });
   } catch (err) {
-    if (err instanceof StepError) emit({ type: "error", code: "busy", message: err.message });
+    if (err instanceof StepError)
+      emit({ type: "error", code: "busy", message: errorWords(err, await requestLocale()) });
     else {
       console.error("[chat] unexpected error:", err);
       emit({ type: "error", code: "generic" });
