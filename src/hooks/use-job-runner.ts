@@ -75,10 +75,16 @@ export function useJobRunner(initial: JobState) {
       setOffline(false);
       void drive();
     };
+    // phones pause a background tab's timers and requests; carry on as soon as it's back
+    const visible = () => {
+      if (document.visibilityState === "visible") void drive();
+    };
     window.addEventListener("online", online);
+    document.addEventListener("visibilitychange", visible);
     return () => {
       alive.current = false;
       window.removeEventListener("online", online);
+      document.removeEventListener("visibilitychange", visible);
     };
   }, [drive]);
 

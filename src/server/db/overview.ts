@@ -28,7 +28,8 @@ export interface ListingListRow {
 }
 
 export interface AttentionRow {
-  kind: "review" | "failed";
+  /** choose: waiting at Choose items; unfinished: left while still being made. */
+  kind: "review" | "failed" | "choose" | "unfinished";
   job_id: string;
   listing_id: string | null;
   title: string | null;
@@ -165,7 +166,12 @@ export function overviewQueries(ws: string) {
       });
     },
 
-    /** Unsure drafts and failed steps, newest first. */
+    /**
+     * Unsure drafts, failed steps and unfinished jobs, newest first. A job only moves while
+     * its page is open, so one left mid-way (or waiting at Choose items) has no listing to
+     * show anywhere else. Two minutes of quiet keeps a job that is running now off the list;
+     * bulk jobs have their batch page instead.
+     */
     attention: (limit = 5) =>
       select<AttentionRow>(
         `(SELECT 'review' AS kind, l.job_id, l.id AS listing_id, ${TITLE} AS title, ${TITLE_BN} AS title_bn, l.created_at
@@ -174,8 +180,18 @@ export function overviewQueries(ws: string) {
          (SELECT 'failed', j.id, l.id, ${TITLE}, ${TITLE_BN}, j.created_at
             FROM jobs j LEFT JOIN listings l ON l.job_id = j.id AND l.status = 'failed'
            WHERE j.workspace_id = ? AND (j.status = 'failed' OR l.id IS NOT NULL))
+         UNION ALL
+         (SELECT IF(j.status = 'awaiting_choice', 'choose', 'unfinished'), j.id, NULL,
+                 (SELECT ${TITLE} FROM listings l WHERE l.job_id = j.id ORDER BY l.created_at LIMIT 1),
+                 (SELECT ${TITLE_BN} FROM listings l WHERE l.job_id = j.id ORDER BY l.created_at LIMIT 1),
+                 j.created_at
+            FROM jobs j
+           WHERE j.workspace_id = ? AND j.batch_id IS NULL
+             AND j.status IN ('processing', 'awaiting_choice')
+             AND j.created_at < NOW(3) - INTERVAL 2 MINUTE
+             AND NOT EXISTS (SELECT 1 FROM listings l WHERE l.job_id = j.id AND l.status = 'failed'))
          ORDER BY created_at DESC LIMIT ?`,
-        [ws, ws, limit],
+        [ws, ws, ws, limit],
       ),
 
     /** Recent changes, each listing once: re-saving a draft moves it to the top instead of repeating it. */

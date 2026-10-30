@@ -139,7 +139,11 @@
       "failed": "A step didn't finish",
       "check": "Review",
       "open": "Open",
-      "untitled": "Untitled listing"
+      "untitled": "Untitled listing",
+      "choose": "Waiting for you to choose items",
+      "unfinished": "Stopped when the page was closed",
+      "unfinishedTitle": "Unfinished listing",
+      "continue": "Continue"
     },
     "usage": {
       "title": "Usage today",
@@ -549,7 +553,8 @@
       "too_bright": "The photo is very bright. Avoid direct flash or sun."
     },
     "retake": "Take another photo",
-    "reviewNow": "Review now"
+    "reviewNow": "Review now",
+    "keepOpen": "Keep this page open while we work. If you leave, open it again from the Dashboard to carry on."
   },
   "errors": {
     "title": "Something went wrong",

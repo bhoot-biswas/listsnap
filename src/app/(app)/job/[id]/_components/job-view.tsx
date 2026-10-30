@@ -60,6 +60,7 @@ export function JobView({ initial }: { initial: JobState }) {
             </div>
             <div className="space-y-4">
               <StepList state={state} onRetry={retry} />
+              {state.status === "processing" && <p className="text-sm text-muted-foreground">{t("keepOpen")}</p>}
               {state.check && state.check.hints.length > 0 && (
                 <aside className="space-y-2 rounded-xl border border-warning/40 bg-marigold-soft p-4 text-sm">
                   <p className="flex items-center gap-2 font-medium">
