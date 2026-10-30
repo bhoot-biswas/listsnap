@@ -668,8 +668,12 @@
       "noInstagram": "No Instagram account linked",
       "test": "Test",
       "disconnect": "Disconnect",
-      "disconnectHint": "Posts already made stay on Facebook and Instagram."
-    }
+      "disconnectHint": "Posts already made stay on Facebook and Instagram.",
+      "disconnectConfirm": "Disconnect Facebook and Instagram? Reels can’t be posted until you connect again."
+    },
+    "disconnectConfirm": "Disconnect your store? ListSnap can’t save drafts to it until you connect it again.",
+    "disconnectYes": "Yes, disconnect",
+    "keepConnected": "Keep connected"
   },
   "review": {
     "title": "Review listing",
