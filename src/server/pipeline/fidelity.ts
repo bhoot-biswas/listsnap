@@ -1,5 +1,4 @@
 import "server-only";
-import { crop } from "@/server/image-ops";
 import { maskCutout } from "@/server/image-ops/cutout";
 import { colorSimilarity, productHistogram } from "@/server/image-ops/fidelity";
 import { meta } from "@/server/providers";
@@ -54,10 +53,10 @@ export async function checkFidelity(
   const found = await meta().segment(ctx, candidate, phrase);
   const best = found.sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h)[0];
   let similarity: number | null = null;
-  if (best) {
-    const product = best.mask
-      ? await maskCutout(candidate, best.box, best.mask)
-      : (await crop(candidate, best.box)).data;
+  // colours are only comparable on the product's own pixels: without a mask (mock SAM) a
+  // box crop is mostly background, so the model judge decides alone
+  if (best?.mask) {
+    const product = await maskCutout(candidate, best.box, best.mask);
     const [ref, got] = await Promise.all([productHistogram(reference), productHistogram(product)]);
     similarity = ref && got ? colorSimilarity(ref, got) : null;
   }

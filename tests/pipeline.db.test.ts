@@ -123,6 +123,31 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
     }
   });
 
+  it("keeps mock lifestyle photos of any product, whose scenes have no SAM mask to compare", async () => {
+    // found in the browser: a bangle set in a kurti shop photo failed the colour stage on a
+    // box crop that was mostly background
+    const kitShop = await createTestWorkspace({ scenes: ["lifestyle"], listingLanguages: ["en"] });
+    try {
+      const { saveMedia } = await import("@/server/media/store");
+      const room = await samplePhoto("kurti.jpg");
+      const brand = await saveMedia(kitShop.workspace.id, "brand", room, {
+        mime: "image/jpeg",
+        width: 1280,
+        height: 1280,
+      });
+      const workspace = {
+        ...kitShop.workspace,
+        settings: { ...kitShop.workspace.settings, brandKit: { colors: [], settingMediaId: brand.id } },
+      };
+      const jobId = await createTestJob(workspace.id, await samplePhoto("bangles.jpg"));
+      const state = await runJob(workspace, jobId);
+      expect(state.steps.find((s) => s.step === "render")?.status).toBe("done");
+      expect(state.listings[0]!.images.map((i) => i.kind)).toEqual(["main", "lifestyle"]);
+    } finally {
+      await kitShop.remove();
+    }
+  });
+
   it("falls back to the brief's scene when the shop photo has gone", async () => {
     const kitShop = await createTestWorkspace({ scenes: ["lifestyle"], listingLanguages: ["en"] });
     try {
