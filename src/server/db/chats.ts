@@ -60,6 +60,30 @@ export function chatQueries(ws: string) {
       ]);
     },
 
+    /**
+     * Photos the seller attached, found among this shop's originals; `used` once one is
+     * already a job's photo. Ids from another shop simply aren't returned.
+     */
+    async chatPhotos(ids: string[]): Promise<{ id: string; width: number; height: number; used: boolean }[]> {
+      if (!ids.length) return [];
+      const rows = await select<{ id: string; width: number; height: number; used: number }>(
+        `SELECT m.id, m.width, m.height, EXISTS (SELECT 1 FROM photos p WHERE p.media_id = m.id) AS used
+           FROM media m WHERE m.workspace_id = ? AND m.kind = 'original' AND m.id IN (${ids.map(() => "?").join(",")})`,
+        [ws, ...ids],
+      );
+      return rows.map((r) => ({ ...r, used: Boolean(Number(r.used)) }));
+    },
+
+    /** Originals uploaded today that aren't a job's photo yet: what the chat's uploads add up to. */
+    async loosePhotosToday(): Promise<number> {
+      const row = await selectOne<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM media m WHERE m.workspace_id = ? AND m.kind = 'original'
+            AND m.created_at >= UTC_DATE() AND NOT EXISTS (SELECT 1 FROM photos p WHERE p.media_id = m.id)`,
+        [ws],
+      );
+      return Number(row?.n ?? 0);
+    },
+
     /** Chat model calls today; each one is a logged Spark request. */
     async chatCallsToday(): Promise<number> {
       const row = await selectOne<{ n: number }>(

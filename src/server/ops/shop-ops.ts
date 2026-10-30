@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { REELS_PER_DAY } from "@/server/db/limits";
+import { takeListingSlot } from "@/server/limits";
 import { executeStoreStep } from "@/server/pipeline/store-step";
 import { metaConnection } from "@/server/social/connection";
 import { defineOp } from "./define-op";
@@ -63,6 +64,46 @@ export const findListings = defineOp({
         })),
       },
     };
+  },
+});
+
+/**
+ * A new listing from photos the seller attached in the chat: the same job Snap makes,
+ * so the pipeline runs as it always does once the seller opens it. A photo becomes one
+ * listing only, and it takes a listing slot exactly as Snap does, demo visitors included.
+ */
+export const startListing = defineOp({
+  name: "startListing",
+  description:
+    "Start a new listing from photos the seller attached in this chat (their ids are in the message), all of one product. ListSnap then writes its English and Bangla text and makes a studio photo; it uses one of today's listings. For several products, call it once per product.",
+  input: z.object({ photoIds: z.array(z.string().min(1).max(36)).min(1).max(5) }),
+  effect: "starts_listing",
+  async run({ workspace, ws, meta }, { photoIds }) {
+    const ids = [...new Set(photoIds)];
+    const photos = await ws.chatPhotos(ids);
+    if (photos.length !== ids.length) return { ok: false, error: "not_found" };
+    if (photos.some((p) => p.used))
+      return { ok: false, error: "invalid", message: "That photo is already a listing. Send a new photo for another." };
+    // a demo shop without the visitor's address would skip the per-visitor limit
+    if (workspace.isDemo && !meta.clientIp) return { ok: false, error: "not_ready" };
+    const release = await takeListingSlot(ws, workspace, meta.clientIp ?? "");
+    if (!release)
+      return {
+        ok: false,
+        error: "failed",
+        message: "You've made today's listings. Your limit resets at 6:00 AM Bangladesh time.",
+      };
+    try {
+      // in the order the seller attached them, so the first is the main photo
+      const byId = new Map(photos.map((p) => [p.id, p]));
+      const jobId = await ws.createJob(
+        ids.map((id) => ({ mediaId: id, width: byId.get(id)!.width, height: byId.get(id)!.height })),
+      );
+      return { ok: true, value: { jobId, href: `/job/${jobId}` }, summary: `${ids.length} photos` };
+    } catch (err) {
+      await release();
+      throw err;
+    }
   },
 });
 

@@ -18,6 +18,7 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
   const A = forWorkspace(a.workspace.id);
   let listingId = "";
   let brandPhotoId = "";
+  let sentPhotoId = "";
 
   /** A valid input for each op, aimed at shop A's listing. A new op must add one here. */
   const fixtures = (): Record<string, unknown> => ({
@@ -35,6 +36,8 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     setBrandKit: { colors: ["#7a1f2b"], settingMediaId: brandPhotoId },
     getShopSummary: {},
     findListings: { status: "needs_review" },
+    // a photo shop A sent in its chat
+    startListing: { photoIds: [sentPhotoId] },
     saveDraftsToStore: { listingIds: [listingId] },
   });
   // shop-wide reads take no required input and only ever read the caller's own shop
@@ -56,6 +59,9 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     const photo = await samplePhoto("kurti.jpg");
     brandPhotoId = (await saveMedia(a.workspace.id, "brand", photo, { mime: "image/jpeg", width: 1280, height: 1280 }))
       .id;
+    sentPhotoId = (
+      await saveMedia(a.workspace.id, "original", photo, { mime: "image/jpeg", width: 1280, height: 1280 })
+    ).id;
   });
 
   afterAll(async () => {
@@ -301,6 +307,24 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     // saving to the store afterwards keeps it "Posted"
     await ops.saveDraftToStore.call(a.workspace, { listingId, update: true }, { via: "ui", confirmed: true });
     expect((await A.getListing(listingId))!.status).toBe("posted");
+  });
+
+  it("starts one listing from a sent photo, taking a listing slot, and never a second from it", async () => {
+    const used = async () => (await A.usageToday()).listings;
+    const before = await used();
+    const r = await ops.startListing.call(
+      a.workspace,
+      { photoIds: [sentPhotoId] },
+      { via: "chat", idempotencyKey: "start-1" },
+    );
+    expect(r).toMatchObject({ ok: true, value: { href: expect.stringMatching(/^\/job\//) } });
+    const jobId = (r as { value: { jobId: string } }).value.jobId;
+    expect(await A.getJob(jobId)).toMatchObject({ id: jobId });
+    expect(await used()).toBe(before + 1);
+
+    const again = await ops.startListing.call(a.workspace, { photoIds: [sentPhotoId] }, { via: "chat" });
+    expect(again).toMatchObject({ ok: false, error: "invalid" });
+    expect(await used()).toBe(before + 1);
   });
 
   it("saves a brand kit only with this shop's own brand photo", async () => {

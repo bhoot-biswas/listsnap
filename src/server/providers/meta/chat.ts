@@ -37,7 +37,7 @@ const Completion = z.object({
 export function chatBody(input: ChatInput): Record<string, unknown> {
   return {
     model: SPARK_MODEL,
-    messages: [{ role: "developer", content: input.system }, ...input.messages.map(toWire)],
+    messages: [{ role: "developer", content: input.system }, ...input.messages.map((m) => toWire(m, input.images))],
     tools: input.tools.map((t) => ({
       type: "function",
       function: { name: t.name, description: t.description, parameters: t.parameters },
@@ -49,8 +49,21 @@ export function chatBody(input: ChatInput): Record<string, unknown> {
   };
 }
 
-function toWire(m: ChatMessage): Record<string, unknown> {
-  if (m.role === "user") return { role: "user", content: m.content };
+/**
+ * A message as Chat Completions takes it. Attached photos are named by id in the text, so
+ * the model can pass them to a tool after their pixels have left the window.
+ */
+function toWire(m: ChatMessage, images: Record<string, string> = {}): Record<string, unknown> {
+  if (m.role === "user") {
+    if (!m.photoIds?.length) return { role: "user", content: m.content };
+    const text = `${m.content}
+
+[Attached photos: ${m.photoIds.join(", ")}]`.trim();
+    const seen = m.photoIds.flatMap((id) =>
+      images[id] ? [{ type: "image_url", image_url: { url: images[id] } }] : [],
+    );
+    return { role: "user", content: [{ type: "text", text }, ...seen] };
+  }
   if (m.role === "tool") return { role: "tool", tool_call_id: m.toolCallId, content: JSON.stringify(m.result) };
   return {
     role: "assistant",

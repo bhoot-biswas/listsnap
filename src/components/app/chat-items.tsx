@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Check, ExternalLink, X } from "lucide-react";
+import { ArrowRight, Check, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { cn } from "@/lib/utils";
@@ -24,18 +24,29 @@ export function ChatEntry({
   const t = useTranslations("chat");
   if (item.kind === "user" || item.kind === "assistant") {
     const mine = item.kind === "user";
+    const photos = item.kind === "user" ? (item.photos ?? []) : [];
     return (
-      <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
-        <p
-          lang={isBangla(item.text) ? "bn" : undefined}
-          className={cn(
-            "max-w-[85%] rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap",
-            mine ? "bg-primary text-primary-foreground" : "bg-muted",
-          )}
-        >
-          <span className="sr-only">{mine ? t("you") : t("assistant")}: </span>
-          {item.text}
-        </p>
+      <div className={cn("flex flex-col gap-1.5", mine ? "items-end" : "items-start")}>
+        {photos.length > 0 && (
+          <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+            {photos.map((url) => (
+              // eslint-disable-next-line @next/next/no-img-element -- our own /media URL
+              <img key={url} src={url} alt={t("photoAlt")} className="size-24 rounded-lg border object-cover" />
+            ))}
+          </div>
+        )}
+        {item.text && (
+          <p
+            lang={isBangla(item.text) ? "bn" : undefined}
+            className={cn(
+              "max-w-[85%] rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap",
+              mine ? "bg-primary text-primary-foreground" : "bg-muted",
+            )}
+          >
+            <span className="sr-only">{mine ? t("you") : t("assistant")}: </span>
+            {item.text}
+          </p>
+        )}
       </div>
     );
   }
@@ -62,8 +73,18 @@ export function ChatEntry({
 
 function Made({ item }: { item: Extract<ChatItem, { kind: "tool" | "approval" }> }) {
   const t = useTranslations("chat.approval");
+  const tChat = useTranslations("chat");
   return (
     <>
+      {item.open && (
+        <Link
+          href={item.open as Route}
+          className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {tChat("openListing")}
+          <ArrowRight className="size-3.5" aria-hidden="true" />
+        </Link>
+      )}
       {item.listings && (
         <ul className="divide-y rounded-lg border">
           {item.listings.map((l) => (

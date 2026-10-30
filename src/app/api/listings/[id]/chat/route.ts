@@ -2,6 +2,7 @@ import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { fail, notFound, unauthorized } from "@/server/http";
 import { runChat } from "@/server/chat/run-chat";
+import { clientIp } from "@/server/limits";
 import { ChatRequest, type ChatEvent } from "@/lib/schemas/chat";
 
 /** A chat turn can wait on a reel render (about a minute) plus the model's turns around it. */
@@ -31,7 +32,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
         }
       };
       try {
-        await runChat(viewer.workspace, { listingId: id }, body.data, emit);
+        await runChat(viewer.workspace, { listingId: id }, body.data, emit, clientIp(request));
       } catch (err) {
         console.error("[chat] unexpected error:", err);
         emit({ type: "error", code: "generic" });

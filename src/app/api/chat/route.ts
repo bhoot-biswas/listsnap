@@ -1,6 +1,7 @@
 import { apiViewer } from "@/server/auth/session";
 import { fail, unauthorized } from "@/server/http";
 import { runChat } from "@/server/chat/run-chat";
+import { clientIp } from "@/server/limits";
 import { ChatRequest, type ChatEvent } from "@/lib/schemas/chat";
 
 /** A shop chat turn can wait on a few photos or a reel render plus the model's turns around them. */
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
         }
       };
       try {
-        await runChat(viewer.workspace, { listingId: null }, body.data, emit);
+        await runChat(viewer.workspace, { listingId: null }, body.data, emit, clientIp(request));
       } catch (err) {
         console.error("[chat] unexpected error:", err);
         emit({ type: "error", code: "generic" });

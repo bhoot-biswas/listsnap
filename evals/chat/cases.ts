@@ -18,6 +18,8 @@ export interface ChatCase {
   scope: "listing" | "shop";
   say: string;
   history?: ChatMessage[];
+  /** Sample photos (from public/samples) attached to the message, shown to the model. */
+  photos?: string[];
   /** The listing's prompt facts, when the case needs them different from the default. */
   facts?: { reelsMade?: string[]; inStore?: boolean };
   /** Every one of these calls must be made. */
@@ -219,6 +221,22 @@ export const CASES: ChatCase[] = [
     scope: "shop",
     say: "কুর্তির বাংলা রিলটা ফেসবুকে পোস্ট করো",
     calls: [{ tool: "postReel", args: { listingId: KURTI, lang: "bn", destination: "facebook" } }],
+  },
+  {
+    name: "starts a listing from a sent photo",
+    scope: "shop",
+    say: "I want to sell this",
+    photos: ["saree.jpg", "saree-1.jpg"],
+    calls: [{ tool: "startListing", args: { photoIds: ["photo-1", "photo-2"] } }],
+  },
+  {
+    name: "answers about a photo without starting a listing",
+    scope: "shop",
+    say: "এই ছবিটা কি যথেষ্ট পরিষ্কার?",
+    photos: ["kurti.jpg"],
+    answer: true,
+    bangla: true,
+    never: ["startListing"],
   },
   {
     name: "changes a named listing's price",

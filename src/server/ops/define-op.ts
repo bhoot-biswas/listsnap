@@ -17,8 +17,11 @@ import type { Workspace } from "@/server/db/workspaces";
  * 5. Every non-read run is recorded in op_runs; an op that returns `undo` can be undone.
  */
 
-/** What an op does, which decides how a caller must treat it. */
-export type Effect = "read" | "edits_draft" | "creates_media" | "changes_store";
+/**
+ * What an op does, which decides how a caller must treat it. `starts_listing` takes one
+ * of the day's listing slots and starts the pipeline on photos the seller sent.
+ */
+export type Effect = "read" | "edits_draft" | "creates_media" | "starts_listing" | "changes_store";
 
 export type OpError = "invalid" | "not_found" | "not_ready" | "needs_confirmation" | "busy" | "failed";
 
@@ -28,6 +31,8 @@ export interface OpMeta {
   idempotencyKey?: string;
   /** The seller pressed the button or approved the chat's request. Required for changes_store. */
   confirmed?: boolean;
+  /** The visitor's address, for a demo shop's per-visitor listing limit; never stored. */
+  clientIp?: string;
 }
 
 export interface OpContext {
