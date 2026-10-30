@@ -1,6 +1,7 @@
 import { apiViewer } from "@/server/auth/session";
 import { verifyMediaLink } from "@/server/media/signed";
-import { readMedia } from "@/server/media/store";
+import { readMedia, readMediaSized } from "@/server/media/store";
+import { MEDIA_WIDTHS, type MediaWidth } from "@/lib/media-size";
 
 const ID = /^([0-9a-f-]{36})(?:\.(?:jpg|png|mp4))?$/;
 const RANGE = /^bytes=(\d*)-(\d*)$/;
@@ -19,10 +20,16 @@ export async function GET(request: Request, ctx: RouteContext<"/media/[id]">) {
   const id = match?.[1];
   const params = new URL(request.url).searchParams;
   const workspaceId = !id ? null : params.has("s") ? verifyMediaLink(id, params) : (await apiViewer())?.workspace.id;
-  const file = id && workspaceId ? await readMedia(workspaceId, id) : null;
+  // ?w= asks for a smaller copy of an image; any width outside the fixed list gets the original
+  const w = Number(params.get("w"));
+  const width = (MEDIA_WIDTHS as readonly number[]).includes(w) ? (w as MediaWidth) : null;
+  const file =
+    id && workspaceId
+      ? ((width && (await readMediaSized(workspaceId, id, width))) ?? (await readMedia(workspaceId, id)))
+      : null;
   if (!file) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
 
-  const etag = `"${id}"`;
+  const etag = width ? `"${id}-w${width}"` : `"${id}"`;
   const headers = { "Cache-Control": "private, no-cache", ETag: etag, "X-Content-Type-Options": "nosniff" };
   if (request.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
   const typed = { ...headers, "Content-Type": file.mime, "Accept-Ranges": "bytes" };

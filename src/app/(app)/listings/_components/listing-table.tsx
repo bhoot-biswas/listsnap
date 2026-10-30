@@ -6,6 +6,7 @@ import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { StatusBadge } from "@/components/app/status-badge";
 import { listingHref } from "@/lib/listing-links";
 import { localTitle } from "@/lib/titles";
+import { sized } from "@/lib/media-size";
 import { suggestedPrice } from "@/lib/schemas/review";
 import type { ListingListRow } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
@@ -14,7 +15,14 @@ function Thumb({ mediaId, size }: { mediaId: string | null; size: number }) {
   return (
     <div className="relative shrink-0 overflow-hidden rounded-md border bg-white" style={{ width: size, height: size }}>
       {mediaId && (
-        <Image src={mediaUrl(mediaId)} alt="" fill sizes={`${size}px`} className="object-contain" unoptimized />
+        <Image
+          src={sized(mediaUrl(mediaId), size <= 48 ? 96 : 320)}
+          alt=""
+          fill
+          sizes={`${size}px`}
+          className="object-contain"
+          unoptimized
+        />
       )}
     </div>
   );

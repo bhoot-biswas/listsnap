@@ -5,6 +5,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { env } from "@/server/env";
 import type { LookKind } from "@/lib/schemas/looks";
+import type { MediaWidth } from "@/lib/media-size";
 import { execute, selectOne } from "@/server/db/pool";
 
 export type MediaKind =
@@ -94,8 +95,8 @@ export async function saveMedia(
   return { id, kind, mime: meta.mime, width: meta.width, height: meta.height, bytes: data.length };
 }
 
-/** Reads a media file, but only from the given workspace. */
-export async function readMedia(workspaceId: string, id: string): Promise<{ data: Buffer; mime: string } | null> {
+/** Where a media file is on disk, but only if it belongs to the given workspace. */
+async function locate(workspaceId: string, id: string): Promise<{ abs: string; mime: string } | null> {
   const row = await selectOne<{ path: string; mime: string }>(
     "SELECT path, mime FROM media WHERE id = ? AND workspace_id = ?",
     [id, workspaceId],
@@ -104,8 +105,46 @@ export async function readMedia(workspaceId: string, id: string): Promise<{ data
   const root = env().mediaDir;
   const abs = path.resolve(/*turbopackIgnore: true*/ root, row.path);
   if (!abs.startsWith(root + path.sep)) return null; // stored paths are ours, but never trust a path
+  return { abs, mime: row.mime };
+}
+
+/** Reads a media file, but only from the given workspace. */
+export async function readMedia(workspaceId: string, id: string): Promise<{ data: Buffer; mime: string } | null> {
+  const file = await locate(workspaceId, id);
+  if (!file) return null;
   try {
-    return { data: await readFile(abs), mime: row.mime };
+    return { data: await readFile(file.abs), mime: file.mime };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A smaller copy of an image, made on first request and kept beside the original. A list
+ * of 48 px thumbnails otherwise downloads every 1200 px photo in full, which is slow on
+ * phone data. WebP keeps a cutout's transparency at a fraction of the PNG's size.
+ */
+export async function readMediaSized(
+  workspaceId: string,
+  id: string,
+  width: MediaWidth,
+): Promise<{ data: Buffer; mime: string } | null> {
+  const file = await locate(workspaceId, id);
+  if (!file?.mime.startsWith("image/")) return null;
+  const copy = `${file.abs}.w${width}.webp`;
+  try {
+    return { data: await readFile(copy), mime: "image/webp" };
+  } catch {
+    // not made yet
+  }
+  try {
+    const data = await sharp(await readFile(file.abs))
+      .resize({ width, withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    // a failed write only means the next request resizes again
+    await writeFile(copy, data).catch(() => undefined);
+    return { data, mime: "image/webp" };
   } catch {
     return null;
   }

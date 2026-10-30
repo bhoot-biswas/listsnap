@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { cn } from "@/lib/utils";
 import { lookOf } from "@/lib/schemas/looks";
+import { sized } from "@/lib/media-size";
 
 export interface ReviewPhoto {
   id: string;
@@ -81,7 +82,7 @@ export function ReviewPhotos({
                   p.locked && "cursor-default",
                 )}
               >
-                <Image src={p.url} alt="" fill sizes="90px" className="object-cover" unoptimized />
+                <Image src={sized(p.url, 320)} alt="" fill sizes="90px" className="object-cover" unoptimized />
                 {on && (
                   <span className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Check className="size-3" aria-hidden="true" />

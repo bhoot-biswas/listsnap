@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { parseAmount } from "@/lib/amount";
+import { sized } from "@/lib/media-size";
 import { COLOR_MAX, type Variant } from "@/lib/variants";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +62,7 @@ export function VariantFields({
               />
               {photos[v.itemId] && (
                 <Image
-                  src={photos[v.itemId]!}
+                  src={sized(photos[v.itemId]!, 96)}
                   alt=""
                   width={48}
                   height={48}

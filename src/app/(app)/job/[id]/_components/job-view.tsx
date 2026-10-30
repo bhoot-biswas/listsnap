@@ -9,6 +9,7 @@ import { ButtonLink } from "@/components/app/button-link";
 import { StatusBadge } from "@/components/app/status-badge";
 import { useJobRunner } from "@/hooks/use-job-runner";
 import type { JobState } from "@/lib/job-state";
+import { sized } from "@/lib/media-size";
 import { StepList } from "./step-list";
 import { ChooseItems } from "./choose-items";
 import { UnderTheHood } from "./under-the-hood";
@@ -126,7 +127,7 @@ export function JobView({ initial }: { initial: JobState }) {
                           className="relative aspect-square overflow-hidden rounded-md border bg-muted"
                         >
                           <Image
-                            src={img.url}
+                            src={sized(img.url, 320)}
                             alt={l.title ?? ""}
                             fill
                             sizes="96px"

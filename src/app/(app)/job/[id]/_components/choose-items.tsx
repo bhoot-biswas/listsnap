@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { JobState } from "@/lib/job-state";
+import { sized } from "@/lib/media-size";
 import { cn } from "@/lib/utils";
 
 const MODES = ["separate", "set", "variants"] as const;
@@ -57,7 +58,9 @@ export function ChooseItems({
                   on ? "border-primary" : "border-transparent opacity-60",
                 )}
               >
-                {item.url && <Image src={item.url} alt="" fill sizes="120px" className="object-cover" unoptimized />}
+                {item.url && (
+                  <Image src={sized(item.url, 320)} alt="" fill sizes="120px" className="object-cover" unoptimized />
+                )}
                 {on && (
                   <span className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Check className="size-4" />

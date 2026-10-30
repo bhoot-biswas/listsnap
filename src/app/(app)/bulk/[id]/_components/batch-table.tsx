@@ -7,6 +7,7 @@ import { Check, Loader2 } from "lucide-react";
 import { StatusBadge } from "@/components/app/status-badge";
 import { quickEditListing } from "@/server/actions/review";
 import { parseAmount } from "@/lib/amount";
+import { sized } from "@/lib/media-size";
 import type { BatchRow } from "@/lib/batch-state";
 import { cn } from "@/lib/utils";
 
@@ -133,7 +134,11 @@ export function BatchTable({
 
   const thumb = (r: BatchRow) => (
     // eslint-disable-next-line @next/next/no-img-element -- small private /media thumbnails
-    <img src={r.thumbUrl ?? r.photoUrl ?? ""} alt="" className="size-12 rounded-md border bg-white object-cover" />
+    <img
+      src={sized(r.thumbUrl ?? r.photoUrl ?? "", 96)}
+      alt=""
+      className="size-12 rounded-md border bg-white object-cover"
+    />
   );
   const checkbox = (r: BatchRow) =>
     r.listing && SAVABLE.has(r.listing.status) ? (
