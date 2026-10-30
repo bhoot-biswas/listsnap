@@ -3,5 +3,8 @@
 allowBuilds:
   "@parcel/watcher": false
   "@swc/core": false
+  esbuild: false
   sharp: false
   unrs-resolver: false
+minimumReleaseAgeExclude:
+  - hyperframes@0.8.217

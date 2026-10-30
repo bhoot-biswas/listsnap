@@ -27,6 +27,7 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     undoLast: { listingId },
     renderScene: { listingId, scene: "studio" },
     renderLook: { listingId, look: "eid" },
+    makeReel: { listingId, lang: "en" },
     saveDraftToStore: { listingId },
     estimateCost: { op: "renderScene", input: { listingId, scene: "lifestyle" } },
     // aimed at shop A's brand photo rather than a listing; shop B must not be able to use it
@@ -196,6 +197,34 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     const step = (await A.steps(job)).find((s) => s.step === "look" && s.target === `${listingId}:wedding`);
     expect(step?.result_json).toMatchObject({ look: "wedding", aiLabel: "ai_scene", check: { same: true } });
     expect(await ops.renderLook.call(a.workspace, { listingId, look: "party" }, { via: "ui" })).toEqual({
+      ok: false,
+      error: "invalid",
+    });
+  });
+
+  it("makes a reel once per language, kept out of the photos and the store", async () => {
+    await ops.editListingFields.call(a.workspace, { listingId, priceBdt: 1250 }, { via: "ui" });
+    const used = (await A.usageToday()).reels;
+    const first = await ops.makeReel.call(a.workspace, { listingId, lang: "en" }, { via: "ui" });
+    expect(first).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: true } } });
+    const again = await ops.makeReel.call(a.workspace, { listingId, lang: "en" }, { via: "ui" });
+    expect(again).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: false } } });
+    expect((await A.usageToday()).reels).toBe(used + 1);
+
+    const rows = await select<{ id: string; mime: string; selected: number; width: number; height: number }>(
+      "SELECT id, mime, selected, width, height FROM media WHERE workspace_id = ? AND listing_id = ? AND kind = 'reel'",
+      [a.workspace.id, listingId],
+    );
+    expect(rows).toEqual([expect.objectContaining({ mime: "video/mp4", selected: 0, width: 1080, height: 1920 })]);
+    expect((await A.listingMedia([listingId])).some((m) => m.id === rows[0]!.id)).toBe(false);
+    const job = (await A.getListing(listingId))!.job_id;
+    const step = (await A.steps(job)).find((s) => s.step === "reel" && s.target === `${listingId}:showcase:en`);
+    expect(step?.result_json).toMatchObject({ template: "showcase", lang: "en", mediaId: rows[0]!.id });
+
+    // "make a new one" after an edit renders again
+    const retried = await ops.makeReel.call(a.workspace, { listingId, lang: "en", retry: true }, { via: "ui" });
+    expect(retried).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: true } } });
+    expect(await ops.makeReel.call(a.workspace, { listingId, lang: "fr" }, { via: "ui" })).toEqual({
       ok: false,
       error: "invalid",
     });

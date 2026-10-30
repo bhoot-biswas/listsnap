@@ -5,9 +5,11 @@ import { liveMeta } from "./meta/live";
 import { mockWoo } from "./woo/mock";
 import { liveWoo } from "./woo/live";
 import { mockInstagram } from "./ig/mock";
-import type { InstagramProvider, MetaProvider, WooProvider } from "./types";
+import { mockVideo } from "./video/mock";
+import { liveVideo } from "./video/live";
+import type { InstagramProvider, MetaProvider, VideoProvider, WooProvider } from "./types";
 
-export type { CallContext, MetaProvider, WooProvider, WooStore, InstagramProvider } from "./types";
+export type { CallContext, MetaProvider, WooProvider, WooStore, InstagramProvider, VideoProvider } from "./types";
 
 /** Thrown when a provider is set to live before its live client exists. */
 class NotBuiltYet extends Error {
@@ -28,6 +30,11 @@ export function meta(): MetaProvider {
 
 export function woo(): WooProvider {
   return env().providers.woo === "live" ? liveWoo : mockWoo;
+}
+
+/** Reels: live renders with the HyperFrames CLI on this server; mock returns a placeholder clip. */
+export function video(): VideoProvider {
+  return env().providers.video === "live" ? liveVideo : mockVideo;
 }
 
 export function instagram(): InstagramProvider {

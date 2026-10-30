@@ -740,6 +740,24 @@
       "noneLeft": "You've made today's AI photos. More after 6:00 AM Bangladesh time.",
       "making": "Making the {look} look…",
       "failed": "That look couldn't be made. Try again."
+    },
+    "reels": {
+      "title": "Reel",
+      "intro": "A 12-second video for Instagram and Facebook Reels, made from your ticked photos, title and price.",
+      "lang": {
+        "en": "English",
+        "bn": "Bangla"
+      },
+      "make": "Make {lang} reel",
+      "again": "Make a new {lang} reel",
+      "making": "Making the {lang} reel. This takes about a minute.",
+      "failed": "The reel couldn't be made. Try again.",
+      "download": "Download",
+      "aiScene": "Shows AI scenes",
+      "left": "{n, plural, one {# reel} other {# reels}} left today.",
+      "noneLeft": "You've made today's reels. More after 6:00 AM Bangladesh time.",
+      "noPrice": "Add a price first; the reel shows it.",
+      "cta": "Message us to order"
     }
   },
   "bulk": {

@@ -18,7 +18,9 @@ export type MediaKind =
   | "ig_jpeg"
   // the shop's brand kit setting photo, not tied to a listing
   | "brand"
-  | LookKind;
+  | LookKind
+  // a 9:16 MP4 of one listing in one language
+  | "reel";
 
 export interface MediaRecord {
   id: string;
@@ -62,16 +64,18 @@ export async function saveMedia(
     sort?: number;
     /** The image this one was made from, for generated images. */
     fromMediaId?: string | null;
+    /** Whether it goes to the store; a reel never does. Defaults to true, like the column. */
+    selected?: boolean;
   },
 ): Promise<MediaRecord> {
   const id = randomUUID();
-  const ext = meta.mime === "image/png" ? "png" : "jpg";
+  const ext = meta.mime === "image/png" ? "png" : meta.mime === "video/mp4" ? "mp4" : "jpg";
   const rel = path.join(/*turbopackIgnore: true*/ workspaceId, new Date().toISOString().slice(0, 7), `${id}.${ext}`);
   const abs = path.join(/*turbopackIgnore: true*/ env().mediaDir, rel);
   await mkdir(path.dirname(/*turbopackIgnore: true*/ abs), { recursive: true });
   await writeFile(abs, data);
   await execute(
-    "INSERT INTO media (id, workspace_id, kind, path, mime, bytes, width, height, listing_id, from_media_id, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO media (id, workspace_id, kind, path, mime, bytes, width, height, listing_id, from_media_id, sort, selected) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       id,
       workspaceId,
@@ -84,6 +88,7 @@ export async function saveMedia(
       meta.listingId ?? null,
       meta.fromMediaId ?? null,
       meta.sort ?? 0,
+      meta.selected ?? true,
     ],
   );
   return { id, kind, mime: meta.mime, width: meta.width, height: meta.height, bytes: data.length };

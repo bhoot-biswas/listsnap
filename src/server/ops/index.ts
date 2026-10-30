@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { defineOp, type Op } from "./define-op";
 import { editListingFields, getListingSummary, saveListingEdit, undoLast } from "./listing-ops";
-import { renderLook, renderScene, saveDraftToStore } from "./pipeline-ops";
+import { makeReel, renderLook, renderScene, saveDraftToStore } from "./pipeline-ops";
 import { setBrandKit } from "./brand-ops";
 
 export type { Effect, Op, OpError, OpMeta, OpResult } from "./define-op";
@@ -19,6 +19,7 @@ const base = {
   undoLast,
   renderScene,
   renderLook,
+  makeReel,
   saveDraftToStore,
   setBrandKit,
 };

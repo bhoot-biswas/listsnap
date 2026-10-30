@@ -10,6 +10,7 @@ import type {
 } from "@/lib/schemas/pipeline";
 import type { WooCheckResult } from "@/lib/woo-connection";
 import type { AssistRequest } from "@/lib/schemas/assist";
+import type { ReelTemplate, ReelVariables } from "@/lib/schemas/reels";
 
 /**
  * Every outside service sits behind one of these interfaces, each with a mock and a
@@ -151,4 +152,20 @@ export interface InstagramProvider {
     ctx: CallContext,
     input: { imageUrls: string[]; caption: string },
   ): Promise<{ mediaId: string; permalink: string }>;
+}
+
+export interface ReelPhotoFiles {
+  hero: Buffer;
+  look1: Buffer;
+  look2: Buffer;
+  product: Buffer;
+}
+
+export interface VideoProvider {
+  readonly mode: "mock" | "live";
+  /** Renders one reel from one of our templates. Variables are validated before this is called. */
+  renderReel(
+    ctx: CallContext,
+    input: { template: ReelTemplate; photos: ReelPhotoFiles; variables: ReelVariables },
+  ): Promise<{ data: Buffer; width: number; height: number; seconds: number }>;
 }

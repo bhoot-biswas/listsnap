@@ -8,7 +8,10 @@ import { execute, selectOne } from "./pool";
  * both take the last one. Spread into forWorkspace().
  */
 
-type Counter = "listings" | "images";
+type Counter = "listings" | "images" | "reels";
+
+/** Reels a shop can make each day. Rendering costs no AI money, only server time. */
+export const REELS_PER_DAY = 10;
 
 async function reserve(table: "usage_daily" | "ip_daily", key: string, counter: Counter, limit: number) {
   const keyColumn = table === "usage_daily" ? "workspace_id" : "ip_hash";
@@ -36,13 +39,24 @@ export function limitQueries(ws: string) {
     /** Takes one of today's AI photo slots, just before Muse Image is called. */
     reserveImage: (limit: number) => reserve("usage_daily", ws, "images", limit),
 
-    /** What the meters show: listings started and AI photos made today. */
-    async usageToday(): Promise<{ listings: number; images: number }> {
-      const row = await selectOne<{ listings: number; images: number }>(
-        "SELECT listings, images FROM usage_daily WHERE workspace_id = ? AND date = UTC_DATE()",
+    /** Takes one of today's reel slots, just before a reel renders. */
+    reserveReel: () => reserve("usage_daily", ws, "reels", REELS_PER_DAY),
+
+    /** Gives a reel slot back when the render failed: that's the server's fault, not the seller's. */
+    async releaseReel() {
+      await execute(
+        "UPDATE usage_daily SET reels = GREATEST(reels - 1, 0) WHERE workspace_id = ? AND date = UTC_DATE()",
         [ws],
       );
-      return { listings: Number(row?.listings ?? 0), images: Number(row?.images ?? 0) };
+    },
+
+    /** What the meters show: listings started, AI photos and reels made today. */
+    async usageToday(): Promise<{ listings: number; images: number; reels: number }> {
+      const row = await selectOne<{ listings: number; images: number; reels: number }>(
+        "SELECT listings, images, reels FROM usage_daily WHERE workspace_id = ? AND date = UTC_DATE()",
+        [ws],
+      );
+      return { listings: Number(row?.listings ?? 0), images: Number(row?.images ?? 0), reels: Number(row?.reels ?? 0) };
     },
   };
 }

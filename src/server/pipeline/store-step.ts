@@ -96,13 +96,14 @@ export { suggestedPrice };
 function images(
   listing: ListingRow,
   items: ItemRow[],
-  media: { id: string; selected: number | boolean | null }[],
+  media: { id: string; kind: string; selected: number | boolean | null }[],
   title: string,
   colors: { color: string; mediaId: string | null }[],
 ) {
   const main = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id;
   const list = [...(main ? [{ mediaId: main, alt: title }] : [])];
-  for (const m of media) if (m.selected) list.push({ mediaId: m.id, alt: title });
+  // a reel is a video for social posts, never a product image
+  for (const m of media) if (m.selected && m.kind !== "reel") list.push({ mediaId: m.id, alt: title });
   for (const c of colors)
     if (c.mediaId && !list.some((x) => x.mediaId === c.mediaId))
       list.push({ mediaId: c.mediaId, alt: `${title}, ${c.color}` });

@@ -124,10 +124,11 @@ export function listingQueries(ws: string) {
       await execute("UPDATE listings SET status = ? WHERE id = ? AND workspace_id = ?", [status, id, ws]);
     },
 
+    /** A listing's photos. Reels are videos for social posts, never a store photo, so they're left out. */
     listingMedia: (listingIds: string[]) =>
       listingIds.length
         ? select<{ id: string; listing_id: string; kind: string; width: number; height: number; selected: 0 | 1 }>(
-            `SELECT id, listing_id, kind, width, height, selected FROM media WHERE workspace_id = ? AND listing_id IN (${listingIds.map(() => "?").join(",")}) ORDER BY sort, created_at`,
+            `SELECT id, listing_id, kind, width, height, selected FROM media WHERE workspace_id = ? AND kind <> 'reel' AND listing_id IN (${listingIds.map(() => "?").join(",")}) ORDER BY sort, created_at`,
             [ws, ...listingIds],
           )
         : Promise.resolve([]),

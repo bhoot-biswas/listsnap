@@ -1,8 +1,9 @@
 import "server-only";
 import { z } from "zod";
 import { Scene } from "@/lib/schemas/pipeline";
-import { executeListingStep, executeLookStep } from "@/server/pipeline/execute";
+import { executeListingStep, executeLookStep, executeReelStep } from "@/server/pipeline/execute";
 import { Look } from "@/lib/schemas/looks";
+import { ReelLang, ReelTemplate } from "@/lib/schemas/reels";
 import { executeStoreStep } from "@/server/pipeline/store-step";
 import type { StepOutcome } from "@/server/pipeline/run-step";
 import { defineOp } from "./define-op";
@@ -60,5 +61,29 @@ export const renderLook = defineOp({
     if (!r.found) return { ok: false, error: "not_found" };
     if ("invalid" in r) return { ok: false, error: "not_ready", message: r.invalid };
     return { ok: true, value: { outcome: r.outcome as StepOutcome<unknown> }, listingId, summary: look };
+  },
+});
+
+export const makeReel = defineOp({
+  name: "makeReel",
+  description:
+    "Make a 12-second 9:16 video of a finished listing for Instagram and Facebook Reels, in English ('en') or Bangla ('bn'), from the photos the seller ticked, the title and the price. Uses no AI photos; uses one of today's reels. With retry, makes a new one after edits.",
+  input: z.object({
+    listingId: ListingId,
+    lang: ReelLang,
+    template: ReelTemplate.default("showcase"),
+    retry: z.boolean().default(false),
+  }),
+  effect: "creates_media",
+  async run({ workspace }, { listingId, lang, template, retry }) {
+    const r = await executeReelStep(workspace, listingId, lang, template, retry);
+    if (!r.found) return { ok: false, error: "not_found" };
+    if ("invalid" in r) return { ok: false, error: "not_ready", message: r.invalid };
+    return {
+      ok: true,
+      value: { outcome: r.outcome as StepOutcome<unknown> },
+      listingId,
+      summary: `${template} ${lang}`,
+    };
   },
 });

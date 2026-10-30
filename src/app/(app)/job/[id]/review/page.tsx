@@ -9,6 +9,8 @@ import { BanglaText, ListingText } from "@/lib/schemas/pipeline";
 import { suggestedPrice, type ListingEdit } from "@/lib/schemas/review";
 import { listingVariants } from "@/lib/variants";
 import { lookOf, type Look } from "@/lib/schemas/looks";
+import { REEL_LANGS, ReelResult } from "@/lib/schemas/reels";
+import { REELS_PER_DAY } from "@/server/db/limits";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -32,7 +34,18 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
   const en = ListingText.safeParse(listing.fields_json?.en);
   if (!en.success) notFound();
   const bn = BanglaText.safeParse(listing.fields_json?.bn);
-  const [items, media, usage] = await Promise.all([ws.items(id), ws.listingMedia([listing.id]), ws.usageToday()]);
+  const [items, media, usage, reelResults] = await Promise.all([
+    ws.items(id),
+    ws.listingMedia([listing.id]),
+    ws.usageToday(),
+    Promise.all(REEL_LANGS.map((lang) => ws.stepResult(id, "reel", `${listing.id}:showcase:${lang}`))),
+  ]);
+  const reels = Object.fromEntries(
+    REEL_LANGS.map((lang, i) => {
+      const r = ReelResult.safeParse(reelResults[i]);
+      return [lang, r.success ? { url: mediaUrl(r.data.mediaId), aiScene: r.data.aiLabel === "ai_scene" } : null];
+    }),
+  );
   const main = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id;
   const photos: ReviewPhoto[] = [
     ...(main ? [{ id: main, url: mediaUrl(main), kind: "main", selected: true, locked: true }] : []),
@@ -78,6 +91,11 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
         looks={{
           made: media.map((m) => lookOf(m.kind)).filter((l): l is Look => l !== null),
           imagesLeft: Math.max(0, viewer.workspace.limits.images - usage.images),
+        }}
+        reels={{
+          made: reels,
+          langs: bn.success ? [...REEL_LANGS] : ["en"],
+          left: Math.max(0, REELS_PER_DAY - usage.reels),
         }}
         others={listings.map((x, i) => ({
           id: x.id,

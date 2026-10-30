@@ -11,6 +11,8 @@
  * 5. A failure that can't succeed on a retry (a refused request) uses up the attempts at
  *    once; one that never reached the service (the circuit breaker was open) gives its
  *    attempt back.
+ * 6. Only an explicit redo (the seller asked for a new version, like a reel after an
+ *    edit) runs a done step again; the pipeline never does.
  */
 
 export interface StepKey {
@@ -41,8 +43,8 @@ export interface StepStore {
   complete(key: StepKey, result: unknown): Promise<void>;
   /** `exhaust` sets attempts to at least maxAttempts; `refund` takes this attempt back. */
   fail(key: StepKey, error: string, adjust?: { exhaust: number } | { refund: true }): Promise<void>;
-  /** "Try again": a failed row goes back to pending with zero attempts. */
-  reset(key: StepKey): Promise<void>;
+  /** "Try again": a failed row goes back to pending with zero attempts; with `done`, a finished one too. */
+  reset(key: StepKey, opts?: { done?: boolean }): Promise<void>;
 }
 
 export type StepOutcome<T> =
@@ -55,6 +57,8 @@ export interface RunOptions {
   maxAttempts?: number;
   /** The seller pressed "Try again": clear a failed step's attempts first. */
   force?: boolean;
+  /** The seller asked for a new version: a finished step runs again (rule 6). */
+  redo?: boolean;
 }
 
 export const MAX_ATTEMPTS = 3;
@@ -69,7 +73,8 @@ export async function runStep<T>(
   await store.ensure(key);
 
   const before = await store.get(key);
-  if (before?.status === "done") return { state: "done", result: before.result as T, fresh: false };
+  if (opts.redo && before?.status === "done") await store.reset(key, { done: true });
+  else if (before?.status === "done") return { state: "done", result: before.result as T, fresh: false };
   if (opts.force && before?.status === "failed") await store.reset(key);
 
   if (!(await store.claim(key, opts.lockMs, maxAttempts))) {
