@@ -173,6 +173,16 @@ install -m 755 /srv/listsnap/deploy/backup-db.sh /etc/cron.daily/listsnap-db
 
 Both databases are dumped every night and kept for 7 days. Photos are in `/var/lib/listsnap/media`. Hostinger's VPS snapshots cover the whole disk.
 
+Demo shops expire after a day. Delete them, with their photos and their drafts in the demo store, every night after the backup:
+
+```bash
+cat > /etc/cron.d/listsnap-demo <<'EOF'
+30 4 * * * listsnap cd /srv/listsnap && /usr/bin/node --env-file=/etc/listsnap/env scripts/cleanup-demo.mjs >>/var/log/listsnap-demo.log 2>&1
+EOF
+touch /var/log/listsnap-demo.log && chown listsnap /var/log/listsnap-demo.log
+sudo -u listsnap sh -c 'cd /srv/listsnap && node --env-file=/etc/listsnap/env scripts/cleanup-demo.mjs --dry-run'
+```
+
 ## 10. Lock down SSH
 
 Do this once you can log in with an SSH key. If you used a password so far, run this first **from your Mac**:
