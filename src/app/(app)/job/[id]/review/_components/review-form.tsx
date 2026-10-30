@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveListingEdit } from "@/server/actions/review";
 import type { ListingEdit } from "@/lib/schemas/review";
+import { parseAmount } from "@/lib/amount";
 import { cn } from "@/lib/utils";
 import { SaveToStore } from "@/components/app/save-to-store";
 import { Autosaver, type SaveState } from "./autosave";
@@ -22,11 +23,6 @@ import { ListingChat } from "./listing-chat";
 import type { ChatItem } from "@/lib/schemas/chat";
 
 export type { ReviewPhoto } from "./review-side";
-
-const toInt = (s: string): number | null => {
-  const n = Number(s.replace(/[^\d]/g, ""));
-  return s.trim() === "" || !Number.isFinite(n) ? null : Math.round(n);
-};
 
 /**
  * Review (S7): every edit autosaves about a second after the last keystroke (autosave.ts).
@@ -207,7 +203,7 @@ export function ReviewForm({
                 id="price"
                 inputMode="numeric"
                 value={edit.priceBdt ?? ""}
-                onChange={(e) => change({ ...edit, priceBdt: toInt(e.target.value) })}
+                onChange={(e) => change({ ...edit, priceBdt: parseAmount(e.target.value) })}
                 aria-describedby="price-hint"
                 className={cn("h-11", outside && "border-warning")}
               />
@@ -227,7 +223,7 @@ export function ReviewForm({
                   id="stock"
                   inputMode="numeric"
                   value={edit.stockQty ?? ""}
-                  onChange={(e) => change({ ...edit, stockQty: toInt(e.target.value) })}
+                  onChange={(e) => change({ ...edit, stockQty: parseAmount(e.target.value) })}
                   aria-describedby="stock-hint"
                   className="h-11"
                 />

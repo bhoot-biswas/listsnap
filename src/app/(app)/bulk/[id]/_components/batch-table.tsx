@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { Check, Loader2 } from "lucide-react";
 import { StatusBadge } from "@/components/app/status-badge";
 import { quickEditListing } from "@/server/actions/review";
+import { parseAmount } from "@/lib/amount";
 import type { BatchRow } from "@/lib/batch-state";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +35,10 @@ function InlineField({
   const commit = async (raw: string) => {
     const text = raw.trim();
     if (text === last.trim()) return;
-    const patch: Record<string, unknown> =
-      field === "priceBdt"
-        ? { priceBdt: text ? Math.round(Number(text.replace(/[^\d]/g, ""))) : null }
-        : { [field]: text };
+    const price = field === "priceBdt" ? parseAmount(text) : null;
+    // a price with no digits in it is a slip, not a request to clear the price
+    if (field === "priceBdt" && text && price === null) return;
+    const patch: Record<string, unknown> = field === "priceBdt" ? { priceBdt: price } : { [field]: text };
     if (field === "title" && !text) return;
     setSaved("saving");
     const r = await quickEditListing(listingId, patch).catch(() => null);
