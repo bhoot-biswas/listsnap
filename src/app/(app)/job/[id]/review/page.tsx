@@ -8,6 +8,7 @@ import { mediaUrl } from "@/server/media/store";
 import { BanglaText, ListingText } from "@/lib/schemas/pipeline";
 import { suggestedPrice, type ListingEdit } from "@/lib/schemas/review";
 import { listingVariants } from "@/lib/variants";
+import { lookOf, type Look } from "@/lib/schemas/looks";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -31,7 +32,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
   const en = ListingText.safeParse(listing.fields_json?.en);
   if (!en.success) notFound();
   const bn = BanglaText.safeParse(listing.fields_json?.bn);
-  const [items, media] = await Promise.all([ws.items(id), ws.listingMedia([listing.id])]);
+  const [items, media, usage] = await Promise.all([ws.items(id), ws.listingMedia([listing.id]), ws.usageToday()]);
   const main = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id;
   const photos: ReviewPhoto[] = [
     ...(main ? [{ id: main, url: mediaUrl(main), kind: "main", selected: true, locked: true }] : []),
@@ -74,6 +75,10 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
         confidence={listing.confidence}
         checkNotes={listing.check_notes ?? []}
         inStore={listing.status === "in_store" || listing.status === "posted"}
+        looks={{
+          made: media.map((m) => lookOf(m.kind)).filter((l): l is Look => l !== null),
+          imagesLeft: Math.max(0, viewer.workspace.limits.images - usage.images),
+        }}
         others={listings.map((x, i) => ({
           id: x.id,
           n: i + 1,

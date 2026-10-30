@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Check } from "lucide-react";
 import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { cn } from "@/lib/utils";
+import { lookOf } from "@/lib/schemas/looks";
 
 export interface ReviewPhoto {
   id: string;
@@ -28,8 +29,17 @@ export function ReviewPhotos({
   const t = useTranslations("review");
   const tCommon = useTranslations("common");
   const tScenes = useTranslations("job.scenes");
-  const name = (p: ReviewPhoto) =>
-    p.kind === "main" ? t("mainImage") : p.kind in { studio: 1, lifestyle: 1, banner: 1 } ? tScenes(p.kind) : p.kind;
+  const name = (p: ReviewPhoto) => {
+    const look = lookOf(p.kind);
+    if (look) return t(`looks.names.${look}`);
+    return p.kind === "main"
+      ? t("mainImage")
+      : p.kind in { studio: 1, lifestyle: 1, banner: 1 }
+        ? tScenes(p.kind)
+        : p.kind;
+  };
+  // lifestyle and looks redraw the product; studio and banner keep its real pixels
+  const aiScene = (p: ReviewPhoto) => p.kind === "lifestyle" || lookOf(p.kind) !== null;
   const main = photos[0];
 
   return (
@@ -77,9 +87,11 @@ export function ReviewPhotos({
                 <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1 text-center text-[10px] text-white">
                   {p.kind === "main"
                     ? t("mainImage")
-                    : p.kind === "lifestyle"
-                      ? tCommon("aiScene")
-                      : tCommon("aiBackground")}
+                    : lookOf(p.kind)
+                      ? name(p)
+                      : aiScene(p)
+                        ? tCommon("aiScene")
+                        : tCommon("aiBackground")}
                 </span>
               </button>
             </li>

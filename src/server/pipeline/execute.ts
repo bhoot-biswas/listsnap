@@ -5,7 +5,8 @@ import type { Workspace } from "@/server/db/workspaces";
 import { GroupMode, Scene } from "@/lib/schemas/pipeline";
 import { runStep, type StepOutcome } from "./run-step";
 import { groupStep, planStep, segmentStep } from "./job-steps";
-import { renderStep, translateStep, writeStep } from "./listing-steps";
+import { lookStep, renderStep, translateStep, writeStep } from "./listing-steps";
+import type { Look } from "@/lib/schemas/looks";
 import { isSettled, renderTarget, type JobStepName, type ListingStepName } from "./next-calls";
 
 /**
@@ -72,6 +73,32 @@ export async function executeListingStep(
       await ws.setListingStatus(listingId, "failed");
   }
   await settleJob(ws, workspace, listing.job_id);
+  return { found: true, outcome };
+}
+
+const LOOKABLE = new Set(["needs_review", "ready", "in_store", "posted"]);
+
+/**
+ * A campaign look the seller asked for. Not part of the automatic pipeline, so the job's
+ * status is left alone, but it runs under the same step rules: a second click, or a second
+ * tab, gets the saved photo instead of paying for another.
+ */
+export async function executeLookStep(
+  workspace: Workspace,
+  listingId: string,
+  look: Look,
+  force = false,
+): Promise<ExecuteResult | { found: true; invalid: string }> {
+  const ws = forWorkspace(workspace.id);
+  const listing = await ws.getListing(listingId);
+  if (!listing) return { found: false };
+  if (!LOOKABLE.has(listing.status)) return { found: true, invalid: "This listing isn't finished yet." };
+  const outcome = await runStep(
+    sqlStepStore(ws.id),
+    { jobId: listing.job_id, step: "look", target: `${listingId}:${look}` },
+    { lockMs: RENDER_LOCK_MS, force },
+    () => lookStep({ ws, workspace, listing }, look),
+  );
   return { found: true, outcome };
 }
 

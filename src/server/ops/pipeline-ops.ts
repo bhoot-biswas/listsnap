@@ -1,7 +1,8 @@
 import "server-only";
 import { z } from "zod";
 import { Scene } from "@/lib/schemas/pipeline";
-import { executeListingStep } from "@/server/pipeline/execute";
+import { executeListingStep, executeLookStep } from "@/server/pipeline/execute";
+import { Look } from "@/lib/schemas/looks";
 import { executeStoreStep } from "@/server/pipeline/store-step";
 import type { StepOutcome } from "@/server/pipeline/run-step";
 import { defineOp } from "./define-op";
@@ -44,5 +45,20 @@ export const saveDraftToStore = defineOp({
       listingId,
       summary: update ? "update draft" : "save draft",
     };
+  },
+});
+
+export const renderLook = defineOp({
+  name: "renderLook",
+  description:
+    "Make one campaign photo of a listing for an occasion: 'eid', 'boishakh' (Pohela Boishakh), 'minimal' (plain white), 'outdoor' or 'wedding'. The product is redrawn in that setting, checked against the real product, and labelled as an AI scene. Uses one of today's AI photos unless that look already exists.",
+  input: z.object({ listingId: ListingId, look: Look, retry: z.boolean().default(false) }),
+  effect: "creates_media",
+  cost: () => ({ images: 1 }),
+  async run({ workspace }, { listingId, look, retry }) {
+    const r = await executeLookStep(workspace, listingId, look, retry);
+    if (!r.found) return { ok: false, error: "not_found" };
+    if ("invalid" in r) return { ok: false, error: "not_ready", message: r.invalid };
+    return { ok: true, value: { outcome: r.outcome as StepOutcome<unknown> }, listingId, summary: look };
   },
 });

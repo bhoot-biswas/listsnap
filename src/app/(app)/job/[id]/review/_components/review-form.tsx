@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { SaveToStore } from "@/components/app/save-to-store";
 import { Autosaver, type SaveState } from "./autosave";
 import { ConfidencePanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
+import { LooksPanel } from "./looks-panel";
+import type { Look } from "@/lib/schemas/looks";
 import { TextFields, type TextValue } from "./text-fields";
 import { VariantFields } from "./variant-fields";
 
@@ -38,11 +40,13 @@ export function ReviewForm({
   checkNotes,
   inStore,
   others,
+  looks,
 }: {
   jobId: string;
   listingId: string;
   initial: ListingEdit;
   photos: ReviewPhoto[];
+  looks: { made: Look[]; imagesLeft: number };
   colorPhotos: Record<string, string>;
   hint: { low: number; high: number };
   confidence: number | null;
@@ -82,6 +86,18 @@ export function ReviewForm({
     setEdit(next);
     saver.change(next);
   };
+
+  // a look made after the page loaded arrives in `photos`; the seller just asked for it, so
+  // it starts ticked, and the next autosave must not save it as unticked
+  const known = useRef(new Set(photos.map((p) => p.id)));
+  useEffect(() => {
+    const fresh = photos.filter((p) => !p.locked && !known.current.has(p.id)).map((p) => p.id);
+    if (!fresh.length) return;
+    for (const id of fresh) known.current.add(id);
+    const cur = latest.current;
+    change({ ...cur, selectedMediaIds: [...new Set([...cur.selectedMediaIds, ...fresh])] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the photo list changes, not on every edit
+  }, [photos]);
   const setField = (l: "en" | "bn", field: "title" | "short_description" | "description", text: string) => {
     const cur = latest.current;
     if (l === "en") change({ ...cur, en: { ...cur.en, [field]: text } });
@@ -159,6 +175,7 @@ export function ReviewForm({
               })
             }
           />
+          <LooksPanel listingId={listingId} made={looks.made} imagesLeft={looks.imagesLeft} />
           <ConfidencePanel confidence={confidence} notes={checkNotes} />
         </div>
 

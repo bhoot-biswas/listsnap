@@ -725,6 +725,21 @@
         "offline": "You're offline. Your text hasn't changed; try again when you're back.",
         "other": "Something went wrong. Your text hasn't changed; try again."
       }
+    },
+    "looks": {
+      "title": "More looks",
+      "intro": "The same product photographed for an occasion. Each look is an AI scene, checked against your product.",
+      "names": {
+        "eid": "Eid",
+        "boishakh": "Pohela Boishakh",
+        "minimal": "Minimal white",
+        "outdoor": "Outdoor",
+        "wedding": "Wedding"
+      },
+      "cost": "Each look uses one AI photo. {n, plural, one {# left} other {# left}} today.",
+      "noneLeft": "You've made today's AI photos. More after 6:00 AM Bangladesh time.",
+      "making": "Making the {look} look…",
+      "failed": "That look couldn't be made. Try again."
     }
   },
   "bulk": {

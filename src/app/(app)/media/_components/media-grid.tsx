@@ -6,8 +6,9 @@ import type { MediaTile } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
 import { localTitle } from "@/lib/titles";
 import { cn } from "@/lib/utils";
+import { LOOKS, lookKind } from "@/lib/schemas/looks";
 
-const AI_KINDS = new Set(["studio", "lifestyle", "banner"]);
+const AI_KINDS = new Set(["studio", "lifestyle", "banner", ...LOOKS.map(lookKind)]);
 
 /**
  * The photos as tiles: the picture opens full size in a new tab, with its type, size

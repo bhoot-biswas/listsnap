@@ -14,6 +14,7 @@ import { UnderTheHood } from "./under-the-hood";
 import { SaveToStore } from "@/components/app/save-to-store";
 import { PhotoStage } from "./photo-stage";
 import { BeforeAfter } from "./before-after";
+import { lookOf } from "@/lib/schemas/looks";
 
 const SAVABLE = new Set(["ready", "needs_review"]);
 const EDITABLE = new Set(["ready", "needs_review", "in_store", "posted"]);
@@ -120,7 +121,9 @@ export function JobView({ initial }: { initial: JobState }) {
                           />
                           {img.kind !== "main" && (
                             <figcaption className="absolute inset-x-0 bottom-0 bg-black/55 px-1 text-center text-[10px] text-white">
-                              {img.kind === "lifestyle" ? tCommon("aiScene") : tCommon("aiBackground")}
+                              {img.kind === "lifestyle" || lookOf(img.kind)
+                                ? tCommon("aiScene")
+                                : tCommon("aiBackground")}
                             </figcaption>
                           )}
                         </figure>

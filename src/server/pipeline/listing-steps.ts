@@ -1,5 +1,6 @@
 import "server-only";
 import { checkFidelity } from "./fidelity";
+import { lookBrief } from "./looks";
 import { StepError } from "./run-step";
 import { compositeOnBackground, dimensions } from "@/server/image-ops";
 import { readMedia, saveMedia } from "@/server/media/store";
@@ -18,8 +19,9 @@ import {
   type SceneBrief,
 } from "@/lib/schemas/pipeline";
 import type { BrandKit } from "@/lib/schemas/brand-kit";
+import { LOOKS, lookKind, type Look, type LookResult } from "@/lib/schemas/looks";
 
-/** Per-listing steps: write (English), translate (Bangla), render (one scene per call). */
+/** Per-listing steps: write (English), translate (Bangla), render (one scene per call), look (on request). */
 
 export interface ListingStepContext {
   ws: WorkspaceScope;
@@ -107,29 +109,48 @@ async function shopScene(ctx: ListingStepContext, kit: BrandKit): Promise<SceneK
  * is an AI edit of the white cutout image, set in the seller's shop when the brand kit
  * has a setting photo, and is labelled "AI scene".
  */
-export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise<RenderResult> {
-  const p = await plan(ctx);
-  const { main, product, mainId, productId } = await itemImages(ctx);
-  // the slot is taken before Muse Image is paid for; the listing itself is unaffected
+/** The slot is taken before Muse Image is paid for; the listing itself is unaffected. */
+async function reserveImageSlot(ctx: ListingStepContext) {
   if (!(await ctx.ws.reserveImage(ctx.workspace.limits.images)))
     throw new StepError(
       "You've made today's AI photos. More can be made after 6:00 AM Bangladesh time; your listing is saved.",
     );
+}
+
+/**
+ * A scene that redraws the product (lifestyle, a look) is kept only if it is still the
+ * seller's product; a failed attempt is retried by the step rules with a fresh image.
+ */
+async function checkedScene(
+  step: ReturnType<typeof call>,
+  input: { main: Buffer; product: Buffer; phrase: string; brief: SceneBrief | null; kit: SceneKit | null },
+): Promise<{ image: Buffer; check: { same: true; colorSimilarity: number | null } }> {
+  const image = await meta().editScene(step, input.main, "lifestyle", input.phrase, input.brief, input.kit);
+  const fidelity = await checkFidelity(step, input.product, image, input.phrase);
+  if (!fidelity.same)
+    throw new StepError(
+      `The AI photo changed your product (${fidelity.differences}), so it wasn't kept. Try again for a new one; your other photos are ready.`,
+    );
+  return { image, check: { same: true, colorSimilarity: fidelity.colorSimilarity } };
+}
+
+export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise<RenderResult> {
+  const p = await plan(ctx);
+  const { main, product, mainId, productId } = await itemImages(ctx);
+  await reserveImageSlot(ctx);
   const step = call(ctx, "render");
   const kit = ctx.workspace.settings.brandKit;
   const brief = withBrandColors(sceneBrief(p), kit.colors);
   let image: Buffer;
   let check: RenderResult["check"];
   if (scene === "lifestyle") {
-    image = await meta().editScene(step, main, scene, p.sam_phrase, brief, await shopScene(ctx, kit));
-    // the scene redraws the product, so it is kept only if it is still the seller's product;
-    // a failed attempt is retried by the step rules with a fresh image
-    const fidelity = await checkFidelity(step, product, image, p.sam_phrase);
-    if (!fidelity.same)
-      throw new StepError(
-        `The AI photo changed your product (${fidelity.differences}), so it wasn't kept. Try again for a new one; your other photos are ready.`,
-      );
-    check = { same: true, colorSimilarity: fidelity.colorSimilarity };
+    ({ image, check } = await checkedScene(step, {
+      main,
+      product,
+      phrase: p.sam_phrase,
+      brief,
+      kit: await shopScene(ctx, kit),
+    }));
   } else {
     const bg = await meta().background(step, scene, p.camera_angle, brief);
     // the banner keeps the left side free for a title, and gets the same shadow as the photo's
@@ -160,4 +181,32 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
     aiLabel: scene === "lifestyle" ? "ai_scene" : "ai_background",
     ...(check ? { check } : {}),
   };
+}
+
+/**
+ * A campaign look the seller asked for on Review: the lifestyle scene, set for the
+ * occasion instead of the shop, and checked against the product the same way.
+ */
+export async function lookStep(ctx: ListingStepContext, look: Look): Promise<LookResult> {
+  const p = await plan(ctx);
+  const { main, product, mainId } = await itemImages(ctx);
+  await reserveImageSlot(ctx);
+  const { image, check } = await checkedScene(call(ctx, "look"), {
+    main,
+    product,
+    phrase: p.sam_phrase,
+    brief: lookBrief(look, sceneBrief(p)),
+    kit: null,
+  });
+  const { width, height } = await dimensions(image);
+  const media = await saveMedia(ctx.ws.id, lookKind(look), image, {
+    mime: "image/jpeg",
+    width,
+    height,
+    listingId: ctx.listing.id,
+    // after the automatic scenes, in the order the looks are offered
+    sort: 10 + LOOKS.indexOf(look),
+    fromMediaId: mainId,
+  });
+  return { look, mediaId: media.id, aiLabel: "ai_scene", check };
 }
