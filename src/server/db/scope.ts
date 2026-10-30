@@ -146,13 +146,21 @@ export function forWorkspace(workspaceId: string) {
       await execute("UPDATE photos SET check_json = ? WHERE id = ? AND workspace_id = ?", [json(check), photoId, ws]);
     },
 
-    /** Replaces a photo's items; a re-run segment step must not leave the old ones behind. */
+    /**
+     * Replaces a photo's items; a re-run segment step must not leave the old ones behind.
+     * Another shop's photo id gets nothing written.
+     */
     async replaceItems(
       photoId: string,
       items: { box: Box; score: number | null; cutoutMediaId: string; cutoutPngMediaId?: string | null }[],
     ): Promise<string[]> {
       const ids = items.map(() => randomUUID());
-      await transaction(async (conn) => {
+      return transaction(async (conn) => {
+        const [photo] = await conn.query("SELECT id FROM photos WHERE id = ? AND workspace_id = ? FOR UPDATE", [
+          photoId,
+          ws,
+        ]);
+        if (!(photo as unknown[]).length) return [];
         await conn.query("DELETE FROM items WHERE photo_id = ? AND workspace_id = ?", [photoId, ws]);
         for (const [i, item] of items.entries()) {
           await conn.query(
@@ -160,8 +168,8 @@ export function forWorkspace(workspaceId: string) {
             [ids[i]!, photoId, ws, i, json(item.box), item.score, item.cutoutMediaId, item.cutoutPngMediaId ?? null],
           );
         }
+        return ids;
       });
-      return ids;
     },
 
     items: (jobId: string) =>
