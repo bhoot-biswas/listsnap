@@ -57,7 +57,7 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
       { kind: "tool", name: "makeReel", ok: true, media: { video: true } },
       { kind: "assistant", text: "Done." },
     ]);
-    expect(events.at(-1)).toEqual({ type: "done", changed: true });
+    expect(events.at(-1)).toEqual({ type: "done", changed: true, chatId: await A.listingChat(listingId) });
     const runs = await select<{ op: string; via: string }>(
       "SELECT op, via FROM op_runs WHERE workspace_id = ? AND op = 'makeReel'",
       [a.workspace.id],
@@ -126,6 +126,30 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     expect(logged.length).toBeGreaterThan(0);
     expect(logged.some((l) => /review|instagram|store/i.test(l.summary) && !l.summary.startsWith("tools"))).toBe(false);
   });
+  it("carries on an earlier conversation the seller opens, and only one of this listing's", async () => {
+    const [latest, earlier] = await A.chatList(listingId);
+    expect(earlier).toBeDefined();
+    const events = await chat({ message: "What's the price?", chatId: earlier!.id });
+    expect(events.at(-1)).toMatchObject({ type: "done", chatId: earlier!.id });
+    expect(
+      (await A.chatMessages(earlier!.id)).some((m) => m.role === "user" && m.content === "What's the price?"),
+    ).toBe(true);
+    // the conversation used last is the one a reload shows, and comes first in the list
+    expect(await A.listingChat(listingId)).toBe(earlier!.id);
+    expect((await A.chatList(listingId))[0]!.id).toBe(earlier!.id);
+    expect((await A.chatMessages(latest!.id)).some((m) => m.role === "user" && m.content === "What's the price?")).toBe(
+      false,
+    );
+
+    // another shop's conversation, or the shop chat's, can't be carried on from here
+    const shopChat = await A.startChat(null, "Shop question");
+    for (const chatId of [shopChat, "not-a-chat"])
+      expect(await chat({ message: "Hello", chatId })).toEqual([{ type: "error", code: "generic" }]);
+    expect(await chat({ message: "Hello", chatId: earlier!.id }, b.workspace)).toEqual([
+      { type: "error", code: "generic" },
+    ]);
+  });
+
   it("starts a listing from a photo sent in the shop chat, and refuses another shop's photo", async () => {
     const { saveMedia } = await import("@/server/media/store");
     const { chatItems } = await import("@/server/chat/view");

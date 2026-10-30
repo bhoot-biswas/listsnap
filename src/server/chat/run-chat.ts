@@ -45,13 +45,16 @@ export async function runChat(
   const ws = forWorkspace(workspace.id);
   const listing = scope.listingId ? await ws.getListing(scope.listingId) : null;
   if (scope.listingId && !listing) return emit({ type: "error", code: "generic" });
-  let chatId = await ws.listingChat(scope.listingId);
+  // an earlier conversation the seller opened, or the one used last
+  let chatId = req.chatId ? await ws.chatInScope(req.chatId, scope.listingId) : await ws.listingChat(scope.listingId);
+  if (req.chatId && !chatId) return emit({ type: "error", code: "generic" });
   const history = chatId ? await ws.chatMessages(chatId) : [];
   const add = async (m: ChatMessage) => {
     history.push(m);
     await ws.addChatMessage(chatId!, m);
   };
   let changed = false;
+  const done = () => emit({ type: "done", changed, ...(chatId && { chatId }) });
 
   if ("message" in req) {
     if ((await ws.chatCallsToday()) >= CHAT_CALLS_PER_DAY) return emit({ type: "error", code: "limit" });
@@ -80,7 +83,7 @@ export async function runChat(
     const state = !req.approve.yes ? "declined" : result.ok ? "approved" : "failed";
     emit({ type: "item", item: approvalItem(call, state, result) });
     // another card from the same turn still waits for its own answer
-    if (pendingCalls(history).length) return emit({ type: "done", changed });
+    if (pendingCalls(history).length) return done();
   }
 
   const ctx = { workspaceId: workspace.id, jobId: listing?.job_id ?? null, step: "chat" };
@@ -108,7 +111,7 @@ export async function runChat(
       }));
       await add({ role: "assistant", content: answer.content, toolCalls: calls });
       if (answer.content) emit({ type: "item", item: { kind: "assistant", id: randomUUID(), text: answer.content } });
-      if (!calls.length) return emit({ type: "done", changed });
+      if (!calls.length) return done();
 
       let waiting = false;
       for (const [i, call] of calls.entries()) {
@@ -141,7 +144,7 @@ export async function runChat(
           },
         });
       }
-      if (waiting) return emit({ type: "done", changed });
+      if (waiting) return done();
     }
     emit({ type: "error", code: "steps" });
   } catch (err) {
@@ -151,7 +154,7 @@ export async function runChat(
       emit({ type: "error", code: "generic" });
     }
   }
-  emit({ type: "done", changed });
+  done();
 }
 
 /** The photos of the seller's latest message, ready for the model; older ones it knows by id. */

@@ -5,6 +5,8 @@ export const CHAT_MESSAGE_MAX = 1000;
 /** Photos one message can carry: enough for a product from a few sides. */
 export const CHAT_PHOTOS_MAX = 4;
 
+/** Which conversation a message belongs to; without it, the one used last. */
+const ChatId = z.string().min(1).max(36);
 const PhotoIds = z.array(z.string().min(1).max(36)).max(CHAT_PHOTOS_MAX);
 
 /** A tool call as we store it. The id is ours, so it can serve as the op's idempotency key. */
@@ -33,7 +35,7 @@ export type ChatMessage = z.infer<typeof ChatMessage>;
 /**
  * What the chat box sends: a message with any photos already uploaded (in a new chat
  * when `newChat` is set), or the seller's answer to an approval card. A photo alone is
- * a message too.
+ * a message too. `chatId` names an earlier conversation the seller opened.
  */
 export const ChatRequest = z.union([
   z
@@ -41,9 +43,13 @@ export const ChatRequest = z.union([
       message: z.string().trim().max(CHAT_MESSAGE_MAX),
       photoIds: PhotoIds.default([]),
       newChat: z.boolean().default(false),
+      chatId: ChatId.optional(),
     })
     .refine((m) => m.message.length > 0 || m.photoIds.length > 0),
-  z.object({ approve: z.object({ toolCallId: z.string().min(1).max(100), yes: z.boolean() }) }),
+  z.object({
+    approve: z.object({ toolCallId: z.string().min(1).max(100), yes: z.boolean() }),
+    chatId: ChatId.optional(),
+  }),
 ]);
 export type ChatRequest = z.infer<typeof ChatRequest>;
 
@@ -73,10 +79,18 @@ export type ChatItem =
 
 /**
  * The response is a stream of these, one JSON object per line. `working` names the tool
- * running (null while the model thinks); `done` says whether anything on the page changed.
+ * running (null while the model thinks); `done` says whether anything on the page changed,
+ * and which conversation the request went to.
  */
 export type ChatEvent =
   | { type: "item"; item: ChatItem }
   | { type: "working"; name: string | null }
   | { type: "error"; code: "busy" | "limit" | "steps" | "answered" | "generic"; message?: string }
-  | { type: "done"; changed: boolean };
+  | { type: "done"; changed: boolean; chatId?: string };
+
+/** A conversation in the list of earlier ones. */
+export interface ChatSummary {
+  id: string;
+  title: string;
+  updatedAt: string;
+}

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { resizeForUpload } from "@/lib/resize-image";
 import { CHAT_MESSAGE_MAX, CHAT_PHOTOS_MAX, type ChatEvent, type ChatItem } from "@/lib/schemas/chat";
 import { ChatEntry } from "./chat-items";
+import { ChatHistory } from "./chat-history";
 
 /**
  * The conversation and its message box, shared by a listing's chat (a side panel on
@@ -20,6 +21,7 @@ import { ChatEntry } from "./chat-items";
  */
 export function ChatPanel({
   endpoint,
+  historyUrl,
   initial,
   intro,
   placeholder,
@@ -29,6 +31,8 @@ export function ChatPanel({
   beforeSend,
 }: {
   endpoint: string;
+  /** Where the list of earlier conversations comes from. */
+  historyUrl: string;
   initial: ChatItem[];
   intro: string;
   placeholder: string;
@@ -50,6 +54,8 @@ export function ChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(0);
+  // undefined: the conversation used last, as the page loaded it; null: a new one not sent yet
+  const [chatId, setChatId] = useState<string | null | undefined>(undefined);
   const end = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
 
@@ -97,6 +103,7 @@ export function ChatPanel({
           const e = JSON.parse(line) as ChatEvent;
           if (e.type === "item") upsert(e.item);
           else if (e.type === "working") setWorking(e.name);
+          else if (e.type === "done" && e.chatId) setChatId(e.chatId);
           else if (e.type === "error") setError(e.message ?? t(`error.${e.code === "busy" ? "generic" : e.code}`));
         }
       }
@@ -133,6 +140,24 @@ export function ChatPanel({
     }
   }
 
+  async function open(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/chats/${id}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setItems(((await res.json()) as { items: ChatItem[] }).items);
+      setChatId(id);
+    } catch {
+      setError(t("history.failed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // a message or an answer goes to the conversation on screen
+  const which = () => (typeof chatId === "string" ? { chatId } : {});
+
   function send(message: string, newChat = false) {
     const clean = message.trim();
     if ((!clean && !photos.length) || busy || uploading) return;
@@ -145,7 +170,7 @@ export function ChatPanel({
       ...(photos.length && { photos: photos.map((p) => p.url) }),
     };
     setItems((cur) => (newChat ? [mine] : [...cur, mine]));
-    void request({ message: clean, photoIds: photos.map((p) => p.id), newChat });
+    void request({ message: clean, photoIds: photos.map((p) => p.id), newChat, ...(!newChat && which()) });
   }
 
   const status =
@@ -153,24 +178,24 @@ export function ChatPanel({
 
   return (
     <div className={cn("flex flex-col", layout === "panel" ? "min-h-0 flex-1" : "flex-1")}>
-      {items.length > 0 && (
-        <div className="flex justify-end border-b px-3 py-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-11"
-            disabled={busy}
-            onClick={() => {
-              setItems([]);
-              setError(null);
-            }}
-          >
-            <MessageSquarePlus className="size-4" aria-hidden="true" />
-            {t("newChat")}
-          </Button>
-        </div>
-      )}
+      <div className="flex justify-end gap-1 border-b px-3 py-1">
+        <ChatHistory url={historyUrl} current={chatId} disabled={busy} onPick={(id) => void open(id)} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-11"
+          disabled={busy || items.length === 0}
+          onClick={() => {
+            setItems([]);
+            setChatId(null);
+            setError(null);
+          }}
+        >
+          <MessageSquarePlus className="size-4" aria-hidden="true" />
+          {t("newChat")}
+        </Button>
+      </div>
 
       <div
         role="log"
@@ -201,7 +226,7 @@ export function ChatPanel({
               key={item.id}
               item={item}
               busy={busy}
-              onAnswer={(id, yes) => void request({ approve: { toolCallId: id, yes } })}
+              onAnswer={(id, yes) => void request({ approve: { toolCallId: id, yes }, ...which() })}
             />
           ))
         )}

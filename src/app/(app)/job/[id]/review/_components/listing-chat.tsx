@@ -35,6 +35,7 @@ export function ListingChat({
         </SheetHeader>
         <ChatPanel
           endpoint={`/api/listings/${listingId}/chat`}
+          historyUrl={`/api/chats?listing=${listingId}`}
           initial={initial}
           intro={t("intro")}
           placeholder={t("placeholder")}
