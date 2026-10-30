@@ -561,7 +561,8 @@
     "itemN": "Item {n, number}",
     "chooseSending": "Starting…",
     "chooseFailed": "That didn’t go through. Check your connection and try again.",
-    "stalled": "Couldn’t reach ListSnap, so your listing has paused."
+    "stalled": "Couldn’t reach ListSnap, so your listing has paused.",
+    "seeUsage": "See today’s usage"
   },
   "errors": {
     "title": "Something went wrong",

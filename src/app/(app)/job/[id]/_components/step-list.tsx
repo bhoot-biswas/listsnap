@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Circle, Loader2, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/app/button-link";
 import type { JobState, StepView } from "@/lib/job-state";
 import { cn } from "@/lib/utils";
 
@@ -122,33 +123,44 @@ function StepRow({ row, onRetry }: { row: Row; onRetry: (s: StepView) => Promise
           {row.label}
         </p>
         {row.detail && <p className="text-sm text-muted-foreground">{row.detail}</p>}
-        {row.status === "failed" && row.step && (
-          <div className="mt-1 space-y-2 rounded-lg bg-destructive/5 p-3 text-sm">
-            <p className="text-destructive">{row.step.error}</p>
-            {row.step.exhausted ? (
-              <>
-                <p className="text-muted-foreground">{t("job.failedHint")}</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-11 md:h-8"
-                  disabled={retrying}
-                  onClick={async () => {
-                    setRetrying(true);
-                    await onRetry(row.step!);
-                    setRetrying(false);
-                  }}
-                >
-                  <RotateCcw />
-                  {t("common.tryAgain")}
-                </Button>
-              </>
-            ) : (
-              <p className="text-muted-foreground">
-                {t("job.retrying")} · {t("job.attempt", { n: row.step.attempts + 1 })}
-              </p>
-            )}
+        {row.status === "failed" && row.step?.errorKey === "imagesUsedUp" ? (
+          // a used-up daily limit isn't a failure to retry: say when more come, and where to see usage
+          <div className="mt-1 space-y-2 rounded-lg bg-muted p-3 text-sm">
+            <p>{row.step.error}</p>
+            <ButtonLink href="/usage" variant="outline" size="sm" className="h-11 md:h-8">
+              {t("job.seeUsage")}
+            </ButtonLink>
           </div>
+        ) : (
+          row.status === "failed" &&
+          row.step && (
+            <div className="mt-1 space-y-2 rounded-lg bg-destructive/5 p-3 text-sm">
+              <p className="text-destructive">{row.step.error}</p>
+              {row.step.exhausted ? (
+                <>
+                  <p className="text-muted-foreground">{t("job.failedHint")}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-11 md:h-8"
+                    disabled={retrying}
+                    onClick={async () => {
+                      setRetrying(true);
+                      await onRetry(row.step!);
+                      setRetrying(false);
+                    }}
+                  >
+                    <RotateCcw />
+                    {t("common.tryAgain")}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-muted-foreground">
+                  {t("job.retrying")} · {t("job.attempt", { n: row.step.attempts + 1 })}
+                </p>
+              )}
+            </div>
+          )
         )}
       </div>
     </li>
