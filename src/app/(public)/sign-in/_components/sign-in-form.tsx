@@ -145,10 +145,10 @@ export function SignInForm(props: {
             <p className="text-sm text-muted-foreground">{t("sentBody", { email: sentTo })}</p>
             {props.devMail && <p className="text-xs text-muted-foreground">{t("devMailNote")}</p>}
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" size="sm" onClick={() => sendLink()} disabled={cooldown > 0 || !!busy}>
+              <Button variant="secondary" size="sm" className="h-11 md:h-8" onClick={() => sendLink()} disabled={cooldown > 0 || !!busy}>
                 {cooldown > 0 ? t("resendIn", { seconds: cooldown }) : t("resend")}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setSentTo(null)}>
+              <Button variant="ghost" size="sm" className="h-11 md:h-8" onClick={() => setSentTo(null)}>
                 {t("differentEmail")}
               </Button>
             </div>

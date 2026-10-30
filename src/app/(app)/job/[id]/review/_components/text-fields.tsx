@@ -204,7 +204,7 @@ export function TextFields({
                       value.tags.filter((x) => x !== tg),
                     )
                   }
-                  className="flex size-7 items-center justify-center rounded-full hover:bg-muted"
+                  className="relative flex size-7 items-center justify-center rounded-full after:absolute after:-inset-2 hover:bg-muted"
                 >
                   <X className="size-3.5" />
                 </button>

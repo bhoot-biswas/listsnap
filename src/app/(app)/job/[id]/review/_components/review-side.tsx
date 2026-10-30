@@ -19,10 +19,13 @@ export interface ReviewPhoto {
 /** The photos column: the main image large, then each image as a tile that toggles inclusion. */
 export function ReviewPhotos({
   photos,
+  title,
   selected,
   onToggle,
 }: {
   photos: ReviewPhoto[];
+  /** The listing's title, which describes the main photo for screen readers. */
+  title: string;
   selected: Set<string>;
   onToggle: (id: string) => void;
 }) {
@@ -51,7 +54,7 @@ export function ReviewPhotos({
         <div className="relative aspect-square overflow-hidden rounded-xl border bg-white">
           <Image
             src={main.url}
-            alt=""
+            alt={title}
             fill
             sizes="(max-width: 1024px) 100vw, 360px"
             className="object-contain"

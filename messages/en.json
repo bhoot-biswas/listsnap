@@ -554,7 +554,8 @@
     },
     "retake": "Take another photo",
     "reviewNow": "Review now",
-    "keepOpen": "Keep this page open while we work. If you leave, open it again from the Dashboard to carry on."
+    "keepOpen": "Keep this page open while we work. If you leave, open it again from the Dashboard to carry on.",
+    "itemN": "Item {n, number}"
   },
   "errors": {
     "title": "Something went wrong",

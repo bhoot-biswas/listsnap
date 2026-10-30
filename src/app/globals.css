@@ -71,8 +71,9 @@
   --accent-foreground: #14201a;
   --marigold: #c98a12;
   --marigold-soft: #f8ecd2;
-  --success: #1d7a46;
-  --warning: #a86a00;
+  /* both pass WCAG AA (≥ 4.5:1) as badge text on their own soft backgrounds */
+  --success: #186b3c;
+  --warning: #8a5700;
   --destructive: #b23a2e;
   --border: #dce2da;
   --input: #dce2da;

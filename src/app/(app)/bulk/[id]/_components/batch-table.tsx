@@ -137,13 +137,16 @@ export function BatchTable({
   );
   const checkbox = (r: BatchRow) =>
     r.listing && SAVABLE.has(r.listing.status) ? (
-      <input
-        type="checkbox"
-        className="size-5 accent-primary"
-        checked={selected.has(r.listing.id)}
-        onChange={(e) => onSelect(r.listing!.id, e.target.checked)}
-        aria-label={t("select", { title: r.listing.title ?? "" })}
-      />
+      // a 20 px box inside a 44 px label, so the whole square is the tap target
+      <label className="flex size-11 shrink-0 cursor-pointer items-center justify-center">
+        <input
+          type="checkbox"
+          className="size-5 accent-primary"
+          checked={selected.has(r.listing.id)}
+          onChange={(e) => onSelect(r.listing!.id, e.target.checked)}
+          aria-label={t("select", { title: r.listing.title ?? "" })}
+        />
+      </label>
     ) : null;
   const reviewLink = (r: BatchRow) =>
     r.listing && r.listing.title ? (

@@ -42,29 +42,21 @@ export function ChooseItems({
         <p className="text-sm text-muted-foreground">{state.suggestion?.reason ?? t("chooseBody")}</p>
       </div>
       <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-        {state.items.map((item) => {
+        {state.items.map((item, i) => {
           const on = kept.has(item.id);
           return (
             <li key={item.id}>
               <button
                 type="button"
                 aria-pressed={on}
+                aria-label={item.color ?? t("itemN", { n: i + 1 })}
                 onClick={() => toggle(item.id)}
                 className={cn(
                   "relative block aspect-square w-full overflow-hidden rounded-lg border-2 bg-muted",
                   on ? "border-primary" : "border-transparent opacity-60",
                 )}
               >
-                {item.url && (
-                  <Image
-                    src={item.url}
-                    alt={item.color ?? ""}
-                    fill
-                    sizes="120px"
-                    className="object-cover"
-                    unoptimized
-                  />
-                )}
+                {item.url && <Image src={item.url} alt="" fill sizes="120px" className="object-cover" unoptimized />}
                 {on && (
                   <span className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Check className="size-4" />
@@ -88,6 +80,7 @@ export function ChooseItems({
             aria-checked={mode === m}
             variant={mode === m ? "default" : "outline"}
             size="sm"
+            className="h-11 md:h-8"
             onClick={() => setMode(m)}
           >
             {t(LABEL[m])}

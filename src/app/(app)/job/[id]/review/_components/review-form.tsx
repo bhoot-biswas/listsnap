@@ -180,6 +180,7 @@ export function ReviewForm({
         <div className="space-y-6">
           <ReviewPhotos
             photos={photos}
+            title={edit.en.title}
             selected={selected}
             onToggle={(id) =>
               change({
@@ -252,7 +253,7 @@ export function ReviewForm({
                 aria-selected={lang === l}
                 onClick={() => setLang(l)}
                 className={cn(
-                  "min-h-10 rounded-md px-4 text-sm font-medium",
+                  "min-h-11 rounded-md px-4 text-sm font-medium",
                   lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
                 )}
               >

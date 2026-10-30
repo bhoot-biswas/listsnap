@@ -130,6 +130,7 @@ function StepRow({ row, onRetry }: { row: Row; onRetry: (s: StepView) => Promise
                 <Button
                   size="sm"
                   variant="outline"
+                  className="h-11 md:h-8"
                   disabled={retrying}
                   onClick={async () => {
                     setRetrying(true);
