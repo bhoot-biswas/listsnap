@@ -44,6 +44,11 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
     },
   });
   return new Response(stream, {
-    headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+      // Nginx would otherwise hold the events back until the whole turn is done
+      "X-Accel-Buffering": "no",
+    },
   });
 }
