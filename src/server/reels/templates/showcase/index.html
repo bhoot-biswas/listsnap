@@ -38,7 +38,8 @@
       #root {
         position: relative; width: 100%; height: 100%; overflow: hidden;
         background: var(--ground); color: var(--ink);
-        font-family: "LS Display", sans-serif;
+        /* Bricolage has no ৳; Hind does, and a bare Linux server has no system font with it */
+        font-family: "LS Display", "LS Bangla", sans-serif;
       }
       #root.bn { font-family: "LS Bangla", "LS Display", sans-serif; }
       .clip { position: absolute; inset: 0; }

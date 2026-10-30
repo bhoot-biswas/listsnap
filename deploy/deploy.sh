@@ -13,6 +13,9 @@ echo "→ Pulling main"
 as_app "git fetch --quiet origin main && git reset --hard --quiet origin/main"
 echo "→ Installing packages"
 as_app "pnpm install --frozen-lockfile"
+# reels need the Chrome build that matches this HyperFrames version; a no-op when it's there
+echo "→ Checking the reel browser"
+as_app "node node_modules/hyperframes/bin/hyperframes.mjs browser ensure"
 # the migrator reads process.env, not .env files, so it gets the file directly
 echo "→ Migrating the database"
 as_app "node --env-file=$ENV scripts/db-migrate.mjs"

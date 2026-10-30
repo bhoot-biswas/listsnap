@@ -16,6 +16,9 @@ The config files are in [`deploy/`](deploy). Run every command below on the serv
 apt update && apt -y upgrade
 apt -y install nginx mariadb-server git curl unzip ufw fail2ban \
   php8.3-fpm php8.3-mysql php8.3-curl php8.3-gd php8.3-intl php8.3-mbstring php8.3-xml php8.3-zip
+# reels: ffmpeg encodes them, and headless Chrome (fetched by deploy.sh) needs these libraries
+apt -y install ffmpeg libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 \
+  libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 libcairo2
 # 2 GB of swap: a safety net for the build
 fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
@@ -138,6 +141,7 @@ Then:
 
 - **The demo store:** paste the three `DEMO_WOO_…` lines from step 7, and set `PROVIDER_MODE_WOO=live`.
 - **Meta AI:** add `MODEL_API_KEY=…` and set `PROVIDER_MODE_META=live`. Set a spend alert on the Meta side too.
+- **Reels:** set `PROVIDER_MODE_VIDEO=live`. On a 2-vCPU server also add `REEL_WORKERS=1`: a 12 s reel takes about 46 s and under 900 MB either way, and one worker leaves a core for the app.
 - **Email sign-in:** create a mailbox in hPanel (for example `hello@getlistsnap.com`), then add:
 
   ```
