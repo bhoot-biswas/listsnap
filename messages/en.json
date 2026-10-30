@@ -575,8 +575,9 @@
     "openInStore": "Open in WooCommerce",
     "snapAnother": "Snap another",
     "toDashboard": "Back to dashboard",
-    "instagramSoon": "Instagram posting is coming soon.",
-    "stats": "Took {seconds} s · AI cost ${cost}"
+    "stats": "Took {seconds} s · AI cost ${cost}",
+    "reelOrPost": "Make a reel or post",
+    "reelOrPostMany": "Tap a product to make its reel or post it to Facebook and Instagram."
   },
   "connect": {
     "url": "Store address",

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { CircleCheck, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { CircleCheck, Clapperboard, ExternalLink } from "lucide-react";
 import { TopBar } from "@/components/app/top-bar";
 import { ButtonLink } from "@/components/app/button-link";
 import { buttonVariants } from "@/components/ui/button";
@@ -24,7 +25,7 @@ function makingSeconds(state: JobState): number | null {
   return Math.max(1, Math.round((end - Date.parse(state.createdAt)) / 1000));
 }
 
-/** S8 Done, basic: what was saved to the store, and where to go next. */
+/** S8 Done: what was saved to the store, and where to go next (a reel or post is made on Review). */
 export default async function DonePage({ params }: PageProps<"/job/[id]/done">) {
   const viewer = await requireWorkspace();
   const { id } = await params;
@@ -61,7 +62,12 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
             <ul className="divide-y rounded-lg border text-left">
               {saved.map(({ listing, store }) => (
                 <li key={listing.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                  <span className="min-w-0 truncate text-sm">{listing.title}</span>
+                  <Link
+                    href={`/job/${id}/review?l=${listing.id}`}
+                    className="inline-flex min-h-11 min-w-0 items-center text-sm hover:underline"
+                  >
+                    <span className="truncate">{listing.title}</span>
+                  </Link>
                   {store && (
                     <a
                       href={store.editUrl}
@@ -85,6 +91,17 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
                 <ExternalLink aria-hidden="true" />
               </a>
             )}
+            {saved.length === 1 && (
+              <ButtonLink
+                href={`/job/${id}/review?l=${saved[0]!.listing.id}`}
+                variant="outline"
+                size="lg"
+                className="w-full"
+              >
+                <Clapperboard aria-hidden="true" />
+                {t("reelOrPost")}
+              </ButtonLink>
+            )}
             <ButtonLink href="/snap" size="lg" className="w-full">
               {t("snapAnother")}
             </ButtonLink>
@@ -93,7 +110,7 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
             </ButtonLink>
           </div>
 
-          <p className="text-sm text-muted-foreground">{t("instagramSoon")}</p>
+          {saved.length > 1 && <p className="text-sm text-muted-foreground">{t("reelOrPostMany")}</p>}
           {seconds !== null && (
             <p className="text-xs text-muted-foreground">
               {t("stats", { seconds, cost: state.costUsd.toFixed(state.costUsd < 0.01 ? 3 : 2) })}

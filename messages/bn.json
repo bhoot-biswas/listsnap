@@ -575,8 +575,9 @@
     "openInStore": "WooCommerce-এ খুলুন",
     "snapAnother": "আরেকটা ছবি তুলুন",
     "toDashboard": "ড্যাশবোর্ডে ফিরুন",
-    "instagramSoon": "ইনস্টাগ্রামে পোস্ট করা শিগগিরই আসছে।",
-    "stats": "সময় লেগেছে {seconds} সেকেন্ড · AI খরচ ${cost}"
+    "stats": "সময় লেগেছে {seconds} সেকেন্ড · AI খরচ ${cost}",
+    "reelOrPost": "রিল বানান বা পোস্ট করুন",
+    "reelOrPostMany": "কোনো পণ্যে ট্যাপ করে তার রিল বানান বা ফেসবুক ও ইনস্টাগ্রামে পোস্ট করুন।"
   },
   "connect": {
     "url": "স্টোরের ঠিকানা",
