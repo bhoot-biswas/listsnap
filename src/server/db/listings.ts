@@ -25,6 +25,14 @@ export interface ListingRow {
   updated_at: Date;
 }
 
+/** What an undo restores: the seller-editable parts of a listing. */
+export interface ListingSnapshot {
+  fields: Record<string, unknown>;
+  priceBdt: number | null;
+  stockQty: number | null;
+  selectedMediaIds: string[];
+}
+
 /** A row for the recent-listings lists (Snap, later Dashboard and Listings). */
 export interface RecentListingRow {
   id: string;
@@ -161,6 +169,44 @@ export function listingQueries(ws: string) {
         await conn.query(
           `UPDATE media SET selected = COALESCE(id IN (${edit.selectedMediaIds.map(() => "?").join(",") || "NULL"}), 0) WHERE listing_id = ? AND workspace_id = ?`,
           [...edit.selectedMediaIds, id, ws],
+        );
+      });
+    },
+
+    /** Everything a seller edit can change, so an undo can put it back exactly. */
+    async listingSnapshot(id: string): Promise<ListingSnapshot | null> {
+      const row = await selectOne<{
+        fields_json: Record<string, unknown> | string | null;
+        price_bdt: number | null;
+        stock_qty: number | null;
+      }>("SELECT fields_json, price_bdt, stock_qty FROM listings WHERE id = ? AND workspace_id = ?", [id, ws]);
+      if (!row) return null;
+      // MariaDB can hand JSON back as text, as saveListingText also allows for
+      const fields =
+        typeof row.fields_json === "string"
+          ? (JSON.parse(row.fields_json) as Record<string, unknown>)
+          : (row.fields_json ?? {});
+      const selected = await select<{ id: string }>(
+        "SELECT id FROM media WHERE listing_id = ? AND workspace_id = ? AND selected = 1 ORDER BY id",
+        [id, ws],
+      );
+      return {
+        fields,
+        priceBdt: row.price_bdt,
+        stockQty: row.stock_qty,
+        selectedMediaIds: selected.map((m) => m.id),
+      };
+    },
+
+    async restoreListing(id: string, snap: ListingSnapshot) {
+      await transaction(async (conn) => {
+        await conn.query(
+          "UPDATE listings SET fields_json = ?, price_bdt = ?, stock_qty = ? WHERE id = ? AND workspace_id = ?",
+          [json(snap.fields), snap.priceBdt, snap.stockQty, id, ws],
+        );
+        await conn.query(
+          `UPDATE media SET selected = COALESCE(id IN (${snap.selectedMediaIds.map(() => "?").join(",") || "NULL"}), 0) WHERE listing_id = ? AND workspace_id = ?`,
+          [...snap.selectedMediaIds, id, ws],
         );
       });
     },

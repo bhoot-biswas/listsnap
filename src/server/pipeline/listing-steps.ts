@@ -42,13 +42,20 @@ async function originalPhoto(ctx: ListingStepContext): Promise<Buffer> {
  * lifestyle edit starts from); `product` is the transparent cutout when SAM made one,
  * so composites place the product itself rather than a white square.
  */
-async function itemImages(ctx: ListingStepContext): Promise<{ main: Buffer; product: Buffer }> {
+async function itemImages(
+  ctx: ListingStepContext,
+): Promise<{ main: Buffer; product: Buffer; mainId: string; productId: string }> {
   const items = await ctx.ws.items(ctx.listing.job_id);
   const first = items.find((i) => i.id === ctx.listing.item_ids_json[0]);
   const main = first?.cutout_media_id ? await readMedia(ctx.ws.id, first.cutout_media_id) : null;
-  if (!main) throw new StepError("The cutout for this item is missing.");
-  const png = first?.cutout_png_media_id ? await readMedia(ctx.ws.id, first.cutout_png_media_id) : null;
-  return { main: main.data, product: png?.data ?? main.data };
+  if (!main || !first?.cutout_media_id) throw new StepError("The cutout for this item is missing.");
+  const png = first.cutout_png_media_id ? await readMedia(ctx.ws.id, first.cutout_png_media_id) : null;
+  return {
+    main: main.data,
+    product: png?.data ?? main.data,
+    mainId: first.cutout_media_id,
+    productId: png ? first.cutout_png_media_id! : first.cutout_media_id,
+  };
 }
 
 export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
@@ -79,7 +86,7 @@ export async function translateStep(ctx: ListingStepContext): Promise<BanglaText
  */
 export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise<RenderResult> {
   const p = await plan(ctx);
-  const { main, product } = await itemImages(ctx);
+  const { main, product, mainId, productId } = await itemImages(ctx);
   // the slot is taken before Muse Image is paid for; the listing itself is unaffected
   if (!(await ctx.ws.reserveImage(ctx.workspace.limits.images)))
     throw new StepError(
@@ -106,6 +113,8 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
     height,
     listingId: ctx.listing.id,
     sort,
+    // lifestyle edits the white main image; composites place the cutout
+    fromMediaId: scene === "lifestyle" ? mainId : productId,
   });
   return { scene, mediaId: media.id, aiLabel: scene === "lifestyle" ? "ai_scene" : "ai_background" };
 }
