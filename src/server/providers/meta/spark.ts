@@ -130,11 +130,11 @@ export async function sparkJson<S extends z.ZodType>(opts: {
   let reasoningTokens = 0;
   let model = SPARK_MODEL;
   for (let requests = 1; ; requests++) {
-    const completion = await post(key, body, deadline - performance.now());
+    const completion = await sparkPost(key, body, deadline - performance.now(), Completion);
     model = completion.model ?? model;
     const usage = completion.usage;
     if (usage) {
-      costUsd += (usage.prompt_tokens * PRICE_PER_M.input + usage.completion_tokens * PRICE_PER_M.output) / 1e6;
+      costUsd += sparkCost(usage);
       cachedTokens += usage.prompt_tokens_details?.cached_tokens ?? 0;
       reasoningTokens += usage.completion_tokens_details?.reasoning_tokens ?? 0;
     }
@@ -192,7 +192,20 @@ function parseAnswer<S extends z.ZodType>(
     : { success: false, error: z.prettifyError(result.error).slice(0, 300) };
 }
 
-async function post(key: string, body: string, timeoutMs: number): Promise<z.infer<typeof Completion>> {
+/** What a completion's usage cost, in dollars. */
+export const sparkCost = (usage: { prompt_tokens: number; completion_tokens: number }) =>
+  (usage.prompt_tokens * PRICE_PER_M.input + usage.completion_tokens * PRICE_PER_M.output) / 1e6;
+
+/**
+ * One Chat Completions request with the shared rules: the circuit breaker, a timeout, and
+ * which failures are worth retrying. The caller's schema checks the response's shape.
+ */
+export async function sparkPost<S extends z.ZodType>(
+  key: string,
+  body: string,
+  timeoutMs: number,
+  schema: S,
+): Promise<z.infer<S>> {
   guard("spark", BUSY);
   let res: Response;
   try {
@@ -221,7 +234,7 @@ async function post(key: string, body: string, timeoutMs: number): Promise<z.inf
     const text = (await res.text()).slice(0, 500);
     throw new PermanentError(`Muse Spark HTTP ${res.status}: ${text}`);
   }
-  const parsed = Completion.safeParse(await res.json().catch(() => null));
+  const parsed = schema.safeParse(await res.json().catch(() => null));
   if (!parsed.success) throw new Error(`Muse Spark sent an unexpected response: ${parsed.error.message.slice(0, 300)}`);
   return parsed.data;
 }

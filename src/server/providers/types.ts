@@ -11,6 +11,7 @@ import type {
 import type { WooCheckResult } from "@/lib/woo-connection";
 import type { AssistRequest } from "@/lib/schemas/assist";
 import type { ReelTemplate, ReelVariables } from "@/lib/schemas/reels";
+import type { ChatMessage } from "@/lib/schemas/chat";
 
 /**
  * Every outside service sits behind one of these interfaces, each with a mock and a
@@ -49,6 +50,8 @@ export interface MetaProvider {
   translate(ctx: CallContext, listing: ListingText): Promise<BanglaText>;
   /** Review's per-field help: the new text for one field. */
   assist(ctx: CallContext, input: AssistInput): Promise<string>;
+  /** One turn of the shop assistant: a reply, tool calls, or both. */
+  chat(ctx: CallContext, input: ChatInput): Promise<ChatTurn>;
   /**
    * Whether an AI photo still shows the product in the cutout: same colours, pattern and
    * details, whatever the setting or pose. Guards every image that redraws the product.
@@ -89,6 +92,25 @@ export interface AssistInput extends AssistRequest {
   /** What the listing is about, so a rewrite keeps the facts. */
   product: { title: string; category: string; attributes: { name: string; value: string }[] };
   voice: BrandVoice;
+}
+
+/** A tool the chat model may call; `parameters` is its input's JSON Schema. */
+export interface ChatTool {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface ChatInput {
+  system: string;
+  messages: ChatMessage[];
+  tools: ChatTool[];
+}
+
+/** The model's turn. Tool arguments arrive as the model wrote them and are checked by the caller. */
+export interface ChatTurn {
+  content: string | null;
+  toolCalls: { name: string; argsJson: string }[];
 }
 
 /** The shop's tone of voice and its standing note to the writer, from Settings. */

@@ -10,6 +10,7 @@ import { usageQueries } from "./usage";
 import { limitQueries } from "./limits";
 import { mediaLibraryQueries } from "./media-library";
 import { opRunQueries } from "./op-runs";
+import { chatQueries } from "./chats";
 
 export type { ListingRow, ListingSnapshot, ListingStatus, RecentListingRow } from "./listings";
 export type { OpRunRow, OpVia } from "./op-runs";
@@ -198,6 +199,7 @@ export function forWorkspace(workspaceId: string) {
     ...overviewQueries(ws),
     ...usageQueries(ws),
     ...limitQueries(ws),
+    ...chatQueries(ws),
     ...mediaLibraryQueries(ws),
     ...opRunQueries(ws),
 

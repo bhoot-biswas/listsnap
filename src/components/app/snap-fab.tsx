@@ -7,12 +7,13 @@ import { Camera } from "lucide-react";
 
 /**
  * The floating Snap button on phones. Hidden on the job pages and on Settings, where the
- * page's own main button takes that spot, and on the Snap page itself.
+ * page's own main button takes that spot, on the Assistant, where the message box sits
+ * there, and on the Snap page itself.
  */
 export function SnapFab() {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  if (pathname.startsWith("/job/") || pathname === "/snap" || pathname === "/settings") return null;
+  if (pathname.startsWith("/job/") || ["/snap", "/settings", "/assistant"].includes(pathname)) return null;
   return (
     <Link
       href="/snap"
