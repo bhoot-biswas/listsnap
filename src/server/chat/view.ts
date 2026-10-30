@@ -3,12 +3,12 @@ import type { ChatItem, ChatMessage, ToolCall, ToolExtras } from "@/lib/schemas/
 import { mediaUrl } from "@/server/media/store";
 import { changesListing, needsApproval } from "./tools";
 
-/** The photo or reel a tool made, or the link of a post, from its stored result. */
 /** Found listings shown under a reply; the model reads all of them, the seller sees the first few. */
 const LISTING_CARDS = 8;
 
 type FoundListing = { id: string; jobId: string; title: string | null; status: string };
 
+/** The photo or reel a tool made, the link of a post, or the listings found, from its stored result. */
 export function toolExtras(name: string, result: unknown): ToolExtras {
   const found = (result as { listings?: FoundListing[] } | null)?.listings;
   if (name === "findListings" && found?.length)
