@@ -6,17 +6,48 @@ import { execute, json, select, selectOne } from "./pool";
 /** How much of a conversation the model sees again; older turns rarely matter to a listing. */
 const HISTORY = 60;
 const TITLE_MAX = 120;
+/** Conversations a list shows; older ones are kept, just not offered. */
+const CHAT_LIST = 30;
 
 export function chatQueries(ws: string) {
   return {
-    /** The current chat of a listing, or of the whole shop with null: the one started last. */
+    /**
+     * The current chat of a listing, or of the whole shop with null: the one used last, so
+     * carrying on an older conversation makes it the one a reload shows.
+     */
     async listingChat(listingId: string | null): Promise<string | null> {
       const row = await selectOne<{ id: string }>(
         // <=> also matches NULL, the shop chat
-        "SELECT id FROM chats WHERE workspace_id = ? AND listing_id <=> ? ORDER BY created_at DESC, id DESC LIMIT 1",
+        "SELECT id FROM chats WHERE workspace_id = ? AND listing_id <=> ? ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT 1",
         [ws, listingId],
       );
       return row?.id ?? null;
+    },
+
+    /** This listing's or the shop's conversations, the one used last first. */
+    chatList(listingId: string | null): Promise<{ id: string; title: string; updated_at: Date }[]> {
+      return select(
+        "SELECT id, title, updated_at FROM chats WHERE workspace_id = ? AND listing_id <=> ? ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT ?",
+        [ws, listingId, CHAT_LIST],
+      );
+    },
+
+    /** The chat when it is this shop's and about this listing (or the shop, with null). */
+    async chatInScope(chatId: string, listingId: string | null): Promise<string | null> {
+      const row = await selectOne<{ id: string }>(
+        "SELECT id FROM chats WHERE id = ? AND workspace_id = ? AND listing_id <=> ?",
+        [chatId, ws, listingId],
+      );
+      return row?.id ?? null;
+    },
+
+    /** Which listing a chat is about (null for the shop chat), or undefined when it isn't this shop's. */
+    async chatListing(chatId: string): Promise<string | null | undefined> {
+      const row = await selectOne<{ listing_id: string | null }>(
+        "SELECT listing_id FROM chats WHERE id = ? AND workspace_id = ?",
+        [chatId, ws],
+      );
+      return row ? row.listing_id : undefined;
     },
 
     /** A new chat about one listing, or about the whole shop with null. */

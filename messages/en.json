@@ -924,6 +924,14 @@
     "photoAlt": "Photo you sent",
     "uploading": "Adding the photo…",
     "photoFailed": "That photo didn’t upload. Try again.",
-    "openListing": "Open the listing"
+    "openListing": "Open the listing",
+    "history": {
+      "open": "Conversations",
+      "title": "Earlier conversations",
+      "loading": "Loading…",
+      "empty": "No conversations yet.",
+      "failed": "Couldn’t load your conversations. Try again.",
+      "current": "On screen"
+    }
   }
 }

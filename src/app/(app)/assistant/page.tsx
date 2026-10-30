@@ -26,6 +26,7 @@ export default async function AssistantPage() {
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
         <ChatPanel
           endpoint="/api/chat"
+          historyUrl="/api/chats"
           initial={chatItems(history)}
           intro={t("shopIntro")}
           placeholder={t("shopPlaceholder")}
