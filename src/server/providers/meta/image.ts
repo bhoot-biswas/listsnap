@@ -2,7 +2,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { env } from "@/server/env";
-import { StepError } from "@/server/pipeline/run-step";
+import { PermanentError, StepError } from "@/server/pipeline/run-step";
+import { guard, noteRateLimit, record } from "../breaker";
 import type { PlanResult, Scene, SceneBrief } from "@/lib/schemas/pipeline";
 import { BASE_URL, BUSY } from "./spark";
 
@@ -160,7 +161,8 @@ async function imagesCall(
   body: Record<string, unknown>,
 ): Promise<ImageResult> {
   const key = env().modelApiKey;
-  if (!key) throw new Error("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
+  if (!key) throw new PermanentError("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
+  guard("image", BUSY);
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}/${path}`, {
@@ -171,15 +173,21 @@ async function imagesCall(
     });
   } catch (err) {
     console.warn("[muse-image] request failed:", err instanceof Error ? err.message : err);
+    record("image", false);
     throw new StepError(BUSY);
   }
-  if (res.status === 429 || res.status >= 500) throw new StepError(BUSY);
+  noteRateLimit("image", res.headers);
+  if (res.status === 429 || res.status >= 500) {
+    record("image", false);
+    throw new StepError(BUSY);
+  }
+  record("image", true);
   if (!res.ok) {
     const text = await res.text();
     const code = ErrorBody.safeParse(safeJson(text)).data?.error.code;
     // a safety block is about the photo, so the seller hears it; it isn't billed either
-    if (code === "content_policy_violation") throw new StepError(BLOCKED);
-    throw new Error(`Muse Image HTTP ${res.status}: ${text.slice(0, 500)}`);
+    if (code === "content_policy_violation") throw new StepError(BLOCKED, { permanent: true });
+    throw new PermanentError(`Muse Image HTTP ${res.status}: ${text.slice(0, 500)}`);
   }
   const parsed = ImagesResponse.safeParse(await res.json().catch(() => null));
   if (!parsed.success) throw new Error(`Muse Image sent an unexpected response: ${parsed.error.message.slice(0, 300)}`);

@@ -59,10 +59,17 @@ export function sqlStepStore(workspaceId: string): StepStore {
       );
     },
 
-    async fail(key, error) {
+    async fail(key, error, adjust) {
+      // a refused request uses the attempts up; one that never left (breaker open) gives its attempt back
+      const attempts =
+        adjust && "exhaust" in adjust
+          ? { sql: "GREATEST(attempts, ?)", params: [adjust.exhaust] }
+          : adjust?.refund
+            ? { sql: "GREATEST(attempts - 1, 0)", params: [] }
+            : { sql: "attempts", params: [] };
       await execute(
-        `UPDATE job_steps SET status = 'failed', last_error = ?, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,
-        [error.slice(0, 500), ...k(key)],
+        `UPDATE job_steps SET status = 'failed', last_error = ?, attempts = ${attempts.sql}, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,
+        [error.slice(0, 500), ...attempts.params, ...k(key)],
       );
     },
 

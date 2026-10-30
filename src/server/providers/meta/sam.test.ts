@@ -4,7 +4,12 @@ import sharp from "sharp";
 beforeAll(() => {
   vi.stubEnv("MODEL_API_KEY", "test-key");
 });
-afterEach(() => vi.unstubAllGlobals());
+// the circuit breaker remembers failures across calls; each test starts closed
+const { resetBreakers } = await import("../breaker");
+afterEach(() => {
+  vi.unstubAllGlobals();
+  resetBreakers();
+});
 
 const { SamRejectedError, samBody, samSegment } = await import("./sam");
 

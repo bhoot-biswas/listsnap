@@ -4,7 +4,12 @@ import { StepError } from "@/server/pipeline/run-step";
 beforeAll(() => {
   vi.stubEnv("MODEL_API_KEY", "test-key");
 });
-afterEach(() => vi.unstubAllGlobals());
+// the circuit breaker remembers failures across calls; each test starts closed
+const { resetBreakers } = await import("../breaker");
+afterEach(() => {
+  vi.unstubAllGlobals();
+  resetBreakers();
+});
 
 const { BLOCKED, backgroundPrompt, brandKitPrompt, editImage, endUser, generateImage, imagesBody, lifestylePrompt } =
   await import("./image");
@@ -171,12 +176,15 @@ describe("generateImage and editImage", () => {
     const err = await generateImage("p", "1024x1024", "u").catch((e: unknown) => e);
     expect(err).toBeInstanceOf(StepError);
     expect((err as Error).message).toBe(BLOCKED);
+    // the same photo would be blocked again, so the step doesn't spend more attempts
+    expect((err as StepError).permanent).toBe(true);
   });
 
   it("keeps other 400s server-side", async () => {
     stubFetch(Response.json({ error: { code: "unknown_parameter", message: "seed" } }, { status: 400 }));
     const err = await generateImage("p", "1024x1024", "u").catch((e: unknown) => e);
     expect(err).not.toBeInstanceOf(StepError);
+    expect((err as Error).name).toBe("PermanentError");
   });
 
   it("calls a retryable 503 busy", async () => {

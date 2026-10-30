@@ -8,6 +8,9 @@
  * 3. Work starts only after an atomic claim; a held lock answers "running".
  * 4. An expired lock or a failure can be claimed again, up to maxAttempts; then the
  *    step stays failed until someone presses "Try again" (force).
+ * 5. A failure that can't succeed on a retry (a refused request) uses up the attempts at
+ *    once; one that never reached the service (the circuit breaker was open) gives its
+ *    attempt back.
  */
 
 export interface StepKey {
@@ -36,7 +39,8 @@ export interface StepStore {
    */
   claim(key: StepKey, lockMs: number, maxAttempts: number): Promise<boolean>;
   complete(key: StepKey, result: unknown): Promise<void>;
-  fail(key: StepKey, error: string): Promise<void>;
+  /** `exhaust` sets attempts to at least maxAttempts; `refund` takes this attempt back. */
+  fail(key: StepKey, error: string, adjust?: { exhaust: number } | { refund: true }): Promise<void>;
   /** "Try again": a failed row goes back to pending with zero attempts. */
   reset(key: StepKey): Promise<void>;
 }
@@ -89,7 +93,12 @@ export async function runStep<T>(
     return { state: "done", result, fresh: true };
   } catch (err) {
     const error = describeError(err);
-    await store.fail(key, error);
+    const kind = failureKind(err);
+    await store.fail(
+      key,
+      error,
+      kind === "permanent" ? { exhaust: maxAttempts } : kind === "not_attempted" ? { refund: true } : undefined,
+    );
     const row = await store.get(key);
     const attempts = row?.attempts ?? maxAttempts;
     return { state: "failed", error, attempts, exhausted: attempts >= maxAttempts };
@@ -102,6 +111,29 @@ export async function runStep<T>(
  */
 export class StepError extends Error {
   override name = "StepError";
+  /** Retrying can't help (a safety block on this photo). */
+  readonly permanent: boolean;
+  /** The service was never called (the circuit breaker was open), so it costs no attempt. */
+  readonly notAttempted: boolean;
+  constructor(message: string, opts: { permanent?: boolean; notAttempted?: boolean } = {}) {
+    super(message);
+    this.permanent = !!opts.permanent;
+    this.notAttempted = !!opts.notAttempted;
+  }
+}
+
+/**
+ * Not the seller's to fix and not worth retrying: a request the service refused (400, 401,
+ * 403, 404). The seller sees the generic line; the details go to the server log.
+ */
+export class PermanentError extends Error {
+  override name = "PermanentError";
+}
+
+function failureKind(err: unknown): "permanent" | "not_attempted" | "retry" {
+  if (err instanceof PermanentError) return "permanent";
+  if (err instanceof StepError) return err.permanent ? "permanent" : err.notAttempted ? "not_attempted" : "retry";
+  return "retry";
 }
 
 export const GENERIC_STEP_ERROR = "Something went wrong on our side. Your work is saved.";

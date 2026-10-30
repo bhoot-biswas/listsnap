@@ -3,7 +3,7 @@ import { AssistResult, FIELD_MAX, type AssistAction, type AssistField } from "@/
 import { logged } from "../log";
 import type { AssistInput, CallContext } from "../types";
 import { BANGLA_SYSTEM, writeSystem } from "./prompts";
-import { SPARK_MODEL, sparkJson } from "./spark";
+import { SPARK_EFFORT, SPARK_MODEL, sparkJson } from "./spark";
 
 /**
  * Review's per-field help through Muse Spark: one field in, one field out. The rest of
@@ -50,7 +50,7 @@ export async function liveAssist(ctx: CallContext, input: AssistInput): Promise<
   const r = await logged(
     ctx,
     { provider: "meta", model: SPARK_MODEL, endpoint: "chat/completions", mode: "live" },
-    () => sparkJson({ name: "FieldText", schema: AssistResult, ...assistPrompt(input) }),
+    () => sparkJson({ name: "FieldText", schema: AssistResult, effort: SPARK_EFFORT.assist, ...assistPrompt(input) }),
     (r) => ({ summary: `${input.action} ${input.lang} ${input.field}`, costUsd: r.costUsd }),
   );
   return r.data.text.trim().slice(0, FIELD_MAX[input.field]);

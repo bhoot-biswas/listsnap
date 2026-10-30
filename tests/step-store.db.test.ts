@@ -10,7 +10,7 @@ const enabled = !!process.env.DATABASE_URL;
 describe.skipIf(!enabled)("job_steps lock SQL (MariaDB)", async () => {
   const { getPool, execute } = await import("@/server/db/pool");
   const { sqlStepStore } = await import("@/server/db/steps");
-  const { runStep } = await import("@/server/pipeline/run-step");
+  const { PermanentError, runStep, StepError } = await import("@/server/pipeline/run-step");
 
   const ws = randomUUID();
   const job = randomUUID();
@@ -60,5 +60,21 @@ describe.skipIf(!enabled)("job_steps lock SQL (MariaDB)", async () => {
       result: { title: "Jamdani Saree" },
       fresh: false,
     });
+  });
+
+  it("uses up the attempts for a refused request and refunds one that never left", async () => {
+    const refusedKey = { jobId: job, step: "render", target: randomUUID() };
+    const refused = await runStep(store, refusedKey, { lockMs: 45_000 }, async () => {
+      throw new PermanentError("HTTP 400");
+    });
+    expect(refused).toMatchObject({ state: "failed", attempts: 3, exhausted: true });
+    expect(await store.claim(refusedKey, 45_000, 3)).toBe(false);
+
+    const openKey = { jobId: job, step: "render", target: randomUUID() };
+    for (let i = 0; i < 4; i++)
+      await runStep(store, openKey, { lockMs: 45_000 }, async () => {
+        throw new StepError("busy", { notAttempted: true });
+      });
+    expect((await store.get(openKey))?.attempts).toBe(0);
   });
 });
