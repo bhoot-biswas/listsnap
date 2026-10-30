@@ -17,19 +17,28 @@ export function useJobRunner(initial: JobState) {
   const router = useRouter();
   const [state, setState] = useState(initial);
   const [offline, setOffline] = useState(false);
+  /** The job's state couldn't be loaded, so nothing will move until the seller tries again. */
+  const [stalled, setStalled] = useState(false);
   const busy = useRef(false);
   const alive = useRef(true);
   const id = initial.id;
 
   const load = useCallback(async (): Promise<JobState | null> => {
-    const res = await fetch(`/api/jobs/${id}`, { cache: "no-store" });
-    if (res.status === 401) {
+    const res = await fetch(`/api/jobs/${id}`, { cache: "no-store" }).catch(() => null);
+    if (res?.status === 401) {
       router.push("/sign-in");
       return null;
     }
-    if (!res.ok) return null;
+    // without a state there's nothing to call next; say so instead of spinning forever
+    if (!res?.ok) {
+      if (alive.current) setStalled(navigator.onLine);
+      return null;
+    }
     const next = (await res.json()) as JobState;
-    if (alive.current) setState(next);
+    if (alive.current) {
+      setState(next);
+      setStalled(false);
+    }
     return next;
   }, [id, router]);
 
@@ -111,7 +120,7 @@ export function useJobRunner(initial: JobState) {
     [id, drive],
   );
 
-  return { state, offline, retry, choose };
+  return { state, offline, stalled, retry, choose, resume: drive };
 }
 
 export function retryUrl(jobId: string, s: Pick<StepView, "step" | "target">): string {

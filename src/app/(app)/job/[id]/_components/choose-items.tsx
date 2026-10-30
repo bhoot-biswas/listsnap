@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { JobState } from "@/lib/job-state";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 const MODES = ["separate", "set", "variants"] as const;
 const LABEL = { separate: "chooseSeparate", set: "chooseSet", variants: "chooseVariants" } as const;
 
-/** S6 Choose items, basic: tick the items, pick how to list them. The full chooser comes in Phase 5. */
+/** S6 Choose items: tick the items, pick how to list them. */
 export function ChooseItems({
   state,
   onChoose,
@@ -26,6 +26,7 @@ export function ChooseItems({
   const [mode, setMode] = useState<(typeof MODES)[number]>(suggested);
   const [kept, setKept] = useState<Set<string>>(() => new Set(state.items.map((i) => i.id)));
   const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const toggle = (id: string) =>
     setKept((cur) => {
@@ -92,13 +93,25 @@ export function ChooseItems({
         size="lg"
         className="w-full sm:w-auto"
         disabled={!kept.size || sending}
+        aria-busy={sending}
         onClick={async () => {
           setSending(true);
-          if (!(await onChoose(mode, [...kept]))) setSending(false);
+          setFailed(false);
+          const ok = await onChoose(mode, [...kept]).catch(() => false);
+          if (!ok) {
+            setSending(false);
+            setFailed(true);
+          }
         }}
       >
-        {t("chooseConfirm", { count: kept.size })}
+        {sending && <Loader2 className="animate-spin" aria-hidden="true" />}
+        {sending ? t("chooseSending") : t("chooseConfirm", { count: kept.size })}
       </Button>
+      {failed && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("chooseFailed")}
+        </p>
+      )}
     </section>
   );
 }

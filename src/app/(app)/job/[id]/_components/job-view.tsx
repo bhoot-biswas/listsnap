@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Lightbulb, WifiOff } from "lucide-react";
+import { CircleAlert, Lightbulb, WifiOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/app/top-bar";
 import { ButtonLink } from "@/components/app/button-link";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -22,7 +23,7 @@ const EDITABLE = new Set(["ready", "needs_review", "in_store", "posted"]);
 export function JobView({ initial }: { initial: JobState }) {
   const t = useTranslations("job");
   const tCommon = useTranslations("common");
-  const { state, offline, retry, choose } = useJobRunner(initial);
+  const { state, offline, stalled, retry, choose, resume } = useJobRunner(initial);
   const photo = state.photos[0];
   const finished = state.status === "ready";
   const savable = finished ? state.listings.filter((l) => SAVABLE.has(l.status)) : [];
@@ -50,6 +51,18 @@ export function JobView({ initial }: { initial: JobState }) {
           <WifiOff className="size-4" aria-hidden="true" />
           {t("offline")}
         </p>
+      )}
+      {stalled && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-center gap-3 bg-destructive/5 px-4 py-2 text-sm"
+        >
+          <CircleAlert className="size-4 text-destructive" aria-hidden="true" />
+          {t("stalled")}
+          <Button variant="outline" size="sm" className="h-11 md:h-8" onClick={() => void resume()}>
+            {tCommon("tryAgain")}
+          </Button>
+        </div>
       )}
       <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 md:px-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
