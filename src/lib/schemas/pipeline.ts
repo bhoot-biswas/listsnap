@@ -148,7 +148,8 @@ export type Scene = z.infer<typeof Scene>;
 export const RenderResult = z.object({
   scene: Scene,
   mediaId: z.string(),
-  aiLabel: z.enum(["ai_background", "ai_scene"]),
+  /** `photo`: the seller's own photo, untouched, for an item that fills the frame. */
+  aiLabel: z.enum(["ai_background", "ai_scene", "photo"]),
   /** Present for scenes that redraw the product: it was checked and kept as the same product. */
   check: z.object({ same: z.literal(true), colorSimilarity: z.number().nullable() }).optional(),
 });

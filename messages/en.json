@@ -544,6 +544,7 @@
     "hintTitle": "A better photo would help",
     "hints": {
       "too_small": "The product fills only {fill}% of the photo. A closer shot gives better results.",
+      "too_close": "The product fills the whole photo, so its background couldn’t be removed. Step back so all of it is in the shot for a studio photo.",
       "blurry": "The photo looks blurry. Hold the phone still or tap to focus.",
       "too_dark": "The photo is dark. Move to brighter light.",
       "too_bright": "The photo is very bright. Avoid direct flash or sun."

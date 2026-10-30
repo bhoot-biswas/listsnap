@@ -36,6 +36,27 @@ export async function whiteMain(product: Buffer, size = MAIN_SIZE): Promise<Buff
     .toBuffer();
 }
 
+/** From this share of the photo up, an item has no background around it to remove. */
+export const FULL_FRAME_PERCENT = 90;
+
+/**
+ * True when a box covers nearly the whole photo: a saree spread flat, a close-up of
+ * fabric. Cutting such an item out can only take pieces of it away (anything lying on it
+ * reaches the frame edge and reads as background), so it is kept as the photo.
+ */
+export function fillsFrame(box: Box, width: number, height: number): boolean {
+  return box.w * box.h >= (width * height * FULL_FRAME_PERCENT) / 100;
+}
+
+/** The photo itself as a square studio image, centre-cropped, for items that fill the frame. */
+export async function squarePhoto(photo: Buffer, size = 1024): Promise<Buffer> {
+  return sharp(photo)
+    .resize(size, size, { fit: "cover" })
+    .flatten({ background: "#ffffff" })
+    .jpeg({ quality: 88, mozjpeg: true })
+    .toBuffer();
+}
+
 export interface PhotoCheck {
   fillPercent: number;
   sharp: boolean;
@@ -47,11 +68,14 @@ export interface PhotoCheck {
  * The retake hint. Fill is the share of the frame the found items cover
  * (all of them, so a neat row of products isn't called "too small"); sharpness is the
  * spread of a Laplacian-filtered greyscale; exposure is mean luma. Thresholds are from
- * the Phase 0a run on 21 photos.
+ * the Phase 0a run on 21 photos. An item that fills the frame gets no studio cutout, so
+ * the seller is told to step back.
  */
 export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoCheck> {
   const meta = await sharp(photo).metadata();
-  const area = (meta.width ?? 1) * (meta.height ?? 1);
+  const W = meta.width ?? 1;
+  const H = meta.height ?? 1;
+  const area = W * H;
   const covered = boxes.reduce((s, b) => s + b.w * b.h, 0);
   const fillPercent = Math.min(100, Math.round((covered / area) * 100));
 
@@ -68,6 +92,7 @@ export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoChec
   const isSharp = sharpness >= 6;
   const hints: string[] = [];
   if (fillPercent < 25) hints.push("too_small");
+  if (boxes.some((b) => fillsFrame(b, W, H))) hints.push("too_close");
   if (!isSharp) hints.push("blurry");
   if (exposure === "dark") hints.push("too_dark");
   if (exposure === "bright") hints.push("too_bright");

@@ -1,7 +1,7 @@
 import "server-only";
 import { searchPhrases } from "./phrase-search";
 import { StepError } from "./run-step";
-import { crop, dimensions, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
+import { crop, dimensions, fillsFrame, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
 import { maskCutout } from "@/server/image-ops/cutout";
 import { readMedia, saveMedia } from "@/server/media/store";
 import { meta } from "@/server/providers";
@@ -72,8 +72,12 @@ export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
 
   const saved: { box: Box; score: number | null; cutoutMediaId: string; cutoutPngMediaId: string | null }[] = [];
   for (const inst of found) {
-    // SAM's mask gives a transparent cutout; without one (mock, or no match) the box is cropped
-    const png = inst.mask ? await maskCutout(data, inst.box, inst.mask) : null;
+    // SAM's mask gives a transparent cutout; without one (mock, or no match), or when the
+    // item fills the frame and there is no background to take away, the box is cropped
+    const png =
+      inst.mask && !fillsFrame(inst.box, photo.width, photo.height)
+        ? await maskCutout(data, inst.box, inst.mask)
+        : null;
     const pngMedia = png
       ? await saveMedia(ctx.ws.id, "cutout", png, { mime: "image/png", ...(await dimensions(png)) })
       : null;
