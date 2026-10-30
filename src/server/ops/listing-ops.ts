@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { ListingSnapshot } from "@/server/db/scope";
-import { ListingEdit } from "@/lib/schemas/review";
+import { ListingEdit, suggestedPrice } from "@/lib/schemas/review";
 import { defineOp } from "./define-op";
 
 /** Ids are opaque here; an unknown or foreign one is "not found", not "invalid". */
@@ -13,11 +13,12 @@ export const getListingSummary = defineOp({
     "Read one listing's current state: status, English and Bangla titles, category, price, stock, the AI's confidence and review notes, and its photos. Use it before changing a listing.",
   input: z.object({ listingId: ListingId }),
   effect: "read",
-  async run({ ws }, { listingId }) {
+  async run({ workspace, ws }, { listingId }) {
     const listing = await ws.getListing(listingId);
     if (!listing) return { ok: false, error: "not_found" };
     const [items, media] = await Promise.all([ws.items(listing.job_id), ws.listingMedia([listingId])]);
-    const en = listing.fields_json?.en as { title?: string; category?: string } | undefined;
+    const en = listing.fields_json?.en as
+      { title?: string; category?: string; price_hint_bdt?: { low: number; high: number } } | undefined;
     const bn = listing.fields_json?.bn as { title?: string } | undefined;
     const main = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id ?? null;
     return {
@@ -29,6 +30,11 @@ export const getListingSummary = defineOp({
         titleBn: bn?.title ?? null,
         category: en?.category ?? null,
         priceBdt: listing.price_bdt,
+        // Review shows this until the seller sets a price, and the store gets it
+        suggestedPriceBdt:
+          listing.price_bdt === null && en?.price_hint_bdt
+            ? suggestedPrice(en.price_hint_bdt, workspace.settings.priceRounding)
+            : null,
         stockQty: listing.stock_qty,
         confidence: listing.confidence,
         checkNotes: listing.check_notes ?? [],

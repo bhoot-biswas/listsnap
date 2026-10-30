@@ -17,6 +17,7 @@ import {
 } from "./image";
 import { SAM_COST_USD, SAM_MODEL, SamRejectedError, samSegment } from "./sam";
 import { liveAssist } from "./assist";
+import { liveChat } from "./chat";
 import { BANGLA_SYSTEM, MATCH_SYSTEM, SELLER_CONTEXT, writeSystem } from "./prompts";
 import { photoDataUrl, SPARK_EFFORT, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
 
@@ -117,6 +118,8 @@ export const liveMeta: MetaProvider = {
   },
 
   assist: liveAssist,
+
+  chat: liveChat,
 
   group: async (ctx, crops, plan) => {
     const images = await Promise.all(crops.map((c) => photoDataUrl(c, 384)));

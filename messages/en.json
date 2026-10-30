@@ -793,6 +793,66 @@
         "priceLine": "Price: {price}",
         "cta": "Message us to order."
       }
+    },
+    "chat": {
+      "open": "Ask ListSnap",
+      "title": "Shop assistant",
+      "intro": "Ask in English or Bangla. I can change this listing, make photos and reels, save it to your store and post its reel. I always ask before anything goes to your store or your pages.",
+      "suggestions": {
+        "status": "Why does this need review?",
+        "reel": "Make an English reel",
+        "eid": "Make an Eid photo",
+        "store": "Save it to my store"
+      },
+      "label": "Message",
+      "placeholder": "Ask about this listing…",
+      "send": "Send",
+      "newChat": "New chat",
+      "you": "You",
+      "assistant": "ListSnap",
+      "thinking": "Thinking…",
+      "working": {
+        "getListingSummary": "Reading the listing…",
+        "editListingFields": "Changing the listing…",
+        "undoLast": "Undoing the last change…",
+        "renderScene": "Making the photo…",
+        "renderLook": "Making the campaign photo…",
+        "makeReel": "Making the reel, about a minute…",
+        "postReel": "Posting the reel…",
+        "saveDraftToStore": "Saving to your store…"
+      },
+      "tool": {
+        "getListingSummary": "Read the listing",
+        "editListingFields": "Changed the listing",
+        "undoLast": "Undid the last change",
+        "renderScene": "Made a photo",
+        "renderLook": "Made a campaign photo",
+        "makeReel": "Made a reel",
+        "postReel": "Posted the reel",
+        "saveDraftToStore": "Saved to your store",
+        "failed": "Not done: {what}"
+      },
+      "approval": {
+        "postReel": "Post the {lang} reel to {where}?",
+        "saveDraftToStore": "Save this listing to your store as a draft?",
+        "updateDraft": "Send your latest edits to the store draft?",
+        "caption": "Caption",
+        "yes": {
+          "postReel": "Post reel",
+          "saveDraftToStore": "Save draft"
+        },
+        "no": "Don't",
+        "approved": "Done",
+        "declined": "Not sent",
+        "failed": "It didn't work",
+        "view": "View post"
+      },
+      "error": {
+        "limit": "You've used today's assistant. It comes back at midnight.",
+        "steps": "I stopped before finishing. Ask again, one step at a time.",
+        "answered": "That was already answered.",
+        "generic": "Something went wrong. Nothing else changed; try again."
+      }
     }
   },
   "bulk": {

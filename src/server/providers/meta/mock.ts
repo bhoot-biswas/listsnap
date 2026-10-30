@@ -4,7 +4,9 @@ import { env } from "@/server/env";
 import { gradient } from "@/server/image-ops";
 import type { BanglaText, ListingText, PlanResult } from "@/lib/schemas/pipeline";
 import { logged } from "../log";
+import { chatSummary } from "./chat";
 import type { AssistInput, MetaProvider, SegmentInstance } from "../types";
+import { mockChatTurn } from "./chat-mock";
 
 /**
  * Deterministic stand-ins for Muse Spark, SAM 3.1 and Muse Image: no key, no cost,
@@ -108,6 +110,17 @@ export const mockMeta: MetaProvider = {
         return mockAssist(input);
       },
       () => ({ summary: `${input.action} ${input.lang} ${input.field}`, costUsd: 0 }),
+    ),
+
+  chat: (ctx, input) =>
+    logged(
+      ctx,
+      { ...SPARK, endpoint: "chat/completions" },
+      async () => {
+        await delay();
+        return mockChatTurn(input);
+      },
+      (r) => ({ summary: chatSummary(r), costUsd: 0 }),
     ),
 
   group: (ctx, crops) =>

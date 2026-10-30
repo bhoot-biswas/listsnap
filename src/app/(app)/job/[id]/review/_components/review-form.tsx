@@ -18,6 +18,8 @@ import { ReelPanel, type ReelsState } from "./reel-panel";
 import type { Look } from "@/lib/schemas/looks";
 import { TextFields, type TextValue } from "./text-fields";
 import { VariantFields } from "./variant-fields";
+import { ListingChat } from "./listing-chat";
+import type { ChatItem } from "@/lib/schemas/chat";
 
 export type { ReviewPhoto } from "./review-side";
 
@@ -43,6 +45,7 @@ export function ReviewForm({
   others,
   looks,
   reels,
+  chat,
 }: {
   jobId: string;
   listingId: string;
@@ -50,6 +53,8 @@ export function ReviewForm({
   photos: ReviewPhoto[];
   looks: { made: Look[]; imagesLeft: number };
   reels: ReelsState;
+  /** The stored conversation, and how many changes the chat has made to this listing. */
+  chat: { items: ChatItem[]; revision: number };
   colorPhotos: Record<string, string>;
   hint: { low: number; high: number };
   confidence: number | null;
@@ -89,6 +94,16 @@ export function ReviewForm({
     setEdit(next);
     saver.change(next);
   };
+
+  // the chat changed the listing on the server: take the server's copy, which already holds
+  // the seller's own edits, since the chat saves them before it runs
+  const seenRevision = useRef(chat.revision);
+  useEffect(() => {
+    if (chat.revision === seenRevision.current) return;
+    seenRevision.current = chat.revision;
+    latest.current = initial;
+    setEdit(initial);
+  }, [chat.revision, initial]);
 
   // a look made after the page loaded arrives in `photos`; the seller just asked for it, so
   // it starts ticked, and the next autosave must not save it as unticked
@@ -160,6 +175,7 @@ export function ReviewForm({
                   ? t("offline")
                   : t("saveError")}
           </p>
+          <ListingChat listingId={listingId} initial={chat.items} beforeSend={saver.flush} />
           {saveButton("max-lg:hidden")}
         </div>
       </div>

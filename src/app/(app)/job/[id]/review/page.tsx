@@ -14,6 +14,7 @@ import { REELS_PER_DAY } from "@/server/db/limits";
 import { DESTINATIONS, PostResult } from "@/lib/schemas/social";
 import { defaultCaption } from "@/server/social/caption";
 import { metaConnection, publicMeta } from "@/server/social/connection";
+import { chatItems, chatRevision } from "@/server/chat/view";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -47,6 +48,8 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
     ),
     metaConnection(ws),
   ]);
+  const chatId = await ws.listingChat(listing.id);
+  const history = chatId ? await ws.chatMessages(chatId) : [];
   const posted: Record<string, Record<string, { permalink: string; test: boolean }>> = {};
   for (const raw of postResults) {
     const p = PostResult.safeParse(raw);
@@ -132,6 +135,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
             },
           },
         }}
+        chat={{ items: chatItems(history), revision: chatRevision(history) }}
         others={listings.map((x, i) => ({
           id: x.id,
           n: i + 1,
