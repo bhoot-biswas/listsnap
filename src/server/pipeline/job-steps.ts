@@ -1,5 +1,6 @@
 import "server-only";
 import { searchPhrases } from "./phrase-search";
+import { mergeSetPieces } from "./set-merge";
 import { StepError } from "./run-step";
 import { crop, dimensions, fillsFrame, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
 import { maskCutout } from "@/server/image-ops/cutout";
@@ -47,21 +48,35 @@ export async function planStep(ctx: JobStepContext): Promise<PlanResult> {
 }
 
 /**
+ * A set is several kinds of thing (a cup and its saucer) and each phrase finds only one
+ * kind, so all phrases run together, in one round trip like the retry, and the pieces
+ * are merged.
+ */
+async function searchSet(
+  phrases: string[],
+  find: (phrase: string) => Promise<SegmentInstance[]>,
+): Promise<{ phrase: string | null; found: SegmentInstance[]; tried: string[] }> {
+  const results = await Promise.all(phrases.map(find));
+  const hit = results.findIndex((r) => r.length > 0);
+  return { phrase: hit === -1 ? null : phrases[hit]!, found: mergeSetPieces(results.flat()), tried: phrases };
+}
+
+/**
  * SAM with the planned phrase, then Spark's alternatives together (the agentic retry). If none
  * finds anything, the whole photo becomes the one item, so the seller still gets a
  * listing. Cutouts and the photo check are made here too, in one short request: a
  * transparent PNG from SAM's mask (studio scenes composite it) and the white main image.
  * Multi-angle jobs (several photos of one product) arrive in Phase 5; until then only
- * the first photo is segmented.
+ * the first photo is segmented. A set searches every phrase at once and merges the pieces.
  */
 export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
   const plan = await requireResult<PlanResult>(ctx, "plan");
   const { photo, data } = await firstPhoto(ctx);
   const phrases = [plan.sam_phrase, ...plan.alt_phrases].filter(Boolean).slice(0, 3);
-  const search = await searchPhrases(phrases, async (p) =>
-    // a faint match is usually something next to the product, not the product
-    (await meta().segment(call(ctx, "segment"), data, p)).filter((f) => f.score === null || f.score >= MIN_SCORE),
-  );
+  // a faint match is usually something next to the product, not the product
+  const find = async (p: string) =>
+    (await meta().segment(call(ctx, "segment"), data, p)).filter((f) => f.score === null || f.score >= MIN_SCORE);
+  const search = plan.multi_kind === "set" ? await searchSet(phrases, find) : await searchPhrases(phrases, find);
   const { tried } = search;
   const phrase = search.phrase ?? plan.sam_phrase;
   let found: SegmentInstance[] = search.found;
