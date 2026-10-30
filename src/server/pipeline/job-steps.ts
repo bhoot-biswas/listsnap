@@ -1,7 +1,8 @@
 import "server-only";
 import { searchPhrases } from "./phrase-search";
+import { addContents, mergeSetPieces } from "./set-merge";
 import { StepError } from "./run-step";
-import { crop, dimensions, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
+import { crop, dimensions, fillsFrame, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
 import { maskCutout } from "@/server/image-ops/cutout";
 import { readMedia, saveMedia } from "@/server/media/store";
 import { meta } from "@/server/providers";
@@ -47,33 +48,58 @@ export async function planStep(ctx: JobStepContext): Promise<PlanResult> {
 }
 
 /**
+ * A set is several kinds of thing (a cup and its saucer) and each phrase finds only one
+ * kind, so all phrases run together, in one round trip like the retry, and the pieces
+ * are merged.
+ */
+async function searchSet(
+  phrases: string[],
+  find: (phrase: string) => Promise<SegmentInstance[]>,
+): Promise<{ phrase: string | null; found: SegmentInstance[]; tried: string[] }> {
+  const results = await Promise.all(phrases.map(find));
+  const hit = results.findIndex((r) => r.length > 0);
+  return { phrase: hit === -1 ? null : phrases[hit]!, found: mergeSetPieces(results.flat()), tried: phrases };
+}
+
+/**
  * SAM with the planned phrase, then Spark's alternatives together (the agentic retry). If none
  * finds anything, the whole photo becomes the one item, so the seller still gets a
  * listing. Cutouts and the photo check are made here too, in one short request: a
  * transparent PNG from SAM's mask (studio scenes composite it) and the white main image.
  * Multi-angle jobs (several photos of one product) arrive in Phase 5; until then only
- * the first photo is segmented.
+ * the first photo is segmented. A set searches every phrase at once and merges the pieces;
+ * what sits in a product (the coffee in a cup) is searched alongside and joined to it.
  */
 export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
   const plan = await requireResult<PlanResult>(ctx, "plan");
   const { photo, data } = await firstPhoto(ctx);
   const phrases = [plan.sam_phrase, ...plan.alt_phrases].filter(Boolean).slice(0, 3);
-  const search = await searchPhrases(phrases, async (p) =>
-    // a faint match is usually something next to the product, not the product
-    (await meta().segment(call(ctx, "segment"), data, p)).filter((f) => f.score === null || f.score >= MIN_SCORE),
-  );
+  // a faint match is usually something next to the product, not the product
+  const find = async (p: string) =>
+    (await meta().segment(call(ctx, "segment"), data, p)).filter((f) => f.score === null || f.score >= MIN_SCORE);
+  // plans saved before contents existed have none
+  const contentsPhrases = (plan.contents_phrases ?? []).filter(Boolean).slice(0, 2);
+  const [search, contents] = await Promise.all([
+    plan.multi_kind === "set" ? searchSet(phrases, find) : searchPhrases(phrases, find),
+    Promise.all(contentsPhrases.map(find)).then((r) => r.flat()),
+  ]);
   const { tried } = search;
   const phrase = search.phrase ?? plan.sam_phrase;
   let found: SegmentInstance[] = search.found;
   if (!found.length) found = [{ box: { x: 0, y: 0, w: photo.width, h: photo.height }, score: null }];
   found = found.sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h).slice(0, MAX_ITEMS);
+  if (search.found.length) found = addContents(found, contents);
   // back in reading order after keeping the largest
   found.sort((a, b) => a.box.x - b.box.x || a.box.y - b.box.y);
 
   const saved: { box: Box; score: number | null; cutoutMediaId: string; cutoutPngMediaId: string | null }[] = [];
   for (const inst of found) {
-    // SAM's mask gives a transparent cutout; without one (mock, or no match) the box is cropped
-    const png = inst.mask ? await maskCutout(data, inst.box, inst.mask) : null;
+    // SAM's mask gives a transparent cutout; without one (mock, or no match), or when the
+    // item fills the frame and there is no background to take away, the box is cropped
+    const png =
+      inst.mask && !fillsFrame(inst.box, photo.width, photo.height)
+        ? await maskCutout(data, inst.box, inst.mask)
+        : null;
     const pngMedia = png
       ? await saveMedia(ctx.ws.id, "cutout", png, { mime: "image/png", ...(await dimensions(png)) })
       : null;

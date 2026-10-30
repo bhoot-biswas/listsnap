@@ -18,6 +18,7 @@ const { PermanentError } = await import("@/server/pipeline/run-step");
 const plan: PlanResult = {
   sam_phrase: "jamdani saree",
   alt_phrases: ["saree"],
+  contents_phrases: [],
   category_guess: "Sarees",
   likely_multi: false,
   item_count_guess: 1,

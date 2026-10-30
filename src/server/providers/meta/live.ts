@@ -30,7 +30,8 @@ const PLAN_SYSTEM =
   SELLER_CONTEXT +
   " Your first job is to decide what a segmentation model should look for. SAM 3.1 takes a short noun phrase " +
   "(like 'jamdani saree' or 'gold bangle') and returns every matching object, so choose the phrase that matches " +
-  "the sellable product and nothing else on the table. Then brief the photographer: where this product would " +
+  "the sellable product and nothing else on the table. Name separately anything inside or on the product that " +
+  "its cutout should keep, like the coffee in a cup, since SAM would leave a hole there. Then brief the photographer: where this product would " +
   "look its best for a Bangladeshi buyer, which colours flatter it, and what must stay out of the picture so " +
   "nobody thinks it comes with the product.";
 
