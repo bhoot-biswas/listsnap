@@ -20,3 +20,26 @@ describe("paletteSwatch", () => {
     expect([...data.subarray(data.length - 3)]).toEqual([255, 0, 0]);
   });
 });
+
+describe("compositeOnBackground placement", () => {
+  it("can sit the product right of centre, inside the frame", async () => {
+    const { compositeOnBackground } = await import("./index");
+    const bg = await sharp({ create: { width: 400, height: 200, channels: 3, background: "#ffffff" } })
+      .png()
+      .toBuffer();
+    const product = await sharp({ create: { width: 50, height: 50, channels: 4, background: "#ff0000" } })
+      .png()
+      .toBuffer();
+    const out = await compositeOnBackground(bg, product, {
+      width: 400,
+      height: 200,
+      scale: 0.25,
+      centerX: 0.75,
+      shadow: "drop",
+    });
+    const { data, info } = await sharp(out).raw().toBuffer({ resolveWithObject: true });
+    const redAt = (x: number) => data[(100 * info.width + x) * 3]! > 200 && data[(100 * info.width + x) * 3 + 1]! < 80;
+    expect(redAt(300)).toBe(true);
+    expect(redAt(100)).toBe(false);
+  });
+});

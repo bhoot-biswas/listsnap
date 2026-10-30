@@ -95,11 +95,19 @@ describe("editImage with several images", () => {
 
 describe("backgroundPrompt", () => {
   it("colours the banner from the brief but leaves studio backdrops plain", () => {
-    expect(backgroundPrompt("banner", "top_down", brief).prompt).toContain(
-      "gradient in cream, warm wood, soft green tones",
-    );
-    expect(backgroundPrompt("banner", "top_down", null).prompt).toContain("soft warm gradient");
+    expect(backgroundPrompt("banner", "top_down", brief).prompt).toContain("in cream, warm wood, soft green tones");
+    expect(backgroundPrompt("banner", "top_down", null).prompt).toContain("in soft warm neutral tones");
     expect(backgroundPrompt("studio", "top_down", brief)).toEqual(backgroundPrompt("studio", "top_down", null));
+  });
+
+  it("gives the banner a surface seen from the photo's own angle", () => {
+    const flat = backgroundPrompt("banner", "top_down", null);
+    expect(flat.prompt).toContain("seen from directly above");
+    expect(flat.size).toBe("1536x768");
+    for (const angle of ["side", "angled"] as const)
+      expect(backgroundPrompt("banner", angle, null).prompt).toContain("tabletop across the lower third");
+    // an empty gradient left the product floating in mid-air
+    expect(flat.prompt).not.toContain("gradient");
   });
 });
 

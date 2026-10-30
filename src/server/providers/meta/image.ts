@@ -64,6 +64,8 @@ const list = (items: string[], n: number, max: number) =>
 /**
  * Studio stays a plain backdrop whatever the brief says: the real cutout is the point of
  * it. The banner takes the brief's colours, since it has no product detail to protect.
+ * Like studio, the banner needs a surface seen from the photo's own angle: on an empty
+ * gradient the cutout floated in mid-air in every live run.
  */
 export function backgroundPrompt(
   scene: Scene,
@@ -72,11 +74,12 @@ export function backgroundPrompt(
 ): { prompt: string; size: string } {
   if (scene === "banner") {
     const palette = brief ? list(brief.palette, 3, 30) : [];
-    const tones = palette.length ? `soft gradient in ${palette.join(", ")} tones` : "soft warm gradient";
-    return {
-      prompt: `Wide clean promotional banner background, ${tones} with subtle light rays, large empty space, ${NO_TEXT}`,
-      size: "1536x768",
-    };
+    const tones = palette.length ? `in ${palette.join(", ")} tones` : "in soft warm neutral tones";
+    const prompt =
+      angle === "top_down"
+        ? `Wide top-down flat lay banner photograph of an empty smooth surface, soft linen or matte paper ${tones}, seen from directly above, soft even daylight with a gentle falloff toward the edges, very subtle texture, ${NO_TEXT}`
+        : `Wide product banner photograph at eye level: an empty smooth tabletop across the lower third, a softly blurred plain wall behind it ${tones}, soft window light from one side, ${NO_TEXT}`;
+    return { prompt, size: "1536x768" };
   }
   return { prompt: angle === "top_down" ? BACKGROUNDS.flatlay : BACKGROUNDS.studio, size: "1024x1024" };
 }
