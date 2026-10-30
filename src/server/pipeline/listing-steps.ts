@@ -109,12 +109,28 @@ async function shopScene(ctx: ListingStepContext, kit: BrandKit): Promise<SceneK
  * is an AI edit of the white cutout image, set in the seller's shop when the brand kit
  * has a setting photo, and is labelled "AI scene".
  */
-/** The slot is taken before Muse Image is paid for; the listing itself is unaffected. */
-async function reserveImageSlot(ctx: ListingStepContext) {
+/**
+ * Runs `make` on one of today's AI photo slots, taken before Muse Image is paid for. The
+ * slot comes back when the step fails before a photo was made (the breaker was open, the
+ * call failed): otherwise the 2-second retries during an outage would use up the day's
+ * photos with nothing to show. A photo that was made and then rejected still counts.
+ */
+async function onImageSlot<T>(ctx: ListingStepContext, make: (made: () => void) => Promise<T>): Promise<T> {
   if (!(await ctx.ws.reserveImage(ctx.workspace.limits.images)))
+    // permanent: retrying today can't help, so it shouldn't spend the step's attempts
     throw new StepError(
       "You've made today's AI photos. More can be made after 6:00 AM Bangladesh time; your listing is saved.",
+      { permanent: true },
     );
+  let billed = false;
+  try {
+    return await make(() => {
+      billed = true;
+    });
+  } catch (err) {
+    if (!billed) await ctx.ws.releaseImage();
+    throw err;
+  }
 }
 
 /**
@@ -124,8 +140,10 @@ async function reserveImageSlot(ctx: ListingStepContext) {
 async function checkedScene(
   step: ReturnType<typeof call>,
   input: { main: Buffer; product: Buffer; phrase: string; brief: SceneBrief | null; kit: SceneKit | null },
+  made: () => void,
 ): Promise<{ image: Buffer; check: { same: true; colorSimilarity: number | null } }> {
   const image = await meta().editScene(step, input.main, "lifestyle", input.phrase, input.brief, input.kit);
+  made();
   const fidelity = await checkFidelity(step, input.product, image, input.phrase);
   if (!fidelity.same)
     throw new StepError(
@@ -137,33 +155,31 @@ async function checkedScene(
 export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise<RenderResult> {
   const p = await plan(ctx);
   const { main, product, mainId, productId } = await itemImages(ctx);
-  await reserveImageSlot(ctx);
   const step = call(ctx, "render");
   const kit = ctx.workspace.settings.brandKit;
   const brief = withBrandColors(sceneBrief(p), kit.colors);
-  let image: Buffer;
-  let check: RenderResult["check"];
-  if (scene === "lifestyle") {
-    ({ image, check } = await checkedScene(step, {
-      main,
-      product,
-      phrase: p.sam_phrase,
-      brief,
-      kit: await shopScene(ctx, kit),
-    }));
-  } else {
+  type Made = { image: Buffer; check?: RenderResult["check"] };
+  const { image, check } = await onImageSlot<Made>(ctx, async (made) => {
+    if (scene === "lifestyle")
+      return checkedScene(
+        step,
+        { main, product, phrase: p.sam_phrase, brief, kit: await shopScene(ctx, kit) },
+        made,
+      );
     const bg = await meta().background(step, scene, p.camera_angle, brief);
+    made();
     // the banner keeps the left side free for a title, and gets the same shadow as the photo's
     // angle would cast: an outline below a flat lay, a contact shadow on a tabletop
     const size =
       scene === "banner"
         ? { width: 1536, height: 768, scale: 0.8, centerX: 0.66 }
         : { width: 1024, height: 1024, scale: 0.72 };
-    image = await compositeOnBackground(bg, product, {
+    const image = await compositeOnBackground(bg, product, {
       ...size,
       shadow: p.camera_angle === "top_down" ? "drop" : "contact",
     });
-  }
+    return { image };
+  });
   const { width, height } = await dimensions(image);
   const sort = { studio: 1, lifestyle: 2, banner: 3 }[scene];
   const media = await saveMedia(ctx.ws.id, scene, image, {
@@ -190,14 +206,13 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
 export async function lookStep(ctx: ListingStepContext, look: Look): Promise<LookResult> {
   const p = await plan(ctx);
   const { main, product, mainId } = await itemImages(ctx);
-  await reserveImageSlot(ctx);
-  const { image, check } = await checkedScene(call(ctx, "look"), {
-    main,
-    product,
-    phrase: p.sam_phrase,
-    brief: lookBrief(look, sceneBrief(p)),
-    kit: null,
-  });
+  const { image, check } = await onImageSlot(ctx, (made) =>
+    checkedScene(
+      call(ctx, "look"),
+      { main, product, phrase: p.sam_phrase, brief: lookBrief(look, sceneBrief(p)), kit: null },
+      made,
+    ),
+  );
   const { width, height } = await dimensions(image);
   const media = await saveMedia(ctx.ws.id, lookKind(look), image, {
     mime: "image/jpeg",
