@@ -69,25 +69,30 @@ function toWire(m: ChatMessage): Record<string, unknown> {
 export const chatSummary = (turn: ChatTurn) =>
   turn.toolCalls.length ? `tools: ${turn.toolCalls.map((c) => c.name).join(", ")}` : "reply";
 
-export async function liveChat(ctx: CallContext, input: ChatInput): Promise<ChatTurn> {
+/** One chat turn from Spark, unlogged: the eval calls it directly, the app through liveChat. */
+export async function sparkChat(input: ChatInput): Promise<{ turn: ChatTurn; costUsd: number }> {
   const key = env().modelApiKey;
   if (!key) throw new PermanentError("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
-  let costUsd = 0;
-  return logged(
+  const completion = await sparkPost(key, JSON.stringify(chatBody(input)), TIMEOUT_MS, Completion);
+  const message = completion.choices[0]!.message;
+  return {
+    turn: {
+      content: message.content?.trim() || null,
+      toolCalls: (message.tool_calls ?? []).map((c) => ({
+        name: c.function.name,
+        argsJson: c.function.arguments || "{}",
+      })),
+    },
+    costUsd: completion.usage ? Math.round(sparkCost(completion.usage) * 1e6) / 1e6 : 0,
+  };
+}
+
+export async function liveChat(ctx: CallContext, input: ChatInput): Promise<ChatTurn> {
+  const r = await logged(
     ctx,
     { provider: "meta", model: SPARK_MODEL, endpoint: "chat/completions", mode: "live" },
-    async () => {
-      const completion = await sparkPost(key, JSON.stringify(chatBody(input)), TIMEOUT_MS, Completion);
-      if (completion.usage) costUsd = sparkCost(completion.usage);
-      const message = completion.choices[0]!.message;
-      return {
-        content: message.content?.trim() || null,
-        toolCalls: (message.tool_calls ?? []).map((c) => ({
-          name: c.function.name,
-          argsJson: c.function.arguments || "{}",
-        })),
-      };
-    },
-    (turn) => ({ summary: chatSummary(turn), costUsd: Math.round(costUsd * 1e6) / 1e6 }),
+    () => sparkChat(input),
+    (r) => ({ summary: chatSummary(r.turn), costUsd: r.costUsd }),
   );
+  return r.turn;
 }

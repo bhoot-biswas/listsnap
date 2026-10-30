@@ -38,7 +38,7 @@ export const getShopSummary = defineOp({
 export const findListings = defineOp({
   name: "findListings",
   description:
-    "Find the shop's listings, newest first, 20 per page: optionally by status (processing, needs_review, ready, in_store, posted, failed) and by words in the English or Bangla title. Listings that are posted are in the store too. Returns ids to use with the other tools.",
+    "Find the shop's listings, newest first, 20 per page: optionally by status (processing, needs_review, ready, in_store, posted, failed) and by a word in the English or Bangla title (search with the bare product word, like 'kurti' or 'কুর্তি', without endings such as -র or -টা). Listings that are posted are in the store too. Returns ids to use with the other tools.",
   input: z.object({
     status: z.enum(STATUSES).optional(),
     query: z.string().trim().max(100).optional(),

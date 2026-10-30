@@ -24,23 +24,33 @@ const RULES = `Rules:
 - The app shows new photos, reels and post links as cards under your reply, so don't repeat links or ids in your text.
 - Products are always saved to the store as drafts. Never say "publish".
 - Photos and reels take up to a minute each and use the seller's daily allowance: make only what the seller asked for.
-- A reel has to be made before it can be posted, and posting needs a Facebook Page connected on the Connections page.
+- A reel has to be made before it can be posted: when reelsMade doesn't list that language, call makeReel first and post once it's made. Posting needs a Facebook Page connected on the Connections page.
 - When a tool fails, explain its message in plain words and say what the seller can do next.
 - When priceBdt is null, the seller sees suggestedPriceBdt as the price and the store gets it, but a reel needs a price the seller has set: offer to set it.
 - stockQty null means stock isn't tracked, which is fine; don't call it missing.
 - You can't see the photos; the listing data says which ones exist.
 - Reply in the language the seller writes in (English or Bangla). Keep replies to one to three short sentences of plain text: no markdown, no lists.`;
 
-/** The rules plus a compact, factual view of the listing or the shop; never image bytes. */
-export async function chatSystem(workspace: Workspace, scope: ChatScope): Promise<string> {
-  if (!scope.listingId) {
-    const shop = await ops.getShopSummary.call(workspace, {}, { via: "chat" });
-    return `${SHOP_ROLE}
+/** The system prompt from facts already gathered; the eval passes its own. */
+export const listingSystem = (facts: unknown) =>
+  `${LISTING_ROLE}
+
+${RULES}
+
+The listing now:
+${JSON.stringify(facts)}`;
+export const shopSystem = (facts: unknown) => `${SHOP_ROLE}
 
 ${RULES}
 
 The shop now:
-${JSON.stringify(shop.ok ? shop.value : null)}`;
+${JSON.stringify(facts)}`;
+
+/** The rules plus a compact, factual view of the listing or the shop; never image bytes. */
+export async function chatSystem(workspace: Workspace, scope: ChatScope): Promise<string> {
+  if (!scope.listingId) {
+    const shop = await ops.getShopSummary.call(workspace, {}, { via: "chat" });
+    return shopSystem(shop.ok ? shop.value : null);
   }
   const listingId = scope.listingId;
   const ws = forWorkspace(workspace.id);
@@ -60,10 +70,5 @@ ${JSON.stringify(shop.ok ? shop.value : null)}`;
     instagram: meta?.settings.igUsername ?? null,
     aiPhotosLeftToday: Math.max(0, workspace.limits.images - usage.images),
   };
-  return `${LISTING_ROLE}
-
-${RULES}
-
-The listing now:
-${JSON.stringify(facts)}`;
+  return listingSystem(facts);
 }

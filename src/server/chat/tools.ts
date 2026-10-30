@@ -73,6 +73,25 @@ export const changesListing = (name: string) => !!opFor(name) && opFor(name)!.ef
 export type Checked =
   { ok: true; args: Record<string, unknown>; preview?: ToolCall["preview"] } | { ok: false; error: string };
 
+/** Whether the model's call names one of this chat's tools with arguments its schema accepts. */
+export function parseToolArgs(
+  scope: ChatScope,
+  name: string,
+  argsJson: string,
+): { ok: true; args: Record<string, unknown> } | { ok: false; error: string } {
+  if (!(toolNames(scope) as readonly string[]).includes(name))
+    return { ok: false, error: `There is no tool called ${name}.` };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(argsJson || "{}");
+  } catch {
+    return { ok: false, error: "The arguments weren't valid JSON." };
+  }
+  const parsed = chatInput(name as ToolName, scope).safeParse(raw);
+  if (!parsed.success) return { ok: false, error: `Invalid arguments: ${z.prettifyError(parsed.error).slice(0, 300)}` };
+  return { ok: true, args: parsed.data as Record<string, unknown> };
+}
+
 /**
  * Checks a call's arguments and completes them, before the call is stored: an approval
  * card must show exactly what will be sent, and the seller approves those stored args.
@@ -84,18 +103,13 @@ export async function checkArgs(
   name: string,
   argsJson: string,
 ): Promise<Checked> {
-  if (!(toolNames(scope) as readonly string[]).includes(name))
-    return { ok: false, error: `There is no tool called ${name}.` };
-  let raw: unknown;
-  try {
-    raw = JSON.parse(argsJson || "{}");
-  } catch {
-    return { ok: false, error: "The arguments weren't valid JSON." };
-  }
-  const parsed = chatInput(name as ToolName, scope).safeParse(raw);
-  if (!parsed.success) return { ok: false, error: `Invalid arguments: ${z.prettifyError(parsed.error).slice(0, 300)}` };
-  const args = parsed.data as Record<string, unknown>;
+  const parsed = parseToolArgs(scope, name, argsJson);
+  if (!parsed.ok) return parsed;
+  const args = parsed.args;
   const listingId = scope.listingId ?? (args.listingId as string | undefined);
+  if (name === "postReel" && listingId && !(await hasReel(workspace, listingId, args.lang as "en" | "bn")))
+    // refused before a card is shown: the seller would approve a post that can only fail
+    return { ok: false, error: NO_REEL };
   if (name === "postReel" && !args.caption) {
     const caption = listingId ? await listingCaption(workspace, listingId, args.lang as "en" | "bn") : null;
     if (!caption) return { ok: false, error: "This listing has no text in that language to write a caption from." };
@@ -106,6 +120,15 @@ export async function checkArgs(
   const titles = await listingTitles(workspace, ids);
   if (!titles) return { ok: false, error: "One of those listings isn't in this shop. Find it with findListings." };
   return { ok: true, args, preview: { titles } };
+}
+
+/** What the model hears when it tries to post a reel that isn't made yet. */
+export const NO_REEL = "There's no reel in that language yet. Make it with makeReel first, then post it.";
+
+async function hasReel(workspace: Workspace, listingId: string, lang: "en" | "bn"): Promise<boolean> {
+  const ws = forWorkspace(workspace.id);
+  const listing = await ws.getListing(listingId);
+  return !!listing && !!(await ws.stepResult(listing.job_id, "reel", `${listingId}:showcase:${lang}`));
 }
 
 async function listingTitles(workspace: Workspace, ids: string[]): Promise<string[] | null> {

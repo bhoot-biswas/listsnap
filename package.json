@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "eval:chat": "vitest run --config evals/vitest.config.mts",
     "format": "prettier --write .",
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose stop db",

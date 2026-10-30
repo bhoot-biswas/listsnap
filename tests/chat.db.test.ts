@@ -92,6 +92,13 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     expect(await posts()).toBe(1);
   });
 
+  it("refuses to post a reel that isn't made, before any card is shown", async () => {
+    // only the English reel exists; the mock asks to post the Bangla one
+    const events = await chat({ message: "Post the Bangla reel to Facebook" });
+    expect(items(events)[0]).toMatchObject({ kind: "tool", name: "postReel", ok: false });
+    expect(items(events).some((i) => i.kind === "approval")).toBe(false);
+  });
+
   it("sends nothing when the seller says no or moves on", async () => {
     const asked = await chat({ message: "Post the reel to Facebook" });
     const card = items(asked).find((i) => i.kind === "approval")!;
