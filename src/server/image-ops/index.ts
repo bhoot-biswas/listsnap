@@ -48,6 +48,17 @@ export function fillsFrame(box: Box, width: number, height: number): boolean {
   return box.w * box.h >= (width * height * FULL_FRAME_PERCENT) / 100;
 }
 
+/** How much of the smaller box the two boxes share, 0–1. */
+export function boxOverlap(a: Box, b: Box): number {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  if (w <= 0 || h <= 0) return 0;
+  return (w * h) / Math.min(a.w * a.h, b.w * b.h);
+}
+
+/** From this share of the smaller box up, two items lie on each other and hide part of one. */
+const OVERLAP_HINT = 0.1;
+
 /** The photo itself as a square studio image, centre-cropped, for items that fill the frame. */
 export async function squarePhoto(photo: Buffer, size = 1024): Promise<Buffer> {
   return sharp(photo)
@@ -69,7 +80,8 @@ export interface PhotoCheck {
  * (all of them, so a neat row of products isn't called "too small"); sharpness is the
  * spread of a Laplacian-filtered greyscale; exposure is mean luma. Thresholds are from
  * the Phase 0a run on 21 photos. An item that fills the frame gets no studio cutout, so
- * the seller is told to step back.
+ * the seller is told to step back; one cut off by the frame or lying under another has
+ * parts the photo never caught, which no cutout can bring back.
  */
 export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoCheck> {
   const meta = await sharp(photo).metadata();
@@ -92,7 +104,12 @@ export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoChec
   const isSharp = sharpness >= 6;
   const hints: string[] = [];
   if (fillPercent < 25) hints.push("too_small");
-  if (boxes.some((b) => fillsFrame(b, W, H))) hints.push("too_close");
+  const full = boxes.some((b) => fillsFrame(b, W, H));
+  if (full) hints.push("too_close");
+  // a box on the photo's edge usually means the item goes on past it
+  else if (boxes.some((b) => b.x <= 1 || b.y <= 1 || b.x + b.w >= W - 1 || b.y + b.h >= H - 1))
+    hints.push("cut_off");
+  if (boxes.some((a, i) => boxes.slice(i + 1).some((b) => boxOverlap(a, b) >= OVERLAP_HINT))) hints.push("overlap");
   if (!isSharp) hints.push("blurry");
   if (exposure === "dark") hints.push("too_dark");
   if (exposure === "bright") hints.push("too_bright");

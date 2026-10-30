@@ -1,16 +1,9 @@
 import "server-only";
-import type { Box } from "@/server/image-ops";
+import { boxOverlap as overlap } from "@/server/image-ops";
 import type { SegmentInstance } from "@/server/providers/types";
 
 /** Pieces whose boxes share this much of the smaller one are parts of one thing. */
 const OVERLAP = 0.2;
-
-function overlap(a: Box, b: Box): number {
-  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
-  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
-  if (w <= 0 || h <= 0) return 0;
-  return (w * h) / Math.min(a.w * a.h, b.w * b.h);
-}
 
 /**
  * SAM finds one kind of thing per phrase, so a cup on its saucer comes back as a saucer

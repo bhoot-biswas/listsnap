@@ -21,6 +21,26 @@ describe("photoCheck", () => {
     expect(check.hints).toContain("too_close");
   });
 
+  it("flags kurtis laid over each other, with the outer ones running off the edges", async () => {
+    // four side by side, each lying a little over the next, as in a crowded flat lay
+    const boxes = [0, 45, 90, 135].map((x) => ({ x, y: 20, w: 65, h: 70 }));
+    const check = await photoCheck(await photo(), boxes);
+    expect(check.hints).toEqual(expect.arrayContaining(["cut_off", "overlap"]));
+    expect(check.hints).not.toContain("too_close");
+  });
+
+  it("does not call items apart from each other overlapping", async () => {
+    const boxes = [10, 110].map((x) => ({ x, y: 20, w: 80, h: 60 }));
+    const check = await photoCheck(await photo(), boxes);
+    expect(check.hints).not.toContain("overlap");
+    expect(check.hints).not.toContain("cut_off");
+  });
+
+  it("does not add cut-off to an item that fills the frame", async () => {
+    const check = await photoCheck(await photo(), [{ x: 0, y: 0, w: 200, h: 100 }]);
+    expect(check.hints).not.toContain("cut_off");
+  });
+
   it("says nothing about distance for an item with room around it", async () => {
     const check = await photoCheck(await photo(), [{ x: 40, y: 20, w: 120, h: 60 }]);
     expect(check.hints).not.toContain("too_close");
