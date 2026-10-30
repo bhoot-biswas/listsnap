@@ -31,6 +31,27 @@ export function mergeSetPieces(found: SegmentInstance[]): SegmentInstance[] {
   return [...groups.values()].map((g) => (g.length === 1 ? g[0]! : union(g)));
 }
 
+/**
+ * What sits in or on a product (the coffee in a cup) joins the product it overlaps most,
+ * so the cutout keeps it instead of a hole where SAM's product mask stopped. Contents that
+ * overlap no product are dropped: they are never items of their own. Products are not
+ * merged with each other here; a shop shelf of touching items stays separate.
+ */
+export function addContents(products: SegmentInstance[], contents: SegmentInstance[]): SegmentInstance[] {
+  const extra = products.map((): SegmentInstance[] => []);
+  for (const c of contents) {
+    let best = -1;
+    let most = OVERLAP;
+    products.forEach((p, i) => {
+      const o = overlap(p.box, c.box);
+      if (o >= most) [best, most] = [i, o];
+    });
+    if (best >= 0) extra[best]!.push(c);
+  }
+  // the product's own score stays: a confident "latte" says nothing about the cup
+  return products.map((p, i) => (extra[i]!.length ? { ...union([p, ...extra[i]!]), score: p.score } : p));
+}
+
 function union(pieces: SegmentInstance[]): SegmentInstance {
   const x = Math.round(Math.min(...pieces.map((p) => p.box.x)));
   const y = Math.round(Math.min(...pieces.map((p) => p.box.y)));

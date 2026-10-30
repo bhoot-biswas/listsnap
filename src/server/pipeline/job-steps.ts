@@ -1,6 +1,6 @@
 import "server-only";
 import { searchPhrases } from "./phrase-search";
-import { mergeSetPieces } from "./set-merge";
+import { addContents, mergeSetPieces } from "./set-merge";
 import { StepError } from "./run-step";
 import { crop, dimensions, fillsFrame, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
 import { maskCutout } from "@/server/image-ops/cutout";
@@ -67,7 +67,8 @@ async function searchSet(
  * listing. Cutouts and the photo check are made here too, in one short request: a
  * transparent PNG from SAM's mask (studio scenes composite it) and the white main image.
  * Multi-angle jobs (several photos of one product) arrive in Phase 5; until then only
- * the first photo is segmented. A set searches every phrase at once and merges the pieces.
+ * the first photo is segmented. A set searches every phrase at once and merges the pieces;
+ * what sits in a product (the coffee in a cup) is searched alongside and joined to it.
  */
 export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
   const plan = await requireResult<PlanResult>(ctx, "plan");
@@ -76,12 +77,18 @@ export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
   // a faint match is usually something next to the product, not the product
   const find = async (p: string) =>
     (await meta().segment(call(ctx, "segment"), data, p)).filter((f) => f.score === null || f.score >= MIN_SCORE);
-  const search = plan.multi_kind === "set" ? await searchSet(phrases, find) : await searchPhrases(phrases, find);
+  // plans saved before contents existed have none
+  const contentsPhrases = (plan.contents_phrases ?? []).filter(Boolean).slice(0, 2);
+  const [search, contents] = await Promise.all([
+    plan.multi_kind === "set" ? searchSet(phrases, find) : searchPhrases(phrases, find),
+    Promise.all(contentsPhrases.map(find)).then((r) => r.flat()),
+  ]);
   const { tried } = search;
   const phrase = search.phrase ?? plan.sam_phrase;
   let found: SegmentInstance[] = search.found;
   if (!found.length) found = [{ box: { x: 0, y: 0, w: photo.width, h: photo.height }, score: null }];
   found = found.sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h).slice(0, MAX_ITEMS);
+  if (search.found.length) found = addContents(found, contents);
   // back in reading order after keeping the largest
   found.sort((a, b) => a.box.x - b.box.x || a.box.y - b.box.y);
 

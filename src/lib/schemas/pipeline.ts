@@ -52,6 +52,11 @@ export const PlanResult = z.object({
       "Short noun phrase naming the product to segment, 1-4 words, e.g. 'jamdani saree', 'gold bangle'. Not a command or a question.",
     ),
   alt_phrases: z.array(z.string()).describe("Two or three alternative noun phrases to try if the first finds nothing"),
+  contents_phrases: z
+    .array(z.string())
+    .describe(
+      "Noun phrases for what sits in or on the product and belongs in its photo but is not sold with it, e.g. 'latte' in a cup, 'flowers' in a vase. Usually empty.",
+    ),
   category_guess: z.string().describe("Store category, e.g. 'Sarees', 'Bangles', 'Kurtis', 'Home decor'"),
   likely_multi: z.boolean().describe("True if the photo shows more than one sellable item"),
   item_count_guess: z.number().int().describe("How many sellable items are visible"),
