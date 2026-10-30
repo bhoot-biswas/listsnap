@@ -3,6 +3,7 @@ import { StepError } from "./run-step";
 import { compositeOnBackground, dimensions } from "@/server/image-ops";
 import { readMedia, saveMedia } from "@/server/media/store";
 import { meta } from "@/server/providers";
+import type { SceneKit } from "@/server/providers/types";
 import type { ListingRow, WorkspaceScope } from "@/server/db/scope";
 import { brandVoice, type Workspace } from "@/server/db/workspaces";
 import {
@@ -13,7 +14,9 @@ import {
   type PlanResult,
   type RenderResult,
   type Scene,
+  type SceneBrief,
 } from "@/lib/schemas/pipeline";
+import type { BrandKit } from "@/lib/schemas/brand-kit";
 
 /** Per-listing steps: write (English), translate (Bangla), render (one scene per call). */
 
@@ -80,10 +83,28 @@ export async function translateStep(ctx: ListingStepContext): Promise<BanglaText
   return bn;
 }
 
+/** The shop's own colours win over the ones Spark suggested; the rest of the brief stays. */
+function withBrandColors(brief: SceneBrief | null, colors: string[]): SceneBrief | null {
+  if (!colors.length) return brief;
+  return { setting: brief?.setting ?? "", avoid: brief?.avoid ?? [], palette: colors };
+}
+
+/**
+ * With a shop setting photo, the lifestyle scene is set in the seller's shop. A photo that
+ * has gone missing falls back to the brief's scene rather than failing the render.
+ */
+async function shopScene(ctx: ListingStepContext, kit: BrandKit): Promise<SceneKit | null> {
+  if (!kit.settingMediaId) return null;
+  const setting = await readMedia(ctx.ws.id, kit.settingMediaId);
+  if (!setting) return null;
+  return { original: await originalPhoto(ctx), setting: setting.data, colors: kit.colors };
+}
+
 /**
  * Studio and banner keep the product's real pixels: a generated background, then the
  * cutout composited on top, with the shadow matching how the photo was taken. Lifestyle
- * is an AI edit of the white cutout image and is labelled "AI scene".
+ * is an AI edit of the white cutout image, set in the seller's shop when the brand kit
+ * has a setting photo, and is labelled "AI scene".
  */
 export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise<RenderResult> {
   const p = await plan(ctx);
@@ -94,11 +115,13 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
       "You've made today's AI photos. More can be made after 6:00 AM Bangladesh time; your listing is saved.",
     );
   const step = call(ctx, "render");
+  const kit = ctx.workspace.settings.brandKit;
+  const brief = withBrandColors(sceneBrief(p), kit.colors);
   let image: Buffer;
   if (scene === "lifestyle") {
-    image = await meta().editScene(step, main, scene, p.sam_phrase, sceneBrief(p));
+    image = await meta().editScene(step, main, scene, p.sam_phrase, brief, await shopScene(ctx, kit));
   } else {
-    const bg = await meta().background(step, scene, p.camera_angle, sceneBrief(p));
+    const bg = await meta().background(step, scene, p.camera_angle, brief);
     const size =
       scene === "banner" ? { width: 1536, height: 768, scale: 0.8 } : { width: 1024, height: 1024, scale: 0.72 };
     image = await compositeOnBackground(bg, product, {

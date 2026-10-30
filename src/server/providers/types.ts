@@ -47,8 +47,28 @@ export interface MetaProvider {
     angle: PlanResult["camera_angle"],
     brief: SceneBrief | null,
   ): Promise<Buffer>;
-  /** A whole scene made by editing the white cutout image (lifestyle), set as the brief describes. */
-  editScene(ctx: CallContext, main: Buffer, scene: Scene, phrase: string, brief: SceneBrief | null): Promise<Buffer>;
+  /**
+   * A whole scene made by editing the white cutout image (lifestyle), set as the brief
+   * describes, or in the seller's own shop when the brand kit has a setting photo.
+   */
+  editScene(
+    ctx: CallContext,
+    main: Buffer,
+    scene: Scene,
+    phrase: string,
+    brief: SceneBrief | null,
+    kit: SceneKit | null,
+  ): Promise<Buffer>;
+}
+
+/** What a lifestyle scene in the seller's own shop needs from the brand kit. */
+export interface SceneKit {
+  /** The seller's original photo, so the model sees the product in real light. */
+  original: Buffer;
+  /** The shop setting photo. */
+  setting: Buffer;
+  /** Checked hex codes; empty for none. */
+  colors: string[];
 }
 
 export interface AssistInput extends AssistRequest {

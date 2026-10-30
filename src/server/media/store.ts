@@ -6,7 +6,17 @@ import sharp from "sharp";
 import { env } from "@/server/env";
 import { execute, selectOne } from "@/server/db/pool";
 
-export type MediaKind = "original" | "mask" | "cutout" | "main" | "studio" | "lifestyle" | "banner" | "ig_jpeg";
+export type MediaKind =
+  | "original"
+  | "mask"
+  | "cutout"
+  | "main"
+  | "studio"
+  | "lifestyle"
+  | "banner"
+  | "ig_jpeg"
+  // the shop's brand kit setting photo, not tied to a listing
+  | "brand";
 
 export interface MediaRecord {
   id: string;

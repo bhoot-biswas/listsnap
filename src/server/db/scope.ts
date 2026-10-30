@@ -182,6 +182,11 @@ export function forWorkspace(workspaceId: string) {
         [jobId, ws],
       ),
 
+    /** A media file's kind, if it is in this workspace. */
+    mediaKind: async (id: string) =>
+      (await selectOne<{ kind: string }>("SELECT kind FROM media WHERE id = ? AND workspace_id = ?", [id, ws]))?.kind ??
+      null,
+
     async setItemColors(colors: { itemId: string; color: string }[]) {
       for (const c of colors)
         await execute("UPDATE items SET color = ? WHERE id = ? AND workspace_id = ?", [c.color, c.itemId, ws]);

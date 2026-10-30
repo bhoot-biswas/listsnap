@@ -107,6 +107,28 @@ export function lifestylePrompt(product: string, brief: SceneBrief | null = null
   );
 }
 
+/**
+ * The lifestyle scene set in the seller's own shop, with the images in this order: the
+ * original photo, the cutout, the shop, then the colour swatch when there is one. In the
+ * spike this framing kept the product filling the frame in the shop's room, with no added props.
+ */
+export function brandKitPrompt(product: string, brief: SceneBrief | null, withColors: boolean): string {
+  const avoid = brief ? list(brief.avoid, 3, 60) : [];
+  return (
+    `Image 1 is the seller's original photo. Image 2 is the same ${product} cut out on white: this is the product, ` +
+    "keep it exactly as it is: same shape, colors, pattern and details. Image 3 is the seller's shop: use this room, " +
+    "its wall, light and furniture as the setting." +
+    (withColors
+      ? " Image 4 is the shop's brand colours: let the light and small background details lean toward them."
+      : "") +
+    ` Product photo for an online store: a close-up of the ${product} resting naturally on a surface in this room. ` +
+    "The product is the hero: it fills most of the frame and its details are clearly visible; the room is softly out " +
+    "of focus behind it. No props that could be mistaken for part of the product, nothing else from image 1, no " +
+    "people, no text." +
+    (avoid.length ? ` Leave out: ${avoid.join(", ")}.` : "")
+  );
+}
+
 const ImagesResponse = z.object({
   data: z.array(z.object({ b64_json: z.string().nullish(), url: z.string().nullish() })).min(1),
   usage: z.object({ total_tokens: z.number() }).nullish(),
@@ -183,8 +205,12 @@ function safeJson(text: string): unknown {
 export const generateImage = (prompt: string, size: string, user: string) =>
   imagesCall("images/generations", imagesBody({ prompt, size }, { reasoning: "low", user }));
 
-export const editImage = (imageDataUrl: string, prompt: string, user: string) =>
+/** One or more images, in the order the prompt names them ("image 1 is …"). */
+export const editImage = (imageDataUrls: string | string[], prompt: string, user: string) =>
   imagesCall(
     "images/edits",
-    imagesBody({ prompt, images: [{ image_url: imageDataUrl }], size: "1024x1024" }, { reasoning: "high", user }),
+    imagesBody(
+      { prompt, images: [imageDataUrls].flat().map((image_url) => ({ image_url })), size: "1024x1024" },
+      { reasoning: "high", user },
+    ),
   );

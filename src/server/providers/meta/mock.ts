@@ -187,20 +187,24 @@ export const mockMeta: MetaProvider = {
       () => ({ summary: `${scene} background (${angle})`, costUsd: 0 }),
     ),
 
-  editScene: (ctx, main, scene) =>
+  editScene: (ctx, main, scene, _phrase, _brief, kit) =>
     logged(
       ctx,
       { ...IMAGE, endpoint: "images/edits" },
       async () => {
         await delay();
-        const bg = await gradient(1024, 1024, "#E9D6B8", "#B98B5E");
+        // with a brand kit the mock sits the product in the seller's own shop photo, so the
+        // Settings flow can be tried end to end without a key
+        const bg = kit
+          ? await sharp(kit.setting).resize(1024, 1024, { fit: "cover" }).png().toBuffer()
+          : await gradient(1024, 1024, "#E9D6B8", "#B98B5E");
         const product = await sharp(main).resize(700, 700, { fit: "inside" }).png().toBuffer();
         return sharp(bg)
           .composite([{ input: product, gravity: "centre", blend: "multiply" }])
           .jpeg({ quality: 86 })
           .toBuffer();
       },
-      () => ({ summary: `${scene} scene from the cutout`, costUsd: 0 }),
+      () => ({ summary: `${scene} scene ${kit ? "in the shop setting" : "from the cutout"}`, costUsd: 0 }),
     ),
 };
 
