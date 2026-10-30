@@ -52,6 +52,11 @@ export const PlanResult = z.object({
       "Short noun phrase naming the product to segment, 1-4 words, e.g. 'jamdani saree', 'gold bangle'. Not a command or a question.",
     ),
   alt_phrases: z.array(z.string()).describe("Two or three alternative noun phrases to try if the first finds nothing"),
+  contents_phrases: z
+    .array(z.string())
+    .describe(
+      "Noun phrases for what sits in or on the product and belongs in its photo but is not sold with it, e.g. 'latte' in a cup, 'flowers' in a vase. Usually empty.",
+    ),
   category_guess: z.string().describe("Store category, e.g. 'Sarees', 'Bangles', 'Kurtis', 'Home decor'"),
   likely_multi: z.boolean().describe("True if the photo shows more than one sellable item"),
   item_count_guess: z.number().int().describe("How many sellable items are visible"),
@@ -148,7 +153,8 @@ export type Scene = z.infer<typeof Scene>;
 export const RenderResult = z.object({
   scene: Scene,
   mediaId: z.string(),
-  aiLabel: z.enum(["ai_background", "ai_scene"]),
+  /** `photo`: the seller's own photo, untouched, for an item that fills the frame. */
+  aiLabel: z.enum(["ai_background", "ai_scene", "photo"]),
   /** Present for scenes that redraw the product: it was checked and kept as the same product. */
   check: z.object({ same: z.literal(true), colorSimilarity: z.number().nullable() }).optional(),
 });

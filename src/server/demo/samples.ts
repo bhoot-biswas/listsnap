@@ -40,6 +40,7 @@ export const DEMO_SAMPLES: DemoSample[] = [
     plan: {
       sam_phrase: "embroidered kurti",
       alt_phrases: ["kurti", "embroidered kurta", "long kurta"],
+      contents_phrases: [],
       category_guess: "Kurtis",
       likely_multi: true,
       item_count_guess: 4,
@@ -109,6 +110,7 @@ export const DEMO_SAMPLES: DemoSample[] = [
     plan: {
       sam_phrase: "resin bangle",
       alt_phrases: ["glass bangle", "acrylic bangle"],
+      contents_phrases: [],
       category_guess: "Bangles",
       likely_multi: true,
       item_count_guess: 6,
@@ -178,6 +180,7 @@ export const DEMO_SAMPLES: DemoSample[] = [
     plan: {
       sam_phrase: "jamdani saree",
       alt_phrases: ["red saree", "folded saree"],
+      contents_phrases: [],
       category_guess: "Sarees",
       likely_multi: false,
       item_count_guess: 1,

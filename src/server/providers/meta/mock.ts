@@ -42,6 +42,7 @@ export const mockMeta: MetaProvider = {
         return {
           sam_phrase: wide ? "handloom tote bag" : "jamdani saree",
           alt_phrases: wide ? ["tote bag", "bag"] : ["saree", "cotton saree"],
+          contents_phrases: [],
           category_guess: wide ? "Bags" : "Sarees",
           likely_multi: wide,
           item_count_guess: wide ? 3 : 1,

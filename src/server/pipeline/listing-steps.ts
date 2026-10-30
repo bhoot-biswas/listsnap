@@ -2,7 +2,7 @@ import "server-only";
 import { checkFidelity } from "./fidelity";
 import { lookBrief } from "./looks";
 import { StepError } from "./run-step";
-import { compositeOnBackground, dimensions } from "@/server/image-ops";
+import { compositeOnBackground, dimensions, fillsFrame, squarePhoto } from "@/server/image-ops";
 import { readMedia, saveMedia } from "@/server/media/store";
 import { meta } from "@/server/providers";
 import type { SceneKit } from "@/server/providers/types";
@@ -47,21 +47,24 @@ async function originalPhoto(ctx: ListingStepContext): Promise<Buffer> {
 /**
  * The listing's first item, as renders need it: `main` is the white 1:1 image (what the
  * lifestyle edit starts from); `product` is the transparent cutout when SAM made one,
- * so composites place the product itself rather than a white square.
+ * so composites place the product itself rather than a white square. `fullFrame` is an
+ * item that fills its photo, which the segment step left uncut.
  */
 async function itemImages(
   ctx: ListingStepContext,
-): Promise<{ main: Buffer; product: Buffer; mainId: string; productId: string }> {
+): Promise<{ main: Buffer; product: Buffer; mainId: string; productId: string; fullFrame: boolean }> {
   const items = await ctx.ws.items(ctx.listing.job_id);
   const first = items.find((i) => i.id === ctx.listing.item_ids_json[0]);
   const main = first?.cutout_media_id ? await readMedia(ctx.ws.id, first.cutout_media_id) : null;
   if (!main || !first?.cutout_media_id) throw new StepError("The cutout for this item is missing.");
   const png = first.cutout_png_media_id ? await readMedia(ctx.ws.id, first.cutout_png_media_id) : null;
+  const photo = (await ctx.ws.photos(ctx.listing.job_id)).find((p) => p.id === first.photo_id);
   return {
     main: main.data,
     product: png?.data ?? main.data,
     mainId: first.cutout_media_id,
     productId: png ? first.cutout_png_media_id! : first.cutout_media_id,
+    fullFrame: !png && !!photo && fillsFrame(first.box_json, photo.width, photo.height),
   };
 }
 
@@ -154,18 +157,29 @@ async function checkedScene(
 
 export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise<RenderResult> {
   const p = await plan(ctx);
-  const { main, product, mainId, productId } = await itemImages(ctx);
+  const { main, product, mainId, productId, fullFrame } = await itemImages(ctx);
+  if (scene === "studio" && fullFrame) {
+    // a rectangle of the photo pasted on a backdrop looks like a scrap, not a studio shot;
+    // the photo itself is the better one, and costs no Muse Image call or daily image
+    const image = await squarePhoto(await originalPhoto(ctx));
+    const { width, height } = await dimensions(image);
+    const media = await saveMedia(ctx.ws.id, scene, image, {
+      mime: "image/jpeg",
+      width,
+      height,
+      listingId: ctx.listing.id,
+      sort: 1,
+      fromMediaId: productId,
+    });
+    return { scene, mediaId: media.id, aiLabel: "photo" };
+  }
   const step = call(ctx, "render");
   const kit = ctx.workspace.settings.brandKit;
   const brief = withBrandColors(sceneBrief(p), kit.colors);
   type Made = { image: Buffer; check?: RenderResult["check"] };
   const { image, check } = await onImageSlot<Made>(ctx, async (made) => {
     if (scene === "lifestyle")
-      return checkedScene(
-        step,
-        { main, product, phrase: p.sam_phrase, brief, kit: await shopScene(ctx, kit) },
-        made,
-      );
+      return checkedScene(step, { main, product, phrase: p.sam_phrase, brief, kit: await shopScene(ctx, kit) }, made);
     const bg = await meta().background(step, scene, p.camera_angle, brief);
     made();
     // the banner keeps the left side free for a title, and gets the same shadow as the photo's
