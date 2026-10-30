@@ -31,7 +31,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
           aria-pressed={locale === lang}
           onClick={() => choose(lang)}
           className={cn(
-            "h-8 min-w-11 rounded-md px-2 font-medium transition-colors",
+            "h-11 min-w-11 rounded-md px-2 font-medium transition-colors md:h-8",
             locale === lang ? "bg-primary-soft text-primary" : "text-muted-foreground hover:text-foreground",
           )}
         >

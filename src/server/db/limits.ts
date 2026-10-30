@@ -39,6 +39,14 @@ export function limitQueries(ws: string) {
     /** Takes one of today's AI photo slots, just before Muse Image is called. */
     reserveImage: (limit: number) => reserve("usage_daily", ws, "images", limit),
 
+    /** Gives an AI photo slot back when the step failed before Muse Image made a photo. */
+    async releaseImage() {
+      await execute(
+        "UPDATE usage_daily SET images = GREATEST(images - 1, 0) WHERE workspace_id = ? AND date = UTC_DATE()",
+        [ws],
+      );
+    },
+
     /** Takes one of today's reel slots, just before a reel renders. */
     reserveReel: () => reserve("usage_daily", ws, "reels", REELS_PER_DAY),
 

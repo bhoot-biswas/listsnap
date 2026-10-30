@@ -7,6 +7,7 @@ import { mediaUrl } from "@/server/media/store";
 import { localTitle } from "@/lib/titles";
 import { cn } from "@/lib/utils";
 import { LOOKS, lookKind } from "@/lib/schemas/looks";
+import { sized } from "@/lib/media-size";
 
 const AI_KINDS = new Set(["studio", "lifestyle", "banner", ...LOOKS.map(lookKind)]);
 
@@ -41,7 +42,7 @@ export async function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
               )}
             >
               <Image
-                src={url}
+                src={m.mime.startsWith("image/") ? sized(url, 640) : url}
                 alt=""
                 fill
                 sizes="(min-width: 1024px) 25vw, 50vw"

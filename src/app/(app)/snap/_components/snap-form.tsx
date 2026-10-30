@@ -199,7 +199,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
                   onClick={() => remove(i)}
                   disabled={uploading}
                   aria-label={`${t("clear")} ${file.name}`}
-                  className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-background/90 shadow"
+                  className="absolute top-1 right-1 flex size-11 items-center justify-center rounded-full bg-background/90 shadow md:size-8"
                 >
                   <X className="size-4" />
                 </button>

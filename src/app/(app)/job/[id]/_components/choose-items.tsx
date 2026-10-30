@@ -3,15 +3,16 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { JobState } from "@/lib/job-state";
+import { sized } from "@/lib/media-size";
 import { cn } from "@/lib/utils";
 
 const MODES = ["separate", "set", "variants"] as const;
 const LABEL = { separate: "chooseSeparate", set: "chooseSet", variants: "chooseVariants" } as const;
 
-/** S6 Choose items, basic: tick the items, pick how to list them. The full chooser comes in Phase 5. */
+/** S6 Choose items: tick the items, pick how to list them. */
 export function ChooseItems({
   state,
   onChoose,
@@ -26,6 +27,7 @@ export function ChooseItems({
   const [mode, setMode] = useState<(typeof MODES)[number]>(suggested);
   const [kept, setKept] = useState<Set<string>>(() => new Set(state.items.map((i) => i.id)));
   const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const toggle = (id: string) =>
     setKept((cur) => {
@@ -42,13 +44,14 @@ export function ChooseItems({
         <p className="text-sm text-muted-foreground">{state.suggestion?.reason ?? t("chooseBody")}</p>
       </div>
       <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-        {state.items.map((item) => {
+        {state.items.map((item, i) => {
           const on = kept.has(item.id);
           return (
             <li key={item.id}>
               <button
                 type="button"
                 aria-pressed={on}
+                aria-label={item.color ?? t("itemN", { n: i + 1 })}
                 onClick={() => toggle(item.id)}
                 className={cn(
                   "relative block aspect-square w-full overflow-hidden rounded-lg border-2 bg-muted",
@@ -56,14 +59,7 @@ export function ChooseItems({
                 )}
               >
                 {item.url && (
-                  <Image
-                    src={item.url}
-                    alt={item.color ?? ""}
-                    fill
-                    sizes="120px"
-                    className="object-cover"
-                    unoptimized
-                  />
+                  <Image src={sized(item.url, 320)} alt="" fill sizes="120px" className="object-cover" unoptimized />
                 )}
                 {on && (
                   <span className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -88,6 +84,7 @@ export function ChooseItems({
             aria-checked={mode === m}
             variant={mode === m ? "default" : "outline"}
             size="sm"
+            className="h-11 md:h-8"
             onClick={() => setMode(m)}
           >
             {t(LABEL[m])}
@@ -99,13 +96,25 @@ export function ChooseItems({
         size="lg"
         className="w-full sm:w-auto"
         disabled={!kept.size || sending}
+        aria-busy={sending}
         onClick={async () => {
           setSending(true);
-          if (!(await onChoose(mode, [...kept]))) setSending(false);
+          setFailed(false);
+          const ok = await onChoose(mode, [...kept]).catch(() => false);
+          if (!ok) {
+            setSending(false);
+            setFailed(true);
+          }
         }}
       >
-        {t("chooseConfirm", { count: kept.size })}
+        {sending && <Loader2 className="animate-spin" aria-hidden="true" />}
+        {sending ? t("chooseSending") : t("chooseConfirm", { count: kept.size })}
       </Button>
+      {failed && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("chooseFailed")}
+        </p>
+      )}
     </section>
   );
 }

@@ -3,13 +3,10 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import { parseAmount } from "@/lib/amount";
+import { sized } from "@/lib/media-size";
 import { COLOR_MAX, type Variant } from "@/lib/variants";
 import { cn } from "@/lib/utils";
-
-const toInt = (s: string): number | null => {
-  const n = Number(s.replace(/[^\d]/g, ""));
-  return s.trim() === "" || !Number.isFinite(n) ? null : Math.round(n);
-};
 
 /** What's wrong with the colours as typed, if anything; autosave refuses these, so say why. */
 export function variantProblem(variants: Variant[]): "colorEmpty" | "colorDuplicate" | "colorNoneOn" | null {
@@ -65,7 +62,7 @@ export function VariantFields({
               />
               {photos[v.itemId] && (
                 <Image
-                  src={photos[v.itemId]!}
+                  src={sized(photos[v.itemId]!, 96)}
                   alt=""
                   width={48}
                   height={48}
@@ -86,7 +83,7 @@ export function VariantFields({
                   inputMode="numeric"
                   value={v.priceBdt ?? ""}
                   placeholder={basePrice === null ? "৳" : `৳${basePrice}`}
-                  onChange={(e) => set(i, { priceBdt: toInt(e.target.value) })}
+                  onChange={(e) => set(i, { priceBdt: parseAmount(e.target.value) })}
                   aria-label={t("colorPrice", { color: name })}
                   className="h-11 w-28 tabular-nums"
                 />
@@ -94,7 +91,7 @@ export function VariantFields({
                   inputMode="numeric"
                   value={v.stockQty ?? ""}
                   placeholder={t("colorStockPlaceholder")}
-                  onChange={(e) => set(i, { stockQty: toInt(e.target.value) })}
+                  onChange={(e) => set(i, { stockQty: parseAmount(e.target.value) })}
                   aria-label={t("colorStock", { color: name })}
                   className="h-11 w-24 tabular-nums"
                 />

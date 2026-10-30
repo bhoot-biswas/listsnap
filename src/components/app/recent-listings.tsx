@@ -6,6 +6,7 @@ import { listingHref } from "@/lib/listing-links";
 import { localTitle } from "@/lib/titles";
 import type { RecentListingRow } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
+import { sized } from "@/lib/media-size";
 
 /** The last few listings (beside Snap, on the Dashboard), so a seller can jump back to one. */
 export async function RecentListings({
@@ -40,7 +41,7 @@ export async function RecentListings({
                 <div className="relative size-11 shrink-0 overflow-hidden rounded-md border bg-white">
                   {r.cutout_media_id && (
                     <Image
-                      src={mediaUrl(r.cutout_media_id)}
+                      src={sized(mediaUrl(r.cutout_media_id), 96)}
                       alt=""
                       fill
                       sizes="44px"

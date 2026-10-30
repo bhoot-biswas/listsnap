@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { cn } from "@/lib/utils";
 import { lookOf } from "@/lib/schemas/looks";
+import { sized } from "@/lib/media-size";
 
 export interface ReviewPhoto {
   id: string;
@@ -19,10 +20,13 @@ export interface ReviewPhoto {
 /** The photos column: the main image large, then each image as a tile that toggles inclusion. */
 export function ReviewPhotos({
   photos,
+  title,
   selected,
   onToggle,
 }: {
   photos: ReviewPhoto[];
+  /** The listing's title, which describes the main photo for screen readers. */
+  title: string;
   selected: Set<string>;
   onToggle: (id: string) => void;
 }) {
@@ -51,7 +55,7 @@ export function ReviewPhotos({
         <div className="relative aspect-square overflow-hidden rounded-xl border bg-white">
           <Image
             src={main.url}
-            alt=""
+            alt={title}
             fill
             sizes="(max-width: 1024px) 100vw, 360px"
             className="object-contain"
@@ -78,7 +82,7 @@ export function ReviewPhotos({
                   p.locked && "cursor-default",
                 )}
               >
-                <Image src={p.url} alt="" fill sizes="90px" className="object-cover" unoptimized />
+                <Image src={sized(p.url, 320)} alt="" fill sizes="90px" className="object-cover" unoptimized />
                 {on && (
                   <span className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Check className="size-3" aria-hidden="true" />

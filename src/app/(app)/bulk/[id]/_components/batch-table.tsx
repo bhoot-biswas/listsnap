@@ -6,6 +6,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import { Check, Loader2 } from "lucide-react";
 import { StatusBadge } from "@/components/app/status-badge";
 import { quickEditListing } from "@/server/actions/review";
+import { parseAmount } from "@/lib/amount";
+import { sized } from "@/lib/media-size";
 import type { BatchRow } from "@/lib/batch-state";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +36,10 @@ function InlineField({
   const commit = async (raw: string) => {
     const text = raw.trim();
     if (text === last.trim()) return;
-    const patch: Record<string, unknown> =
-      field === "priceBdt"
-        ? { priceBdt: text ? Math.round(Number(text.replace(/[^\d]/g, ""))) : null }
-        : { [field]: text };
+    const price = field === "priceBdt" ? parseAmount(text) : null;
+    // a price with no digits in it is a slip, not a request to clear the price
+    if (field === "priceBdt" && text && price === null) return;
+    const patch: Record<string, unknown> = field === "priceBdt" ? { priceBdt: price } : { [field]: text };
     if (field === "title" && !text) return;
     setSaved("saving");
     const r = await quickEditListing(listingId, patch).catch(() => null);
@@ -132,17 +134,24 @@ export function BatchTable({
 
   const thumb = (r: BatchRow) => (
     // eslint-disable-next-line @next/next/no-img-element -- small private /media thumbnails
-    <img src={r.thumbUrl ?? r.photoUrl ?? ""} alt="" className="size-12 rounded-md border bg-white object-cover" />
+    <img
+      src={sized(r.thumbUrl ?? r.photoUrl ?? "", 96)}
+      alt=""
+      className="size-12 rounded-md border bg-white object-cover"
+    />
   );
   const checkbox = (r: BatchRow) =>
     r.listing && SAVABLE.has(r.listing.status) ? (
-      <input
-        type="checkbox"
-        className="size-5 accent-primary"
-        checked={selected.has(r.listing.id)}
-        onChange={(e) => onSelect(r.listing!.id, e.target.checked)}
-        aria-label={t("select", { title: r.listing.title ?? "" })}
-      />
+      // a 20 px box inside a 44 px label, so the whole square is the tap target
+      <label className="flex size-11 shrink-0 cursor-pointer items-center justify-center">
+        <input
+          type="checkbox"
+          className="size-5 accent-primary"
+          checked={selected.has(r.listing.id)}
+          onChange={(e) => onSelect(r.listing!.id, e.target.checked)}
+          aria-label={t("select", { title: r.listing.title ?? "" })}
+        />
+      </label>
     ) : null;
   const reviewLink = (r: BatchRow) =>
     r.listing && r.listing.title ? (

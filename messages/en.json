@@ -139,7 +139,11 @@
       "failed": "A step didn't finish",
       "check": "Review",
       "open": "Open",
-      "untitled": "Untitled listing"
+      "untitled": "Untitled listing",
+      "choose": "Waiting for you to choose items",
+      "unfinished": "Stopped when the page was closed",
+      "unfinishedTitle": "Unfinished listing",
+      "continue": "Continue"
     },
     "usage": {
       "title": "Usage today",
@@ -527,7 +531,7 @@
     "newListing": "Snap another",
     "listing": "Listing {n}",
     "stock": "Stock: {qty}",
-    "underTheHood": "Under the hood",
+    "underTheHood": "Details",
     "costSoFar": "Cost so far",
     "noCalls": "No calls yet.",
     "notFound": "This job isn't in your shop.",
@@ -537,7 +541,7 @@
     "saving": "Saving to your store…",
     "saveFailed": "Your store didn’t answer. Your listing is safe here. Try again.",
     "seeSaved": "See saved drafts",
-    "foundCaption": "{count, plural, one {What SAM found} other {What SAM found: # items}}",
+    "foundCaption": "{count, plural, one {What we found} other {We found # items}}",
     "before": "Before",
     "after": "After",
     "compare": "Compare your photo with the result",
@@ -552,7 +556,12 @@
       "too_bright": "The photo is very bright. Avoid direct flash or sun."
     },
     "retake": "Take another photo",
-    "reviewNow": "Review now"
+    "reviewNow": "Review now",
+    "keepOpen": "Keep this page open while we work. If you leave, open it again from the Dashboard to carry on.",
+    "itemN": "Item {n, number}",
+    "chooseSending": "Starting…",
+    "chooseFailed": "That didn’t go through. Check your connection and try again.",
+    "stalled": "Couldn’t reach ListSnap, so your listing has paused."
   },
   "errors": {
     "title": "Something went wrong",
@@ -573,8 +582,9 @@
     "openInStore": "Open in WooCommerce",
     "snapAnother": "Snap another",
     "toDashboard": "Back to dashboard",
-    "instagramSoon": "Instagram posting is coming soon.",
-    "stats": "Took {seconds} s · AI cost ${cost}"
+    "stats": "Took {seconds} s · AI cost ${cost}",
+    "reelOrPost": "Make a reel or post",
+    "reelOrPostMany": "Tap a product to make its reel or post it to Facebook and Instagram."
   },
   "connect": {
     "url": "Store address",
@@ -664,8 +674,12 @@
       "noInstagram": "No Instagram account linked",
       "test": "Test",
       "disconnect": "Disconnect",
-      "disconnectHint": "Posts already made stay on Facebook and Instagram."
-    }
+      "disconnectHint": "Posts already made stay on Facebook and Instagram.",
+      "disconnectConfirm": "Disconnect Facebook and Instagram? Reels can’t be posted until you connect again."
+    },
+    "disconnectConfirm": "Disconnect your store? ListSnap can’t save drafts to it until you connect it again.",
+    "disconnectYes": "Yes, disconnect",
+    "keepConnected": "Keep connected"
   },
   "review": {
     "title": "Review listing",

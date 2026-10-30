@@ -5,7 +5,7 @@ import { TopBar } from "@/components/app/top-bar";
 import { WooChecks } from "@/components/app/woo-checks";
 import { WooConnectForm } from "@/components/app/woo-connect-form";
 import { DemoStoreButton } from "@/components/app/demo-store-button";
-import { Button } from "@/components/ui/button";
+import { ConfirmButton, PendingButton } from "@/components/app/form-buttons";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { keyHint } from "@/server/stores/woo-store";
@@ -95,9 +95,9 @@ export default async function ConnectionsPage() {
               {checks.length > 0 && <WooChecks checks={checks} />}
               <div className="flex flex-wrap gap-3">
                 <form action={recheckWoo}>
-                  <Button type="submit" variant={broken ? "default" : "outline"} size="lg">
+                  <PendingButton variant={broken ? "default" : "outline"} size="lg">
                     {t("testNow")}
-                  </Button>
+                  </PendingButton>
                 </form>
               </div>
               <details className="rounded-lg border px-3 py-2">
@@ -107,9 +107,14 @@ export default async function ConnectionsPage() {
                 </div>
               </details>
               <form action={disconnectWoo} className="space-y-1 border-t pt-4">
-                <Button type="submit" variant="ghost" className="text-destructive">
+                <ConfirmButton
+                  question={t("disconnectConfirm")}
+                  confirmLabel={t("disconnectYes")}
+                  cancelLabel={t("keepConnected")}
+                  className="text-destructive"
+                >
                   {t("disconnect")}
-                </Button>
+                </ConfirmButton>
                 <p className="text-xs text-muted-foreground">{t("disconnectHint")}</p>
               </form>
             </>
@@ -146,9 +151,14 @@ export default async function ConnectionsPage() {
                 <dd>{meta.igUsername ? t("meta.instagram", { name: meta.igUsername }) : t("meta.noInstagram")}</dd>
               </dl>
               <form action={disconnectMeta} className="space-y-1 border-t pt-3">
-                <Button type="submit" variant="ghost" className="text-destructive">
+                <ConfirmButton
+                  question={t("meta.disconnectConfirm")}
+                  confirmLabel={t("disconnectYes")}
+                  cancelLabel={t("keepConnected")}
+                  className="text-destructive"
+                >
                   {t("meta.disconnect")}
-                </Button>
+                </ConfirmButton>
                 <p className="text-xs text-muted-foreground">{t("meta.disconnectHint")}</p>
               </form>
             </>
@@ -156,9 +166,9 @@ export default async function ConnectionsPage() {
             <>
               {testAllowed && (
                 <form action={connectTestMeta} className="space-y-2">
-                  <Button type="submit" variant="outline" size="lg">
+                  <PendingButton variant="outline" size="lg">
                     {t("meta.connectTest")}
-                  </Button>
+                  </PendingButton>
                   <p className="text-xs text-muted-foreground">{t("meta.testHint")}</p>
                 </form>
               )}

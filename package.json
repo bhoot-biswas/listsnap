@@ -15,6 +15,7 @@
     "db:down": "docker compose stop db",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs",
     "db:status": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --status",
+    "demo:cleanup": "node --env-file-if-exists=.env.local scripts/cleanup-demo.mjs",
     "store:setup": "node scripts/store-setup.mjs",
     "store:down": "docker compose --profile store stop store store-db"
   },

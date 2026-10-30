@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Lightbulb, WifiOff } from "lucide-react";
+import { CircleAlert, Lightbulb, WifiOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/app/top-bar";
 import { ButtonLink } from "@/components/app/button-link";
 import { StatusBadge } from "@/components/app/status-badge";
 import { useJobRunner } from "@/hooks/use-job-runner";
 import type { JobState } from "@/lib/job-state";
+import { sized } from "@/lib/media-size";
 import { StepList } from "./step-list";
 import { ChooseItems } from "./choose-items";
 import { UnderTheHood } from "./under-the-hood";
@@ -22,7 +24,7 @@ const EDITABLE = new Set(["ready", "needs_review", "in_store", "posted"]);
 export function JobView({ initial }: { initial: JobState }) {
   const t = useTranslations("job");
   const tCommon = useTranslations("common");
-  const { state, offline, retry, choose } = useJobRunner(initial);
+  const { state, offline, stalled, retry, choose, resume } = useJobRunner(initial);
   const photo = state.photos[0];
   const finished = state.status === "ready";
   const savable = finished ? state.listings.filter((l) => SAVABLE.has(l.status)) : [];
@@ -51,6 +53,18 @@ export function JobView({ initial }: { initial: JobState }) {
           {t("offline")}
         </p>
       )}
+      {stalled && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-center gap-3 bg-destructive/5 px-4 py-2 text-sm"
+        >
+          <CircleAlert className="size-4 text-destructive" aria-hidden="true" />
+          {t("stalled")}
+          <Button variant="outline" size="sm" className="h-11 md:h-8" onClick={() => void resume()}>
+            {tCommon("tryAgain")}
+          </Button>
+        </div>
+      )}
       <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 md:px-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-[320px_minmax(0,1fr)]">
@@ -60,6 +74,7 @@ export function JobView({ initial }: { initial: JobState }) {
             </div>
             <div className="space-y-4">
               <StepList state={state} onRetry={retry} />
+              {state.status === "processing" && <p className="text-sm text-muted-foreground">{t("keepOpen")}</p>}
               {state.check && state.check.hints.length > 0 && (
                 <aside className="space-y-2 rounded-xl border border-warning/40 bg-marigold-soft p-4 text-sm">
                   <p className="flex items-center gap-2 font-medium">
@@ -112,7 +127,7 @@ export function JobView({ initial }: { initial: JobState }) {
                           className="relative aspect-square overflow-hidden rounded-md border bg-muted"
                         >
                           <Image
-                            src={img.url}
+                            src={sized(img.url, 320)}
                             alt={l.title ?? ""}
                             fill
                             sizes="96px"

@@ -34,7 +34,8 @@ export function StepList({ state, onRetry }: { state: JobState; onRetry: (s: Ste
       key: step,
       label: t(`steps.${step}`),
       status: s?.status ?? "pending",
-      detail: s?.detail,
+      // while Choose items is open its card gives the reason, right where the choice is made
+      detail: step === "group" && state.status === "awaiting_choice" ? null : s?.detail,
       step: s,
       active: nextKeys.has(step),
     });
@@ -130,6 +131,7 @@ function StepRow({ row, onRetry }: { row: Row; onRetry: (s: StepView) => Promise
                 <Button
                   size="sm"
                   variant="outline"
+                  className="h-11 md:h-8"
                   disabled={retrying}
                   onClick={async () => {
                     setRetrying(true);

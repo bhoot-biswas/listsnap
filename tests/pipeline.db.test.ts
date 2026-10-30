@@ -188,8 +188,47 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
       // the studio photo keeps the real pixels and is unaffected; no lifestyle photo was kept
       expect(state.listings[0]!.images.map((i) => i.kind)).toEqual(["main", "studio"]);
       expect(state.status).toBe("ready");
+      // the rejected photos were made, so they count: studio once, lifestyle three times
+      expect((await forWorkspace(shop.workspace.id).usageToday()).images).toBe(4);
     } finally {
       spy.mockRestore();
+      await shop.remove();
+    }
+  });
+
+  it("gives the AI photo slot back when no photo was made", async () => {
+    const { vi } = await import("vitest");
+    const { mockMeta } = await import("@/server/providers/meta/mock");
+    const { StepError } = await import("@/server/pipeline/run-step");
+    const spy = vi
+      .spyOn(mockMeta, "background")
+      .mockRejectedValue(new StepError("The AI is busy right now.", { notAttempted: true }));
+    const shop = await createTestWorkspace({ scenes: ["studio"], listingLanguages: ["en"] });
+    try {
+      const jobId = await createTestJob(shop.workspace.id, await samplePhoto("saree.jpg"));
+      // an open breaker costs no attempt, so the step stays callable and the job never settles
+      await expect(runJob(shop.workspace, jobId, 8)).rejects.toThrow("didn't settle");
+      expect(spy.mock.calls.length).toBeGreaterThan(1);
+      expect((await forWorkspace(shop.workspace.id).usageToday()).images).toBe(0);
+    } finally {
+      spy.mockRestore();
+      await shop.remove();
+    }
+  });
+
+  it("stops at once when today's AI photos are used up, without spending retries", async () => {
+    const shop = await createTestWorkspace({ scenes: ["studio"], listingLanguages: ["en"] });
+    try {
+      const workspace = { ...shop.workspace, limits: { ...shop.workspace.limits, images: 0 } };
+      const jobId = await createTestJob(workspace.id, await samplePhoto("saree.jpg"));
+      const state = await runJob(workspace, jobId);
+      const render = state.steps.find((s) => s.step === "render")!;
+      expect(render.status).toBe("failed");
+      expect(render.error).toContain("You've made today's AI photos");
+      // permanent: the first failure uses up the attempts, so the browser stops calling it
+      expect(render.exhausted).toBe(true);
+      expect(state.next).toEqual([]);
+    } finally {
       await shop.remove();
     }
   });
