@@ -1,5 +1,6 @@
 import "server-only";
 import { select, selectOne } from "./pool";
+import { LOOKS, lookKind } from "@/lib/schemas/looks";
 
 /**
  * The Media library's queries, bound to one workspace. Spread into forWorkspace().
@@ -12,7 +13,7 @@ export const MEDIA_PAGE_SIZE = 48;
 export const MEDIA_GROUPS = {
   originals: ["original"],
   cutouts: ["main", "cutout"],
-  ai: ["studio", "lifestyle", "banner"],
+  ai: ["studio", "lifestyle", "banner", ...LOOKS.map(lookKind)],
 } as const;
 export type MediaGroup = keyof typeof MEDIA_GROUPS;
 

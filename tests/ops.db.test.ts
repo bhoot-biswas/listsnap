@@ -26,6 +26,7 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     editListingFields: { listingId, title: "Fixture title" },
     undoLast: { listingId },
     renderScene: { listingId, scene: "studio" },
+    renderLook: { listingId, look: "eid" },
     saveDraftToStore: { listingId },
     estimateCost: { op: "renderScene", input: { listingId, scene: "lifestyle" } },
     // aimed at shop A's brand photo rather than a listing; shop B must not be able to use it
@@ -177,6 +178,27 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]!.from_media_id).toBeTruthy();
+  });
+
+  it("makes a campaign look once, checked and labelled, and returns it again on a second ask", async () => {
+    const first = await ops.renderLook.call(a.workspace, { listingId, look: "wedding" }, { via: "ui" });
+    expect(first).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: true } } });
+    const again = await ops.renderLook.call(a.workspace, { listingId, look: "wedding" }, { via: "ui" });
+    expect(again).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: false } } });
+    const rows = await select<{ kind: string; from_media_id: string | null }>(
+      "SELECT kind, from_media_id FROM media WHERE workspace_id = ? AND listing_id = ? AND kind = 'look_wedding'",
+      [a.workspace.id, listingId],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.from_media_id).toBeTruthy();
+    // the redrawn product went through the fidelity check
+    const job = (await A.getListing(listingId))!.job_id;
+    const step = (await A.steps(job)).find((s) => s.step === "look" && s.target === `${listingId}:wedding`);
+    expect(step?.result_json).toMatchObject({ look: "wedding", aiLabel: "ai_scene", check: { same: true } });
+    expect(await ops.renderLook.call(a.workspace, { listingId, look: "party" }, { via: "ui" })).toEqual({
+      ok: false,
+      error: "invalid",
+    });
   });
 
   it("saves a confirmed store draft once, even when asked twice", async () => {

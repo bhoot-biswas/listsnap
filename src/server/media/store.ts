@@ -4,6 +4,7 @@ import { access, constants, mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path";
 import sharp from "sharp";
 import { env } from "@/server/env";
+import type { LookKind } from "@/lib/schemas/looks";
 import { execute, selectOne } from "@/server/db/pool";
 
 export type MediaKind =
@@ -16,7 +17,8 @@ export type MediaKind =
   | "banner"
   | "ig_jpeg"
   // the shop's brand kit setting photo, not tied to a listing
-  | "brand";
+  | "brand"
+  | LookKind;
 
 export interface MediaRecord {
   id: string;
