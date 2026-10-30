@@ -18,6 +18,8 @@ export function dbEnv(): boolean {
   process.env.PROVIDER_MODE_META = "mock";
   process.env.PROVIDER_MODE_WOO = "mock";
   process.env.PROVIDER_MODE_INSTAGRAM = "mock";
+  process.env.PROVIDER_MODE_FACEBOOK = "mock";
+  process.env.PROVIDER_MODE_VIDEO = "mock";
   process.env.MOCK_DELAY_MS = "0";
   return !!process.env.DATABASE_URL;
 }

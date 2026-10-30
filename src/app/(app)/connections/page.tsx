@@ -10,6 +10,9 @@ import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { keyHint } from "@/server/stores/woo-store";
 import { disconnectWoo, recheckWoo } from "@/server/actions/woo-connection";
+import { connectTestMeta, disconnectMeta } from "@/server/actions/meta-connection";
+import { metaConnection } from "@/server/social/connection";
+import { env } from "@/server/env";
 import { WooSettings, type WooCheck } from "@/lib/woo-connection";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("connections") };
 }
 
-/** S13 Connections, basic: the WooCommerce card with its checks and actions; Instagram is coming soon. */
+/** S13 Connections: the WooCommerce card with its checks and actions, and Facebook and Instagram for posting reels. */
 export default async function ConnectionsPage() {
   const viewer = await requireWorkspace();
   const t = await getTranslations("connections");
@@ -28,6 +31,9 @@ export default async function ConnectionsPage() {
   const connected = !!row && row.status !== "disconnected";
   const checks = (Array.isArray(row?.checks_json) ? row.checks_json : []) as WooCheck[];
   const broken = row?.status === "broken";
+  const meta = (await metaConnection(forWorkspace(viewer.workspace.id)))?.settings ?? null;
+  // a test Page is only offered while posting goes to the mock providers
+  const testAllowed = env().providers.facebook === "mock" && env().providers.instagram === "mock";
 
   return (
     <>
@@ -118,14 +124,47 @@ export default async function ConnectionsPage() {
           )}
         </section>
 
-        <section aria-labelledby="ig-title" className="h-fit space-y-3 rounded-xl border bg-card p-5">
-          <div className="flex items-center gap-3">
-            <Camera className="size-6 text-muted-foreground" aria-hidden="true" />
-            <h2 id="ig-title" className="font-semibold">
-              {t("instagram")}
-            </h2>
+        <section aria-labelledby="meta-title" className="h-fit space-y-4 rounded-xl border bg-card p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Camera className={cn("size-6", meta ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+              <h2 id="meta-title" className="font-semibold">
+                {t("meta.title")}
+              </h2>
+            </div>
+            {meta && (
+              <span className="inline-flex h-6 items-center rounded-full bg-success/15 px-2.5 text-xs font-medium text-success">
+                {meta.test ? t("meta.test") : t("connected")}
+              </span>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground">{t("instagramSoon")}</p>
+          <p className="text-sm text-muted-foreground">{t("meta.body")}</p>
+          {meta ? (
+            <>
+              <dl className="grid gap-1 text-sm">
+                <dd>{t("meta.page", { name: meta.pageName })}</dd>
+                <dd>{meta.igUsername ? t("meta.instagram", { name: meta.igUsername }) : t("meta.noInstagram")}</dd>
+              </dl>
+              <form action={disconnectMeta} className="space-y-1 border-t pt-3">
+                <Button type="submit" variant="ghost" className="text-destructive">
+                  {t("meta.disconnect")}
+                </Button>
+                <p className="text-xs text-muted-foreground">{t("meta.disconnectHint")}</p>
+              </form>
+            </>
+          ) : (
+            <>
+              {testAllowed && (
+                <form action={connectTestMeta} className="space-y-2">
+                  <Button type="submit" variant="outline" size="lg">
+                    {t("meta.connectTest")}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">{t("meta.testHint")}</p>
+                </form>
+              )}
+              <p className="text-xs text-muted-foreground">{t("meta.realSoon")}</p>
+            </>
+          )}
         </section>
       </div>
     </>

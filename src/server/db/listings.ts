@@ -124,10 +124,11 @@ export function listingQueries(ws: string) {
       await execute("UPDATE listings SET status = ? WHERE id = ? AND workspace_id = ?", [status, id, ws]);
     },
 
+    /** A listing's photos. Reels are videos for social posts, never a store photo, so they're left out. */
     listingMedia: (listingIds: string[]) =>
       listingIds.length
         ? select<{ id: string; listing_id: string; kind: string; width: number; height: number; selected: 0 | 1 }>(
-            `SELECT id, listing_id, kind, width, height, selected FROM media WHERE workspace_id = ? AND listing_id IN (${listingIds.map(() => "?").join(",")}) ORDER BY sort, created_at`,
+            `SELECT id, listing_id, kind, width, height, selected FROM media WHERE workspace_id = ? AND kind <> 'reel' AND listing_id IN (${listingIds.map(() => "?").join(",")}) ORDER BY sort, created_at`,
             [ws, ...listingIds],
           )
         : Promise.resolve([]),
@@ -213,11 +214,21 @@ export function listingQueries(ws: string) {
 
     /** A store draft exists now; the id lets a later save update it instead of making another. */
     async markInStore(id: string, productId: number) {
+      // a listing already posted stays "Posted": it is in the store and on social too
       await execute(
-        "UPDATE listings SET status = 'in_store', wc_product_id = ?, sent_at = UTC_TIMESTAMP(3) WHERE id = ? AND workspace_id = ?",
+        "UPDATE listings SET status = IF(status = 'posted', 'posted', 'in_store'), wc_product_id = ?, sent_at = UTC_TIMESTAMP(3) WHERE id = ? AND workspace_id = ?",
         [productId, id, ws],
       );
       await execute("INSERT INTO events (workspace_id, type, ref_id) VALUES (?, 'sent_to_store', ?)", [ws, id]);
+    },
+
+    /** A reel went out to Facebook or Instagram. Instagram's media id is kept for later insights. */
+    async markPosted(id: string, igMediaId: string | null) {
+      await execute(
+        "UPDATE listings SET status = 'posted', posted_at = UTC_TIMESTAMP(3), ig_media_id = COALESCE(?, ig_media_id) WHERE id = ? AND workspace_id = ?",
+        [igMediaId, id, ws],
+      );
+      await execute("INSERT INTO events (workspace_id, type, ref_id) VALUES (?, 'posted', ?)", [ws, id]);
     },
 
     recentListings: (limit = 5) =>

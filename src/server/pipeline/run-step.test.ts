@@ -50,9 +50,10 @@ function memoryStore() {
             : r.attempts;
       Object.assign(r, { status: "failed", lastError: error, lockedUntil: 0, attempts });
     },
-    async reset(k) {
+    async reset(k, o) {
       const r = rows.get(id(k))!;
-      if (r.status === "failed") Object.assign(r, { status: "pending", attempts: 0, lastError: null });
+      if (r.status === "failed" || (o?.done && r.status === "done"))
+        Object.assign(r, { status: "pending", attempts: 0, lastError: null });
     },
   };
   return { store, advance: (ms: number) => (now += ms), row: (k: StepKey) => rows.get(id(k)) };
@@ -99,6 +100,19 @@ describe("runStep step rules", () => {
     expect(await runStep(store, key, opts, async () => "second try")).toMatchObject({
       state: "done",
       result: "second try",
+    });
+  });
+
+  it("runs a finished step again only when a new version is asked for", async () => {
+    const { store } = memoryStore();
+    await runStep(store, key, opts, async () => "first");
+    expect(await runStep(store, key, { ...opts, force: true }, async () => "second")).toMatchObject({
+      result: "first",
+    });
+    expect(await runStep(store, key, { ...opts, redo: true }, async () => "second")).toEqual({
+      state: "done",
+      result: "second",
+      fresh: true,
     });
   });
 

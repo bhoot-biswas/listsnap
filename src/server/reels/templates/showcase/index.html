@@ -1,0 +1,190 @@
+<!doctype html>
+<!--
+  The "showcase" reel: 1080×1920, 12 s, silent. Four photos are written next to this file
+  as assets/img/{hero,look1,look2,product}.jpg before each render, so no variable is a
+  path or a URL. Text arrives as variables and is set with textContent only.
+-->
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"title","type":"string","label":"Title","default":"Red Saree with Gold Zari Butti and Border","maxLength":80},
+    {"id":"price","type":"string","label":"Price","default":"৳4,000","maxLength":20},
+    {"id":"shop","type":"string","label":"Shop","default":"Demo shop","maxLength":40},
+    {"id":"cta","type":"string","label":"Call to action","default":"Message us to order","maxLength":40},
+    {"id":"look1Label","type":"string","label":"Second photo label","default":"Eid","maxLength":24},
+    {"id":"look2Label","type":"string","label":"Third photo label","default":"Pohela Boishakh","maxLength":24},
+    {"id":"ground","type":"color","label":"Ground","default":"#F3E9D2"},
+    {"id":"ink","type":"color","label":"Ink","default":"#3B1F14"},
+    {"id":"accent","type":"color","label":"Accent","default":"#7A1F2B"},
+    {"id":"gold","type":"color","label":"Second accent","default":"#D9A441"},
+    {"id":"lang","type":"enum","label":"Language","default":"en","options":[{"value":"en","label":"English"},{"value":"bn","label":"Bangla"}]},
+    {"id":"guides","type":"enum","label":"Safe-zone guides","default":"off","options":[{"value":"off","label":"Off"},{"value":"on","label":"On"}]}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>ListSnap showcase reel</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      /* the app's own fonts (OFL): Bricolage Grotesque for English, Hind Siliguri for Bangla */
+      @font-face { font-family: "LS Display"; src: url("assets/fonts/bricolage-latin.woff2") format("woff2"); font-weight: 200 800; }
+      @font-face { font-family: "LS Bangla"; src: url("assets/fonts/hind-bengali-400.woff2") format("woff2"); font-weight: 400; unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0-1CF9, U+200C-200D, U+20B9, U+25CC, U+A8F1; }
+      @font-face { font-family: "LS Bangla"; src: url("assets/fonts/hind-bengali-600.woff2") format("woff2"); font-weight: 600; unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0-1CF9, U+200C-200D, U+20B9, U+25CC, U+A8F1; }
+      @font-face { font-family: "LS Bangla"; src: url("assets/fonts/hind-latin-400.woff2") format("woff2"); font-weight: 400; unicode-range: U+0000-00FF, U+2000-206F; }
+      @font-face { font-family: "LS Bangla"; src: url("assets/fonts/hind-latin-600.woff2") format("woff2"); font-weight: 600; unicode-range: U+0000-00FF, U+2000-206F; }
+
+      body { margin: 0; background: #F3E9D2; }
+      #root {
+        position: relative; width: 100%; height: 100%; overflow: hidden;
+        background: var(--ground); color: var(--ink);
+        font-family: "LS Display", sans-serif;
+      }
+      #root.bn { font-family: "LS Bangla", "LS Display", sans-serif; }
+      .clip { position: absolute; inset: 0; }
+
+      /*
+       * Safe zone: Reels covers the top with the header, the bottom quarter with the caption
+       * and buttons, and the right edge with like/share. Every word stays inside
+       * x 80–940, y 290–1440; only photos may sit under the overlays.
+       */
+      .shop-row { position: absolute; left: 80px; width: 860px; top: 300px; display: flex; justify-content: center; z-index: 5; }
+      .shop {
+        padding: 10px 26px; border-radius: 999px; background: var(--ground); color: var(--ink);
+        font-size: 30px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+      }
+      #root.bn .shop { letter-spacing: 0.02em; font-size: 34px; }
+      /* photos run full-bleed under the header and fade into the ground */
+      .frame { position: absolute; left: 0; top: 0; width: 1080px; height: 1230px; overflow: hidden; }
+      .frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .frame::after {
+        content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 260px;
+        background: linear-gradient(to bottom, transparent, var(--ground));
+      }
+      .textbox {
+        position: absolute; left: 80px; width: 860px; top: 1250px; height: 182px;
+        display: flex; align-items: center; justify-content: center; text-align: center;
+      }
+      .title { font-size: 76px; line-height: 1.08; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+      #root.bn .title { line-height: 1.3; font-weight: 600; letter-spacing: 0; }
+      .chip {
+        position: absolute; left: 80px; top: 390px; padding: 14px 30px; border-radius: 999px;
+        background: var(--ground); color: var(--accent); font-size: 40px; font-weight: 700;
+      }
+      .chip:empty { display: none; }
+      #root.bn .chip { font-weight: 600; }
+      .pill {
+        display: inline-block; background: var(--accent); color: var(--ground);
+        font-size: 92px; font-weight: 700; padding: 10px 64px 16px; border-radius: 999px;
+      }
+      #root.bn .pill { font-weight: 600; padding: 6px 64px 14px; }
+      .card {
+        position: absolute; left: 230px; top: 370px; width: 620px; height: 620px;
+        background: #fff; border-radius: 36px; overflow: hidden; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18);
+      }
+      .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .end-title {
+        position: absolute; left: 80px; width: 860px; top: 1020px; height: 170px;
+        display: flex; align-items: center; justify-content: center; text-align: center;
+      }
+      .end-price { position: absolute; left: 80px; width: 860px; top: 1210px; text-align: center; }
+      .end-price .pill { font-size: 80px; }
+      .cta {
+        position: absolute; left: 80px; width: 860px; top: 1360px; text-align: center;
+        font-size: 44px; font-weight: 600; color: var(--accent);
+      }
+      .rule { position: absolute; left: 470px; width: 140px; height: 6px; top: 1000px; border-radius: 3px; background: var(--gold); }
+
+      #guides { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 10; }
+      #guides.on { display: block; }
+      #guides div { position: absolute; background: rgba(255, 0, 80, 0.28); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="reel" data-start="0" data-width="1080" data-height="1920" data-duration="12">
+      <div class="shop-row"><div id="shop" class="shop"></div></div>
+
+      <section id="scene-a" class="clip" data-start="0" data-duration="3.4" data-track-index="0">
+        <div class="frame"><img id="a-img" src="assets/img/hero.jpg" alt="" /></div>
+        <div class="textbox"><div id="a-title" class="title fit"></div></div>
+      </section>
+
+      <section id="scene-b" class="clip" data-start="3" data-duration="3.4" data-track-index="1">
+        <div class="frame"><img id="b-img" src="assets/img/look1.jpg" alt="" /></div>
+        <div id="b-chip" class="chip"></div>
+        <div class="textbox"><span id="b-price" class="pill"></span></div>
+      </section>
+
+      <section id="scene-c" class="clip" data-start="6" data-duration="3.2" data-track-index="2">
+        <div class="frame"><img id="c-img" src="assets/img/look2.jpg" alt="" /></div>
+        <div id="c-chip" class="chip"></div>
+        <div class="textbox" data-layout-allow-overlap><span id="c-price" class="pill"></span></div>
+      </section>
+
+      <section id="scene-d" class="clip" data-start="8.8" data-duration="3.2" data-track-index="3">
+        <div id="d-card" class="card"><img id="d-img" src="assets/img/product.jpg" alt="" /></div>
+        <div id="d-rule" class="rule"></div>
+        <div class="end-title"><div id="d-title" class="title fit"></div></div>
+        <div id="d-price" class="end-price"><span class="pill" id="d-price-text"></span></div>
+        <div id="d-cta" class="cta"></div>
+      </section>
+
+      <div id="guides">
+        <div style="left:0;right:0;top:0;height:290px"></div>
+        <div style="left:0;right:0;top:1440px;bottom:0"></div>
+        <div style="top:290px;height:1150px;right:0;width:140px"></div>
+        <div style="top:290px;height:1150px;left:0;width:80px"></div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      const root = document.getElementById("root");
+      for (const k of ["ground", "ink", "accent", "gold"]) root.style.setProperty(`--${k}`, v[k]);
+      if (v.lang === "bn") { root.classList.add("bn"); root.lang = "bn"; }
+      if (v.guides === "on") document.getElementById("guides").classList.add("on");
+      // textContent only: a variable is always shown as text, never parsed as HTML
+      const put = (id, s) => { document.getElementById(id).textContent = s; };
+      put("shop", v.shop);
+      put("a-title", v.title); put("d-title", v.title);
+      put("b-chip", v.look1Label); put("c-chip", v.look2Label);
+      put("b-price", v.price); put("c-price", v.price); put("d-price-text", v.price);
+      put("d-cta", v.cta);
+
+      // shrink a title until it fits its box, so a long name never spills onto the price
+      function fit(el) {
+        const box = el.parentElement;
+        let size = parseFloat(getComputedStyle(el).fontSize);
+        while (size > 36 && (el.scrollHeight > box.clientHeight || el.scrollWidth > box.clientWidth)) {
+          size -= 2;
+          el.style.fontSize = `${size}px`;
+        }
+      }
+
+      document.fonts.ready.then(() => {
+        document.querySelectorAll(".fit").forEach(fit);
+        const tl = gsap.timeline({ paused: true });
+        // A: the hero photo, slow push-in, title rises
+        tl.fromTo("#shop", { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.1);
+        tl.fromTo("#a-img", { scale: 1.14 }, { scale: 1.02, duration: 3.4, ease: "none" }, 0);
+        tl.fromTo("#a-title", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 0.35);
+        // B: second photo fades over A, its label and the price pop in
+        tl.fromTo("#scene-b", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 3);
+        tl.fromTo("#b-img", { scale: 1.02, xPercent: 2 }, { scale: 1.1, xPercent: -2, duration: 3.4, ease: "none" }, 3);
+        tl.fromTo("#b-chip", { x: -40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 3.4);
+        tl.fromTo("#b-price", { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(2)" }, 3.7);
+        // C: third photo, same rhythm; the price stays put so the eye isn't asked to re-find it
+        tl.fromTo("#scene-c", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 6);
+        tl.fromTo("#c-img", { scale: 1.1, xPercent: -2 }, { scale: 1.02, xPercent: 2, duration: 3.2, ease: "none" }, 6);
+        tl.fromTo("#c-chip", { x: -40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 6.4);
+        // D: the real product on white, then title, price and the ask
+        tl.fromTo("#scene-d", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 8.8);
+        tl.fromTo("#d-card", { y: 70, scale: 0.96 }, { y: 0, scale: 1, duration: 0.7, ease: "power3.out" }, 8.8);
+        tl.fromTo("#d-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power2.out" }, 9.2);
+        tl.fromTo("#d-title", { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }, 9.3);
+        tl.fromTo("#d-price", { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out" }, 9.6);
+        tl.fromTo("#d-cta", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 9.7);
+        window.__timelines["reel"] = tl;
+      });
+    </script>
+  </body>
+</html>

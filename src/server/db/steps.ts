@@ -73,9 +73,9 @@ export function sqlStepStore(workspaceId: string): StepStore {
       );
     },
 
-    async reset(key) {
+    async reset(key, opts) {
       await execute(
-        `UPDATE job_steps SET status = 'pending', attempts = 0, last_error = NULL WHERE ${where} AND status = 'failed'`,
+        `UPDATE job_steps SET status = 'pending', attempts = 0, last_error = NULL WHERE ${where} AND status IN (${opts?.done ? "'failed', 'done'" : "'failed'"})`,
         k(key),
       );
     },

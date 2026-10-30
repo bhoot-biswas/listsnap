@@ -10,6 +10,7 @@ import type {
 } from "@/lib/schemas/pipeline";
 import type { WooCheckResult } from "@/lib/woo-connection";
 import type { AssistRequest } from "@/lib/schemas/assist";
+import type { ReelTemplate, ReelVariables } from "@/lib/schemas/reels";
 
 /**
  * Every outside service sits behind one of these interfaces, each with a mock and a
@@ -145,10 +146,47 @@ export interface WooProvider {
   check(ctx: CallContext, store: WooStore): Promise<WooCheckResult>;
 }
 
+/** A Page or Instagram account the seller connected, with its decrypted token. Never logged. */
+export interface SocialAccount {
+  id: string;
+  name: string;
+  token: string;
+}
+
+/** What a post returns: the platform's id and the public link to it. */
+export interface SocialPost {
+  postId: string;
+  permalink: string;
+}
+
 export interface InstagramProvider {
   readonly mode: "mock" | "live";
   postCarousel(
     ctx: CallContext,
     input: { imageUrls: string[]; caption: string },
   ): Promise<{ mediaId: string; permalink: string }>;
+  /** Posts a reel from a public video URL: a container, then waiting for it, then publishing. */
+  postReel(ctx: CallContext, input: { account: SocialAccount; videoUrl: string; caption: string }): Promise<SocialPost>;
+}
+
+export interface FacebookProvider {
+  readonly mode: "mock" | "live";
+  /** Posts a reel to the seller's Page from a public video URL. */
+  postReel(ctx: CallContext, input: { page: SocialAccount; videoUrl: string; caption: string }): Promise<SocialPost>;
+}
+
+export interface ReelPhotoFiles {
+  hero: Buffer;
+  look1: Buffer;
+  look2: Buffer;
+  product: Buffer;
+}
+
+export interface VideoProvider {
+  readonly mode: "mock" | "live";
+  /** Renders one reel from one of our templates. Variables are validated before this is called. */
+  renderReel(
+    ctx: CallContext,
+    input: { template: ReelTemplate; photos: ReelPhotoFiles; variables: ReelVariables },
+  ): Promise<{ data: Buffer; width: number; height: number; seconds: number }>;
 }

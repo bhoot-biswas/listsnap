@@ -2,11 +2,12 @@ import "server-only";
 import { execute, json, selectOne } from "./pool";
 
 /**
- * Store and Instagram connections, bound to one workspace. Spread into forWorkspace().
+ * Store and social connections, bound to one workspace. Spread into forWorkspace().
  * Credentials arrive here already encrypted and leave still encrypted.
  */
 
-export type ConnectionKind = "woo" | "instagram";
+// "meta" is the seller's Facebook Page together with its linked Instagram account
+export type ConnectionKind = "woo" | "instagram" | "meta";
 export type ConnectionStatus = "connected" | "broken" | "disconnected";
 
 export interface ConnectionRow {

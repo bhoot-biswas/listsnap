@@ -16,4 +16,14 @@ export const mockInstagram: InstagramProvider = {
       },
       (r) => ({ summary: `carousel of ${input.imageUrls.length} · ${r.mediaId}`, costUsd: 0 }),
     ),
+  postReel: (ctx, input) =>
+    logged(
+      ctx,
+      { provider: "instagram", model: "graph-api (mock)", endpoint: "media_publish", mode: "mock" },
+      async () => {
+        const postId = randomUUID().replace(/-/g, "").slice(0, 17);
+        return { postId, permalink: `https://www.instagram.com/reel/${postId}/` };
+      },
+      (r) => ({ summary: `reel to ${input.account.name} · ${input.caption.length} chars · ${r.postId}`, costUsd: 0 }),
+    ),
 };

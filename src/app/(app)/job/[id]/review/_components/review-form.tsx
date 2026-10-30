@@ -14,6 +14,7 @@ import { SaveToStore } from "@/components/app/save-to-store";
 import { Autosaver, type SaveState } from "./autosave";
 import { ConfidencePanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
 import { LooksPanel } from "./looks-panel";
+import { ReelPanel, type ReelsState } from "./reel-panel";
 import type { Look } from "@/lib/schemas/looks";
 import { TextFields, type TextValue } from "./text-fields";
 import { VariantFields } from "./variant-fields";
@@ -41,12 +42,14 @@ export function ReviewForm({
   inStore,
   others,
   looks,
+  reels,
 }: {
   jobId: string;
   listingId: string;
   initial: ListingEdit;
   photos: ReviewPhoto[];
   looks: { made: Look[]; imagesLeft: number };
+  reels: ReelsState;
   colorPhotos: Record<string, string>;
   hint: { low: number; high: number };
   confidence: number | null;
@@ -176,6 +179,7 @@ export function ReviewForm({
             }
           />
           <LooksPanel listingId={listingId} made={looks.made} imagesLeft={looks.imagesLeft} />
+          <ReelPanel listingId={listingId} reels={reels} priceSet={edit.priceBdt !== null} beforeMake={saver.flush} />
           <ConfidencePanel confidence={confidence} notes={checkNotes} />
         </div>
 
