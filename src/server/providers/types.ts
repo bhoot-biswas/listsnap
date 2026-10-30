@@ -1,5 +1,13 @@
 import type { Box } from "@/server/image-ops/types";
-import type { BanglaText, GroupMode, ListingText, PlanResult, Scene, SceneBrief } from "@/lib/schemas/pipeline";
+import type {
+  BanglaText,
+  GroupMode,
+  ListingText,
+  PlanResult,
+  ProductMatch,
+  Scene,
+  SceneBrief,
+} from "@/lib/schemas/pipeline";
 import type { WooCheckResult } from "@/lib/woo-connection";
 import type { AssistRequest } from "@/lib/schemas/assist";
 
@@ -40,6 +48,11 @@ export interface MetaProvider {
   translate(ctx: CallContext, listing: ListingText): Promise<BanglaText>;
   /** Review's per-field help: the new text for one field. */
   assist(ctx: CallContext, input: AssistInput): Promise<string>;
+  /**
+   * Whether an AI photo still shows the product in the cutout: same colours, pattern and
+   * details, whatever the setting or pose. Guards every image that redraws the product.
+   */
+  compareProduct(ctx: CallContext, reference: Buffer, candidate: Buffer, phrase: string): Promise<ProductMatch>;
   /** An empty background for a composite (studio and banner). The brief only colours the banner. */
   background(
     ctx: CallContext,

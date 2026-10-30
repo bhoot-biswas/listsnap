@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { BanglaText, ListingText, PlanResult } from "@/lib/schemas/pipeline";
+import { BanglaText, ListingText, PlanResult, ProductMatch } from "@/lib/schemas/pipeline";
 import { logged } from "../log";
 import type { MetaProvider } from "../types";
 import { paletteSwatch } from "@/server/image-ops";
@@ -17,7 +17,7 @@ import {
 } from "./image";
 import { SAM_COST_USD, SAM_MODEL, SamRejectedError, samSegment } from "./sam";
 import { liveAssist } from "./assist";
-import { BANGLA_SYSTEM, SELLER_CONTEXT, writeSystem } from "./prompts";
+import { BANGLA_SYSTEM, MATCH_SYSTEM, SELLER_CONTEXT, writeSystem } from "./prompts";
 import { photoDataUrl, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
 
 /**
@@ -131,6 +131,27 @@ export const liveMeta: MetaProvider = {
     // a short or long colour list would misalign colours and items, so pad or cut it
     const colors = crops.map((_, i) => r.data.colors[i]?.trim() ?? "");
     return { mode: r.data.mode, colors, reason: r.data.reason };
+  },
+
+  compareProduct: async (ctx, reference, candidate, phrase) => {
+    const images = await Promise.all([photoDataUrl(reference, 1024), photoDataUrl(candidate, 1024)]);
+    const r = await logged(
+      ctx,
+      info,
+      () =>
+        sparkJson({
+          name: "ProductMatch",
+          schema: ProductMatch,
+          system: MATCH_SYSTEM,
+          userText: `The product is a ${phrase}. Image 1 is the product, image 2 is the AI photo.`,
+          imageUrl: images,
+        }),
+      (r) => ({
+        summary: `same product: ${r.data.same ? "yes" : `no · ${r.data.differences}`}${retried(r)}`,
+        costUsd: r.costUsd,
+      }),
+    );
+    return r.data;
   },
 
   segment: async (ctx, photo, phrase) => {

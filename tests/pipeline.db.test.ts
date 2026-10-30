@@ -116,6 +116,33 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
       expect(state.listings[0]!.images.map((i) => i.kind)).toEqual(["main", "lifestyle", "banner"]);
       const lifestyle = state.calls.find((c) => c.step === "render" && c.summary?.startsWith("lifestyle"));
       expect(lifestyle?.summary).toContain("in the shop setting");
+      // the redrawn product was checked before it was kept
+      expect(state.calls.some((c) => c.step === "render" && c.summary === "same product: yes")).toBe(true);
+    } finally {
+      await kitShop.remove();
+    }
+  });
+
+  it("keeps mock lifestyle photos of any product, whose scenes have no SAM mask to compare", async () => {
+    // found in the browser: a bangle set in a kurti shop photo failed the colour stage on a
+    // box crop that was mostly background
+    const kitShop = await createTestWorkspace({ scenes: ["lifestyle"], listingLanguages: ["en"] });
+    try {
+      const { saveMedia } = await import("@/server/media/store");
+      const room = await samplePhoto("kurti.jpg");
+      const brand = await saveMedia(kitShop.workspace.id, "brand", room, {
+        mime: "image/jpeg",
+        width: 1280,
+        height: 1280,
+      });
+      const workspace = {
+        ...kitShop.workspace,
+        settings: { ...kitShop.workspace.settings, brandKit: { colors: [], settingMediaId: brand.id } },
+      };
+      const jobId = await createTestJob(workspace.id, await samplePhoto("bangles.jpg"));
+      const state = await runJob(workspace, jobId);
+      expect(state.steps.find((s) => s.step === "render")?.status).toBe("done");
+      expect(state.listings[0]!.images.map((i) => i.kind)).toEqual(["main", "lifestyle"]);
     } finally {
       await kitShop.remove();
     }
@@ -138,6 +165,32 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
       expect(lifestyle?.summary).toContain("from the cutout");
     } finally {
       await kitShop.remove();
+    }
+  });
+
+  it("doesn't keep a lifestyle photo that changed the product, and says why", async () => {
+    const { vi } = await import("vitest");
+    const { mockMeta } = await import("@/server/providers/meta/mock");
+    const spy = vi
+      .spyOn(mockMeta, "compareProduct")
+      .mockResolvedValue({ same: false, differences: "Gold buttis became silver paisleys." });
+    const shop = await createTestWorkspace({ scenes: ["studio", "lifestyle"], listingLanguages: ["en"] });
+    try {
+      const jobId = await createTestJob(shop.workspace.id, await samplePhoto("saree.jpg"));
+      const state = await runJob(shop.workspace, jobId);
+
+      const render = state.steps.filter((s) => s.step === "render");
+      const failed = render.find((s) => s.status === "failed")!;
+      expect(failed.error).toContain("The AI photo changed your product (Gold buttis became silver paisleys.)");
+      // the step rules retried it with fresh images until the attempts ran out
+      expect(failed.attempts).toBe(3);
+      expect(failed.exhausted).toBe(true);
+      // the studio photo keeps the real pixels and is unaffected; no lifestyle photo was kept
+      expect(state.listings[0]!.images.map((i) => i.kind)).toEqual(["main", "studio"]);
+      expect(state.status).toBe("ready");
+    } finally {
+      spy.mockRestore();
+      await shop.remove();
     }
   });
 

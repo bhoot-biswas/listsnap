@@ -11,11 +11,12 @@ import { isSettled, renderTarget, type JobStepName, type ListingStepName } from 
 /**
  * The entry points Route Handlers call. Each finds the record inside the workspace
  * (another shop's id is "not found"), runs one step under the §3c rules, then settles
- * the job's status. Render steps measured up to 34 s, so they hold their lock longer.
+ * the job's status. Render steps make an image and may check it, so they hold their lock longer.
  */
 
 const LOCK_MS = 45_000;
-const RENDER_LOCK_MS = 90_000;
+// a lifestyle scene is the image (up to 75 s), then its fidelity check: SAM (18 s) and Spark (40 s)
+const RENDER_LOCK_MS = 150_000;
 
 export type ExecuteResult = { found: false } | { found: true; outcome: StepOutcome<unknown> };
 
