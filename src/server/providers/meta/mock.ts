@@ -46,6 +46,17 @@ export const mockMeta: MetaProvider = {
           multi_kind: wide ? "different_designs" : "single",
           camera_angle: "top_down",
           photo_notes: "Even light, a little background clutter.",
+          scene_brief: wide
+            ? {
+                setting: "hanging from a wooden peg on a whitewashed wall beside a cane chair",
+                palette: ["warm white", "natural cane", "terracotta"],
+                avoid: ["other bags", "a wallet"],
+              }
+            : {
+                setting: "draped over the arm of a carved wooden chair by a sunlit window",
+                palette: ["cream", "warm wood", "soft green"],
+                avoid: ["a matching blouse", "jewellery"],
+              },
         };
       },
       (r) => ({ summary: `phrase "${r.sam_phrase}" · ${r.multi_kind} · ${r.camera_angle}`, costUsd: 0 }),

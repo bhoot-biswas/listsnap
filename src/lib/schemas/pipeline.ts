@@ -19,12 +19,38 @@ export const MultiKind = z.enum([
 ]);
 export const CameraAngle = z.enum(["top_down", "side", "angled"]);
 
+/**
+ * How this product's AI photos should look, decided while Spark already has the photo
+ * open. Plans saved before it existed have none, so renders read it with SceneBrief.safeParse
+ * and fall back to the fixed prompts.
+ */
+export const SceneBrief = z.object({
+  setting: z
+    .string()
+    .describe(
+      "One sentence: a real, tasteful place in a Bangladeshi home or shop where a buyer would see this product shown at its best, suited to its category, e.g. 'draped over the arm of a carved wooden chair by a sunlit window', 'on dark green velvet on a dressing table', 'on a swept courtyard step in morning light'. No people.",
+    ),
+  palette: z
+    .array(z.string())
+    .describe(
+      "Two or three plain colour names for the background and props that flatter the product without matching it",
+    ),
+  avoid: z
+    .array(z.string())
+    .describe(
+      "Up to three things the scene must not show because a buyer could think they come with the product, e.g. 'a matching blouse', 'jewellery', 'other sarees'. Empty if nothing in particular.",
+    ),
+});
+export type SceneBrief = z.infer<typeof SceneBrief>;
+
 /** Step 1 `plan`: what SAM should look for, before any segmentation. */
 export const PlanResult = z.object({
   sam_phrase: z
     .string()
     .min(1)
-    .describe("Short noun phrase naming the product to segment, 1-4 words, e.g. 'jamdani saree', 'gold bangle'. Not a command or a question."),
+    .describe(
+      "Short noun phrase naming the product to segment, 1-4 words, e.g. 'jamdani saree', 'gold bangle'. Not a command or a question.",
+    ),
   alt_phrases: z.array(z.string()).describe("Two or three alternative noun phrases to try if the first finds nothing"),
   category_guess: z.string().describe("Store category, e.g. 'Sarees', 'Bangles', 'Kurtis', 'Home decor'"),
   likely_multi: z.boolean().describe("True if the photo shows more than one sellable item"),
@@ -36,8 +62,13 @@ export const PlanResult = z.object({
     "How the photo was taken: from directly above (flat lay), from the side at product level, or at an angle in between",
   ),
   photo_notes: z.string().describe("One short sentence on photo quality: clutter, light, framing"),
+  scene_brief: SceneBrief.describe("How the AI lifestyle and banner photos of this product should look"),
 });
 export type PlanResult = z.infer<typeof PlanResult>;
+
+/** The plan's brief, or null for plans saved before briefs existed (or a malformed one). */
+export const sceneBrief = (plan: { scene_brief?: unknown }): SceneBrief | null =>
+  SceneBrief.safeParse(plan.scene_brief).data ?? null;
 
 export const Box = z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() });
 

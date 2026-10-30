@@ -8,6 +8,7 @@ import { brandVoice, type Workspace } from "@/server/db/workspaces";
 import {
   ListingText,
   REVIEW_THRESHOLD,
+  sceneBrief,
   type BanglaText,
   type PlanResult,
   type RenderResult,
@@ -95,9 +96,9 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
   const step = call(ctx, "render");
   let image: Buffer;
   if (scene === "lifestyle") {
-    image = await meta().editScene(step, main, scene, p.sam_phrase);
+    image = await meta().editScene(step, main, scene, p.sam_phrase, sceneBrief(p));
   } else {
-    const bg = await meta().background(step, scene, p.camera_angle);
+    const bg = await meta().background(step, scene, p.camera_angle, sceneBrief(p));
     const size =
       scene === "banner" ? { width: 1536, height: 768, scale: 0.8 } : { width: 1024, height: 1024, scale: 0.72 };
     image = await compositeOnBackground(bg, product, {
