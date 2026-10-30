@@ -830,7 +830,16 @@
     "needsChoice": "Needs your choice",
     "stuck": "Failed, try again",
     "moreListings": "+{count} more",
-    "edited": "Saved"
+    "edited": "Saved",
+    "cost": {
+      "title": "{count, plural, one {Upload # photo?} other {Upload # photos?}}",
+      "uses": "This starts {listings, plural, one {# listing} other {# listings}} and makes about {photos, plural, one {# AI photo} other {# AI photos}}.",
+      "more": "A photo with several products makes a listing for each.",
+      "left": "You have {listings, plural, one {# listing} other {# listings}} and {photos, plural, one {# AI photo} other {# AI photos}} left today.",
+      "short": "{count, plural, one {# listing won’t get AI photos today. It still gets its text now, and you can make its photos after 6:00 AM Bangladesh time.} other {# listings won’t get AI photos today. They still get their text now, and you can make their photos after 6:00 AM Bangladesh time.}}",
+      "go": "{count, plural, one {Upload # photo} other {Upload # photos}}",
+      "cancel": "Cancel"
+    }
   },
   "chat": {
     "open": "Ask ListSnap",

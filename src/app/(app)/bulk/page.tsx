@@ -32,7 +32,12 @@ export default async function BulkPage() {
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-4">
             <p className="text-muted-foreground">{t("intro", { max: Math.min(MAX_BULK, left) })}</p>
-            <BulkUploadButton max={Math.min(MAX_BULK, left)} />
+            <BulkUploadButton
+              max={Math.min(MAX_BULK, left)}
+              listingsLeft={left}
+              imagesLeft={Math.max(0, limits.images - used.images)}
+              scenesPerListing={viewer.workspace.settings.scenes.length}
+            />
           </div>
         )}
         {batches.length === 0 ? (
