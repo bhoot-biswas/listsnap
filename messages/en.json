@@ -648,7 +648,20 @@
     "disconnect": "Disconnect store",
     "disconnectHint": "Drafts already in your store stay there.",
     "notConnected": "Connect your store so ListSnap can save listings to it as drafts.",
-    "instagramSoon": "Coming soon. Posting from your own account needs Meta’s app review; demo shops use our test account."
+    "instagramSoon": "Coming soon. Posting from your own account needs Meta’s app review; demo shops use our test account.",
+    "meta": {
+      "title": "Facebook and Instagram",
+      "body": "Post reels to your Facebook Page and the Instagram business account linked to it.",
+      "connectTest": "Connect a test Page",
+      "testHint": "Try posting without a Meta app. Nothing is really posted; you get example links.",
+      "realSoon": "Connecting your own Page with Facebook login comes next.",
+      "page": "Page: {name}",
+      "instagram": "Instagram: {name}",
+      "noInstagram": "No Instagram account linked",
+      "test": "Test",
+      "disconnect": "Disconnect",
+      "disconnectHint": "Posts already made stay on Facebook and Instagram."
+    }
   },
   "review": {
     "title": "Review listing",
@@ -757,7 +770,29 @@
       "left": "{n, plural, one {# reel} other {# reels}} left today.",
       "noneLeft": "You've made today's reels. More after 6:00 AM Bangladesh time.",
       "noPrice": "Add a price first; the reel shows it.",
-      "cta": "Message us to order"
+      "cta": "Message us to order",
+      "post": {
+        "open": "Post this reel",
+        "title": "Post the {lang} reel",
+        "caption": "Caption",
+        "captionCount": "{n, number} of {max, number} characters",
+        "where": "Post to",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "noInstagram": "No Instagram account is linked to this Page.",
+        "connect": "Connect Facebook and Instagram to post reels.",
+        "connectLink": "Go to Connections",
+        "confirm": "Post reel",
+        "confirmHint": "Posts are public. You can delete them later on Facebook or Instagram.",
+        "posting": "Posting to {where}…",
+        "posted": "Posted to {where}",
+        "view": "View",
+        "test": "Test connection: nothing is really posted, and the links are examples.",
+        "failed": "Posting didn't work. Try again.",
+        "cancel": "Cancel",
+        "priceLine": "Price: {price}",
+        "cta": "Message us to order."
+      }
     }
   },
   "bulk": {

@@ -24,7 +24,13 @@ export interface Env {
   ipHeader: string;
   mediaDir: string;
   credentialsKey: string;
-  providers: { meta: ProviderMode; woo: ProviderMode; instagram: ProviderMode; video: ProviderMode };
+  providers: {
+    meta: ProviderMode;
+    woo: ProviderMode;
+    instagram: ProviderMode;
+    facebook: ProviderMode;
+    video: ProviderMode;
+  };
   /** Chrome workers per reel render; each takes about 256 MB. */
   reelWorkers: number;
   modelApiKey: string;
@@ -73,6 +79,7 @@ export function env(): Env {
       meta: mode("PROVIDER_MODE_META"),
       woo: mode("PROVIDER_MODE_WOO"),
       instagram: mode("PROVIDER_MODE_INSTAGRAM"),
+      facebook: mode("PROVIDER_MODE_FACEBOOK"),
       video: mode("PROVIDER_MODE_VIDEO"),
     },
     reelWorkers: Math.min(8, Math.max(1, Number(read("REEL_WORKERS")) || 2)),

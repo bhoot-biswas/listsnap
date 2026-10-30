@@ -28,6 +28,7 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     renderScene: { listingId, scene: "studio" },
     renderLook: { listingId, look: "eid" },
     makeReel: { listingId, lang: "en" },
+    postReel: { listingId, lang: "en", destination: "facebook", caption: "Fixture caption" },
     saveDraftToStore: { listingId },
     estimateCost: { op: "renderScene", input: { listingId, scene: "lifestyle" } },
     // aimed at shop A's brand photo rather than a listing; shop B must not be able to use it
@@ -238,6 +239,53 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     expect(again).toMatchObject({ ok: true, replayed: true });
     expect((await A.getListing(listingId))!.status).toBe("in_store");
   });
+
+  it("posts a reel only when confirmed and connected, and never twice", async () => {
+    const post = (destination: "facebook" | "instagram", confirmed = true) =>
+      ops.postReel.call(
+        a.workspace,
+        { listingId, lang: "en", destination, caption: "Red saree, ৳1,250. Message us to order." },
+        { via: "chat", confirmed },
+      );
+    expect(await post("facebook", false)).toEqual({ ok: false, error: "needs_confirmation" });
+    // nothing connected yet: the step fails with words for the seller
+    expect(await post("facebook")).toMatchObject({
+      value: { outcome: { state: "failed", error: expect.stringContaining("Connect your Facebook Page") } },
+    });
+
+    const { encryptSecret } = await import("@/server/crypto");
+    await A.saveConnection("meta", {
+      baseUrl: null,
+      credentialsEnc: encryptSecret("test-page-token"),
+      checks: null,
+      settings: { pageId: "1", pageName: "Test Page", igUserId: "2", igUsername: "@test", test: true },
+    });
+    const job = (await A.getListing(listingId))!.job_id;
+    const { sqlStepStore } = await import("@/server/db/steps");
+    // the failed attempt above is cleared the way "Try again" would
+    await sqlStepStore(a.workspace.id).reset({ jobId: job, step: "post", target: `${listingId}:en:facebook` });
+
+    expect(await post("facebook")).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: true } } });
+    expect(await post("facebook")).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: false } } });
+    expect(await post("instagram")).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: true } } });
+
+    const listing = (await A.getListing(listingId))!;
+    expect(listing.status).toBe("posted");
+    const step = (await A.steps(job)).find((s) => s.step === "post" && s.target === `${listingId}:en:instagram`);
+    expect(step?.result_json).toMatchObject({ destination: "instagram", lang: "en", test: true });
+    const calls = await select<{ provider: string; summary: string }>(
+      "SELECT provider, summary FROM api_calls WHERE workspace_id = ? AND step = 'post'",
+      [a.workspace.id],
+    );
+    expect(calls.map((c) => c.provider).sort()).toEqual(["facebook", "instagram"]);
+    // the log keeps the caption's length, never its words or the token
+    expect(calls.some((c) => c.summary.includes("Message us") || c.summary.includes("token"))).toBe(false);
+
+    // saving to the store afterwards keeps it "Posted"
+    await ops.saveDraftToStore.call(a.workspace, { listingId, update: true }, { via: "ui", confirmed: true });
+    expect((await A.getListing(listingId))!.status).toBe("posted");
+  });
+
   it("saves a brand kit only with this shop's own brand photo", async () => {
     const { selectOne } = await import("@/server/db/pool");
     const stored = async () =>

@@ -6,11 +6,13 @@ import { useTranslations } from "next-intl";
 import { Clapperboard, Download, Loader2 } from "lucide-react";
 import type { ReelLang } from "@/lib/schemas/reels";
 import { cn } from "@/lib/utils";
+import { ReelPost, type SocialState } from "./reel-post";
 
 export interface ReelsState {
   made: Partial<Record<ReelLang, { url: string; aiScene: boolean } | null>>;
   langs: ReelLang[];
   left: number;
+  social: SocialState;
 }
 
 type MakeState = { kind: "idle" } | { kind: "making" } | { kind: "failed"; message: string };
@@ -122,6 +124,7 @@ export function ReelPanel({
               {s.kind === "making" && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
             </button>
             {s.kind === "failed" && <p className="text-xs text-destructive">{s.message}</p>}
+            {reel && <ReelPost listingId={listingId} lang={lang} social={reels.social} />}
           </div>
         );
       })}

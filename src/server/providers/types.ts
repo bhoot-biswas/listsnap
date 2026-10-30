@@ -146,12 +146,33 @@ export interface WooProvider {
   check(ctx: CallContext, store: WooStore): Promise<WooCheckResult>;
 }
 
+/** A Page or Instagram account the seller connected, with its decrypted token. Never logged. */
+export interface SocialAccount {
+  id: string;
+  name: string;
+  token: string;
+}
+
+/** What a post returns: the platform's id and the public link to it. */
+export interface SocialPost {
+  postId: string;
+  permalink: string;
+}
+
 export interface InstagramProvider {
   readonly mode: "mock" | "live";
   postCarousel(
     ctx: CallContext,
     input: { imageUrls: string[]; caption: string },
   ): Promise<{ mediaId: string; permalink: string }>;
+  /** Posts a reel from a public video URL: a container, then waiting for it, then publishing. */
+  postReel(ctx: CallContext, input: { account: SocialAccount; videoUrl: string; caption: string }): Promise<SocialPost>;
+}
+
+export interface FacebookProvider {
+  readonly mode: "mock" | "live";
+  /** Posts a reel to the seller's Page from a public video URL. */
+  postReel(ctx: CallContext, input: { page: SocialAccount; videoUrl: string; caption: string }): Promise<SocialPost>;
 }
 
 export interface ReelPhotoFiles {

@@ -1,9 +1,10 @@
 import "server-only";
 import { z } from "zod";
 import { Scene } from "@/lib/schemas/pipeline";
-import { executeListingStep, executeLookStep, executeReelStep } from "@/server/pipeline/execute";
+import { executeListingStep, executeLookStep, executePostStep, executeReelStep } from "@/server/pipeline/execute";
 import { Look } from "@/lib/schemas/looks";
 import { ReelLang, ReelTemplate } from "@/lib/schemas/reels";
+import { PostRequest } from "@/lib/schemas/social";
 import { executeStoreStep } from "@/server/pipeline/store-step";
 import type { StepOutcome } from "@/server/pipeline/run-step";
 import { defineOp } from "./define-op";
@@ -84,6 +85,25 @@ export const makeReel = defineOp({
       value: { outcome: r.outcome as StepOutcome<unknown> },
       listingId,
       summary: `${template} ${lang}`,
+    };
+  },
+});
+
+export const postReel = defineOp({
+  name: "postReel",
+  description:
+    "Post a listing's reel in one language to the seller's Facebook Page ('facebook') or linked Instagram account ('instagram'), with this caption. The reel must be made first. Public and can't be undone from here, so it always needs the seller's confirmation; each destination is its own post. Asking again returns the post already made.",
+  input: PostRequest.extend({ listingId: ListingId }),
+  effect: "changes_store",
+  async run({ workspace }, { listingId, ...req }) {
+    const r = await executePostStep(workspace, listingId, req);
+    if (!r.found) return { ok: false, error: "not_found" };
+    if ("invalid" in r) return { ok: false, error: "not_ready", message: r.invalid };
+    return {
+      ok: true,
+      value: { outcome: r.outcome as StepOutcome<unknown> },
+      listingId,
+      summary: `${req.destination} ${req.lang}`,
     };
   },
 });

@@ -7,6 +7,8 @@ import { runStep, type StepOutcome } from "./run-step";
 import { groupStep, planStep, segmentStep } from "./job-steps";
 import { lookStep, renderStep, translateStep, writeStep } from "./listing-steps";
 import { reelStep } from "./reel-step";
+import { postStep } from "./post-step";
+import type { PostRequest } from "@/lib/schemas/social";
 import type { Look } from "@/lib/schemas/looks";
 import type { ReelLang, ReelTemplate } from "@/lib/schemas/reels";
 import { isSettled, renderTarget, type JobStepName, type ListingStepName } from "./next-calls";
@@ -22,6 +24,8 @@ const LOCK_MS = 45_000;
 const RENDER_LOCK_MS = 150_000;
 // a reel waits its turn behind another render on this server, then takes about a minute
 const REEL_LOCK_MS = 360_000;
+// Instagram processes a reel before it can be published; the provider waits for that
+const POST_LOCK_MS = 180_000;
 
 export type ExecuteResult = { found: false } | { found: true; outcome: StepOutcome<unknown> };
 
@@ -126,6 +130,28 @@ export async function executeReelStep(
     { jobId: listing.job_id, step: "reel", target: `${listingId}:${template}:${lang}` },
     { lockMs: REEL_LOCK_MS, force, redo: force },
     () => reelStep({ ws, workspace, listing }, lang, template),
+  );
+  return { found: true, outcome };
+}
+
+/**
+ * A reel posted to Facebook or Instagram. One step per listing, language and destination,
+ * and no redo: a saved post is returned, so nothing is ever posted twice by accident.
+ */
+export async function executePostStep(
+  workspace: Workspace,
+  listingId: string,
+  req: PostRequest,
+): Promise<ExecuteResult | { found: true; invalid: string }> {
+  const ws = forWorkspace(workspace.id);
+  const listing = await ws.getListing(listingId);
+  if (!listing) return { found: false };
+  if (!LOOKABLE.has(listing.status)) return { found: true, invalid: "This listing isn't finished yet." };
+  const outcome = await runStep(
+    sqlStepStore(ws.id),
+    { jobId: listing.job_id, step: "post", target: `${listingId}:${req.lang}:${req.destination}` },
+    { lockMs: POST_LOCK_MS },
+    () => postStep({ ws, workspace, listing }, req),
   );
   return { found: true, outcome };
 }

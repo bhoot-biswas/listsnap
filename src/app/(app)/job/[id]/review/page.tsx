@@ -11,6 +11,9 @@ import { listingVariants } from "@/lib/variants";
 import { lookOf, type Look } from "@/lib/schemas/looks";
 import { REEL_LANGS, ReelResult } from "@/lib/schemas/reels";
 import { REELS_PER_DAY } from "@/server/db/limits";
+import { DESTINATIONS, PostResult } from "@/lib/schemas/social";
+import { defaultCaption } from "@/server/social/caption";
+import { metaConnection, publicMeta } from "@/server/social/connection";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,12 +37,22 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
   const en = ListingText.safeParse(listing.fields_json?.en);
   if (!en.success) notFound();
   const bn = BanglaText.safeParse(listing.fields_json?.bn);
-  const [items, media, usage, reelResults] = await Promise.all([
+  const [items, media, usage, reelResults, postResults, meta] = await Promise.all([
     ws.items(id),
     ws.listingMedia([listing.id]),
     ws.usageToday(),
     Promise.all(REEL_LANGS.map((lang) => ws.stepResult(id, "reel", `${listing.id}:showcase:${lang}`))),
+    Promise.all(
+      REEL_LANGS.flatMap((lang) => DESTINATIONS.map((d) => ws.stepResult(id, "post", `${listing.id}:${lang}:${d}`))),
+    ),
+    metaConnection(ws),
   ]);
+  const posted: Record<string, Record<string, { permalink: string; test: boolean }>> = {};
+  for (const raw of postResults) {
+    const p = PostResult.safeParse(raw);
+    if (p.success)
+      (posted[p.data.lang] ??= {})[p.data.destination] = { permalink: p.data.permalink, test: p.data.test };
+  }
   const reels = Object.fromEntries(
     REEL_LANGS.map((lang, i) => {
       const r = ReelResult.safeParse(reelResults[i]);
@@ -96,6 +109,28 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
           made: reels,
           langs: bn.success ? [...REEL_LANGS] : ["en"],
           left: Math.max(0, REELS_PER_DAY - usage.reels),
+          social: {
+            account: publicMeta(meta),
+            posted,
+            captions: {
+              en: defaultCaption({
+                lang: "en",
+                title: en.data.title,
+                shortDescription: en.data.short_description,
+                priceBdt: listing.price_bdt,
+                tags: en.data.tags,
+              }),
+              ...(bn.success && {
+                bn: defaultCaption({
+                  lang: "bn",
+                  title: bn.data.title,
+                  shortDescription: bn.data.short_description,
+                  priceBdt: listing.price_bdt,
+                  tags: bn.data.tags,
+                }),
+              }),
+            },
+          },
         }}
         others={listings.map((x, i) => ({
           id: x.id,
