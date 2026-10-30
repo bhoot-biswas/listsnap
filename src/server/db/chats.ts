@@ -9,10 +9,11 @@ const TITLE_MAX = 120;
 
 export function chatQueries(ws: string) {
   return {
-    /** The listing's current chat: the one started last. */
-    async listingChat(listingId: string): Promise<string | null> {
+    /** The current chat of a listing, or of the whole shop with null: the one started last. */
+    async listingChat(listingId: string | null): Promise<string | null> {
       const row = await selectOne<{ id: string }>(
-        "SELECT id FROM chats WHERE workspace_id = ? AND listing_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+        // <=> also matches NULL, the shop chat
+        "SELECT id FROM chats WHERE workspace_id = ? AND listing_id <=> ? ORDER BY created_at DESC, id DESC LIMIT 1",
         [ws, listingId],
       );
       return row?.id ?? null;

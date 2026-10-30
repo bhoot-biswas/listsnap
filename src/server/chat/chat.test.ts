@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { ChatMessage } from "@/lib/schemas/chat";
 import { chatBody } from "@/server/providers/meta/chat";
 import { mockChatTurn } from "@/server/providers/meta/chat-mock";
-import { listingTools } from "./tools";
+import { chatTools } from "./tools";
 import { chatItems, chatRevision, pendingCalls } from "./view";
+
+const listingTools = () => chatTools({ listingId: "l1" });
 
 const call = (id: string, name: string, args: Record<string, unknown> = {}) => ({ id, name, args });
 
@@ -28,6 +30,14 @@ describe("listing chat", () => {
     }
     const post = tools.find((t) => t.name === "postReel")!.parameters as { required?: string[] };
     expect(post.required).not.toContain("caption");
+  });
+
+  it("gives the shop chat the shop tools, where the model names the listing", () => {
+    const tools = chatTools({ listingId: null });
+    expect(tools.map((t) => t.name)).toEqual(expect.arrayContaining(["findListings", "saveDraftsToStore"]));
+    const post = tools.find((t) => t.name === "postReel")!.parameters as { required?: string[] };
+    expect(post.required).toContain("listingId");
+    expect(listingTools().map((t) => t.name)).not.toContain("saveDraftsToStore");
   });
 
   it("sends history the way Spark's tool calling expects it", () => {

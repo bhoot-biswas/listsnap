@@ -1,8 +1,11 @@
 "use client";
 
+import type { Route } from "next";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Check, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { cn } from "@/lib/utils";
 import type { ChatItem } from "@/lib/schemas/chat";
 
@@ -18,7 +21,7 @@ export function ChatEntry({
   busy: boolean;
   onAnswer: (id: string, yes: boolean) => void;
 }) {
-  const t = useTranslations("review.chat");
+  const t = useTranslations("chat");
   if (item.kind === "user" || item.kind === "assistant") {
     const mine = item.kind === "user";
     return (
@@ -58,9 +61,24 @@ export function ChatEntry({
 }
 
 function Made({ item }: { item: Extract<ChatItem, { kind: "tool" | "approval" }> }) {
-  const t = useTranslations("review.chat.approval");
+  const t = useTranslations("chat.approval");
   return (
     <>
+      {item.listings && (
+        <ul className="divide-y rounded-lg border">
+          {item.listings.map((l) => (
+            <li key={l.id}>
+              <Link
+                href={l.href as Route}
+                className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-muted/60"
+              >
+                <span className="truncate">{l.title}</span>
+                <StatusBadge status={l.status as ListingStatus} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
       {item.media &&
         (item.media.video ? (
           <video src={item.media.url} controls playsInline className="max-h-72 rounded-lg border bg-black" />
@@ -93,7 +111,7 @@ function Approval({
   busy: boolean;
   onAnswer: (id: string, yes: boolean) => void;
 }) {
-  const t = useTranslations("review.chat.approval");
+  const t = useTranslations("chat.approval");
   const tReels = useTranslations("review.reels");
   const args = item.args as {
     lang?: "en" | "bn";
@@ -101,20 +119,30 @@ function Approval({
     caption?: string;
     update?: boolean;
   };
+  const titles = item.preview?.titles ?? [];
   const question =
     item.name === "postReel"
       ? t("postReel", {
           lang: tReels(`lang.${args.lang ?? "en"}`),
           where: tReels(`post.${args.destination ?? "facebook"}`),
         })
-      : args.update
-        ? t("updateDraft")
-        : t("saveDraftToStore");
-  const yes = item.name === "postReel" ? t("yes.postReel") : t("yes.saveDraftToStore");
+      : item.name === "saveDraftsToStore"
+        ? t("saveDraftsToStore", { n: titles.length })
+        : args.update
+          ? t("updateDraft")
+          : t("saveDraftToStore");
+  const yes = t.has(`yes.${item.name}`) ? t(`yes.${item.name}`) : t("yes.saveDraftToStore");
 
   return (
     <div className="space-y-2 rounded-lg border p-3">
       <p className="text-sm font-medium">{question}</p>
+      {titles.length > 0 && (
+        <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-xs">
+          {titles.map((title, i) => (
+            <li key={i}>{title}</li>
+          ))}
+        </ul>
+      )}
       {args.caption && (
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">{t("caption")}</p>

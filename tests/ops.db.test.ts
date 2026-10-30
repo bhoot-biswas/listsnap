@@ -33,7 +33,12 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     estimateCost: { op: "renderScene", input: { listingId, scene: "lifestyle" } },
     // aimed at shop A's brand photo rather than a listing; shop B must not be able to use it
     setBrandKit: { colors: ["#7a1f2b"], settingMediaId: brandPhotoId },
+    getShopSummary: {},
+    findListings: { status: "needs_review" },
+    saveDraftsToStore: { listingIds: [listingId] },
   });
+  // shop-wide reads take no required input and only ever read the caller's own shop
+  const SHOP_READS = new Set(["getShopSummary", "findListings"]);
   const validEdit = () => ({
     en: { title: "Edited", short_description: "", description: "", attributes: [], tags: [], category: "Sarees" },
     bn: null,
@@ -69,6 +74,16 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
 
   it("refuses input that doesn't match the op's schema", async () => {
     for (const op of opList()) {
+      if (SHOP_READS.has(op.name)) {
+        expect(
+          await op.call(a.workspace, op.name === "findListings" ? { status: "lost" } : "nonsense", { via: "chat" }),
+          op.name,
+        ).toMatchObject({
+          ok: false,
+          error: "invalid",
+        });
+        continue;
+      }
       expect(await op.call(a.workspace, {}, { via: "ui", confirmed: true }), op.name).toEqual({
         ok: false,
         error: "invalid",
@@ -85,7 +100,9 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     for (const op of opList()) {
       if (op.name === "estimateCost") continue; // reads no listing; its input is only parsed
       const r = await op.call(b.workspace, fixtures()[op.name], { via: "chat", confirmed: true });
-      expect(r, op.name).toMatchObject({ ok: false, error: "not_found" });
+      // B's own shop reads succeed, but never show A's listing
+      if (SHOP_READS.has(op.name)) expect(JSON.stringify(r), op.name).not.toContain(listingId);
+      else expect(r, op.name).toMatchObject({ ok: false, error: "not_found" });
     }
     expect(JSON.stringify(await A.getListing(listingId))).toBe(before);
     // and B's audit trail names no listing of A's

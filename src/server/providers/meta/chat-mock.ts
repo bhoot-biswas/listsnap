@@ -9,8 +9,21 @@ import type { ChatInput, ChatTurn } from "../types";
 export function mockChatTurn(input: ChatInput): ChatTurn {
   const last = input.messages.at(-1);
   if (!last || last.role === "assistant") return reply("How can I help with this listing?");
+  const shop = input.tools.some((t) => t.name === "findListings");
   if (last.role === "tool") {
     const results = trailingResults(input);
+    // the shop chat's "save everything Ready": the listings found, then one approval for all
+    const found = (results[0] as { listings?: { id: string }[] } | undefined)?.listings;
+    const asked = [...input.messages].reverse().find((m) => m.role === "user");
+    if (shop && found && asked?.role === "user" && /store/i.test(asked.content))
+      return found.length
+        ? {
+            content: null,
+            toolCalls: [
+              { name: "saveDraftsToStore", argsJson: JSON.stringify({ listingIds: found.map((l) => l.id) }) },
+            ],
+          }
+        : reply("There's nothing to save.");
     const failed = results.find((r) => !(r as { ok?: boolean }).ok) as { message?: string } | undefined;
     return reply(failed ? `That didn't work: ${failed.message ?? "try again"}.` : "Done.");
   }
@@ -23,6 +36,11 @@ export function mockChatTurn(input: ChatInput): ChatTurn {
       ? { content: null, toolCalls: [{ name, argsJson: JSON.stringify(args) }] }
       : reply("I can't do that here.");
 
+  if (shop) {
+    if (/ready/.test(text)) return call("findListings", { status: "ready" });
+    if (/review/.test(text)) return call("findListings", { status: "needs_review" });
+    if (/left|how many/.test(text)) return call("getShopSummary");
+  }
   if (/reel/.test(text) && /post|instagram|facebook/.test(text))
     return call("postReel", { lang, destination: /instagram/.test(text) ? "instagram" : "facebook" });
   if (/reel|video/.test(text)) return call("makeReel", { lang });

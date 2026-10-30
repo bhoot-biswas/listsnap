@@ -4,17 +4,22 @@ import { forWorkspace } from "@/server/db/scope";
 import { ops } from "@/server/ops";
 import { REEL_LANGS } from "@/lib/schemas/reels";
 import { metaConnection } from "@/server/social/connection";
+import type { ChatScope } from "./tools";
 
 /**
  * The rules come from the cookbook's failure modes: numbers only from data (models
  * invent counts), never claim an action a tool didn't confirm, and approvals happen
  * on the card, not in text, so the seller isn't asked twice.
  */
-const RULES = `You are ListSnap's shop assistant. You help a small online seller in Bangladesh with one product listing: its text, price, AI photos, reels, saving it to their WooCommerce store and posting its reel.
+const LISTING_ROLE = `You are ListSnap's shop assistant. You help a small online seller in Bangladesh with one product listing: its text, price, AI photos, reels, saving it to their WooCommerce store and posting its reel.`;
 
-Rules:
+const SHOP_ROLE = `You are ListSnap's shop assistant. You help a small online seller in Bangladesh with their whole shop: finding listings, explaining their status, changing them, making AI photos and reels, saving them to their WooCommerce store and posting reels.
+- Find listings with findListings before acting on them, and use the ids it returns. Never make up an id.
+- When the seller asks for something across several listings, say which listings you mean by title. For saving several to the store, use saveDraftsToStore once rather than one card per listing.`;
+
+const RULES = `Rules:
 - Act through the tools. Say something was done only when a tool result says it worked.
-- State prices, counts, limits and links only from the listing data below or from tool results. Never guess them.
+- State prices, counts, limits and links only from the data below or from tool results. Never guess them.
 - Saving to the store and posting a reel are approved by the seller on a card the app shows when you call the tool. Call the tool directly; don't ask "are you sure?" in text first, and don't say it's being done: say it's waiting for their OK on the card.
 - The app shows new photos, reels and post links as cards under your reply, so don't repeat links or ids in your text.
 - Products are always saved to the store as drafts. Never say "publish".
@@ -26,8 +31,18 @@ Rules:
 - You can't see the photos; the listing data says which ones exist.
 - Reply in the language the seller writes in (English or Bangla). Keep replies to one to three short sentences of plain text: no markdown, no lists.`;
 
-/** The rules plus a compact, factual view of the listing; never image bytes. */
-export async function chatSystem(workspace: Workspace, listingId: string): Promise<string> {
+/** The rules plus a compact, factual view of the listing or the shop; never image bytes. */
+export async function chatSystem(workspace: Workspace, scope: ChatScope): Promise<string> {
+  if (!scope.listingId) {
+    const shop = await ops.getShopSummary.call(workspace, {}, { via: "chat" });
+    return `${SHOP_ROLE}
+
+${RULES}
+
+The shop now:
+${JSON.stringify(shop.ok ? shop.value : null)}`;
+  }
+  const listingId = scope.listingId;
   const ws = forWorkspace(workspace.id);
   const listing = await ws.getListing(listingId);
   const [summary, reels, meta, usage] = await Promise.all([
@@ -45,5 +60,10 @@ export async function chatSystem(workspace: Workspace, listingId: string): Promi
     instagram: meta?.settings.igUsername ?? null,
     aiPhotosLeftToday: Math.max(0, workspace.limits.images - usage.images),
   };
-  return `${RULES}\n\nThe listing now:\n${JSON.stringify(facts)}`;
+  return `${LISTING_ROLE}
+
+${RULES}
+
+The listing now:
+${JSON.stringify(facts)}`;
 }

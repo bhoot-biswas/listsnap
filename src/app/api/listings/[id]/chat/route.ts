@@ -31,7 +31,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
         }
       };
       try {
-        await runChat(viewer.workspace, id, body.data, emit);
+        await runChat(viewer.workspace, { listingId: id }, body.data, emit);
       } catch (err) {
         console.error("[chat] unexpected error:", err);
         emit({ type: "error", code: "generic" });

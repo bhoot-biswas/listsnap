@@ -4,12 +4,42 @@ import { mediaUrl } from "@/server/media/store";
 import { changesListing, needsApproval } from "./tools";
 
 /** The photo or reel a tool made, or the link of a post, from its stored result. */
+/** Found listings shown under a reply; the model reads all of them, the seller sees the first few. */
+const LISTING_CARDS = 8;
+
+type FoundListing = { id: string; jobId: string; title: string | null; status: string };
+
 export function toolExtras(name: string, result: unknown): ToolExtras {
+  const found = (result as { listings?: FoundListing[] } | null)?.listings;
+  if (name === "findListings" && found?.length)
+    return {
+      listings: found.slice(0, LISTING_CARDS).map((l) => ({
+        id: l.id,
+        title: l.title ?? "—",
+        status: l.status,
+        href: `/job/${l.jobId}/review?l=${l.id}`,
+      })),
+    };
   const r = (result as { result?: { mediaId?: unknown; permalink?: unknown } } | null)?.result;
   if (!r) return {};
   return {
     ...(typeof r.mediaId === "string" && { media: { url: mediaUrl(r.mediaId), video: name === "makeReel" } }),
     ...(typeof r.permalink === "string" && { link: r.permalink }),
+  };
+}
+
+type ApprovalState = Extract<ChatItem, { kind: "approval" }>["state"];
+
+/** An approval card for a stored call, with what it made once it ran. */
+export function approvalItem(call: ToolCall, state: ApprovalState, result?: unknown): ChatItem {
+  return {
+    kind: "approval",
+    id: call.id,
+    name: call.name,
+    args: call.args,
+    state,
+    ...(call.preview && { preview: call.preview }),
+    ...toolExtras(call.name, result),
   };
 }
 
@@ -39,7 +69,7 @@ export function chatItems(history: ChatMessage[]): ChatItem[] {
       const r = results.get(c.id);
       if (needsApproval(c.name)) {
         const state = !r ? "pending" : r.declined ? "declined" : r.ok ? "approved" : "failed";
-        items.push({ kind: "approval", id: c.id, name: c.name, args: c.args, state, ...toolExtras(c.name, r) });
+        items.push(approvalItem(c, state, r));
       } else if (r) items.push({ kind: "tool", id: c.id, name: c.name, ok: r.ok === true, ...toolExtras(c.name, r) });
     }
   });

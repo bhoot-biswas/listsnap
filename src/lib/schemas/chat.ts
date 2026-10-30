@@ -8,6 +8,8 @@ export const ToolCall = z.object({
   id: z.string().min(1).max(100),
   name: z.string().min(1).max(64),
   args: z.record(z.string(), z.unknown()),
+  /** What an approval card shows besides the args: the listings it acts on, by title. */
+  preview: z.object({ titles: z.array(z.string()).max(20) }).optional(),
 });
 export type ToolCall = z.infer<typeof ToolCall>;
 
@@ -37,6 +39,8 @@ export type ChatRequest = z.infer<typeof ChatRequest>;
 export interface ToolExtras {
   media?: { url: string; video: boolean };
   link?: string;
+  /** Listings a search found, each linking to its Review page. */
+  listings?: { id: string; title: string; status: string; href: string }[];
 }
 
 /** What the chat box draws. Tool and approval items share their tool call's id. */
@@ -50,6 +54,7 @@ export type ChatItem =
       name: string;
       args: Record<string, unknown>;
       state: "pending" | "approved" | "declined" | "failed";
+      preview?: { titles: string[] };
     } & ToolExtras);
 
 /**

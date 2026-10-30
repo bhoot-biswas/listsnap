@@ -18,6 +18,7 @@ import {
   Plus,
   Settings,
   Store,
+  Sparkles,
   Sun,
   Upload,
   UserRound,
@@ -82,6 +83,7 @@ export function AppSidebar({ data }: { data: SidebarData }) {
       label: t("work"),
       items: [
         { href: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
+        { href: "/assistant", label: t("assistant"), icon: Sparkles },
         {
           href: "/listings",
           label: t("listings"),

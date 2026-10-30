@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { ChatEvent, ChatRequest } from "@/lib/schemas/chat";
+import type { ChatEvent, ChatItem, ChatRequest } from "@/lib/schemas/chat";
 import { createTestJob, createTestWorkspace, dbEnv, runJob, samplePhoto } from "./db-helpers";
 
 /**
@@ -21,7 +21,7 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
 
   const chat = async (req: Partial<ChatRequest>, workspace = a.workspace) => {
     const events: ChatEvent[] = [];
-    await runChat(workspace, listingId, { newChat: false, ...req } as ChatRequest, (e) => events.push(e));
+    await runChat(workspace, { listingId }, { newChat: false, ...req } as ChatRequest, (e) => events.push(e));
     return events;
   };
   const items = (events: ChatEvent[]) => events.flatMap((e) => (e.type === "item" ? [e.item] : []));
@@ -118,5 +118,39 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     );
     expect(logged.length).toBeGreaterThan(0);
     expect(logged.some((l) => /review|instagram|store/i.test(l.summary) && !l.summary.startsWith("tools"))).toBe(false);
+  });
+  it("saves every Ready listing from the shop chat under one approval that names them", async () => {
+    const { execute } = await import("@/server/db/pool");
+    const c = await createTestWorkspace();
+    try {
+      const ids: string[] = [];
+      for (const photo of ["saree.jpg", "kurti.jpg"]) {
+        const job = await createTestJob(c.workspace.id, await samplePhoto(photo));
+        ids.push((await runJob(c.workspace, job)).listings[0]!.id);
+      }
+      await execute("UPDATE listings SET status = 'ready' WHERE workspace_id = ?", [c.workspace.id]);
+      const shop = (req: Partial<ChatRequest>) => {
+        const events: ChatEvent[] = [];
+        return runChat(c.workspace, { listingId: null }, { newChat: false, ...req } as ChatRequest, (e) =>
+          events.push(e),
+        ).then(() => events);
+      };
+
+      const asked = await shop({ message: "Save everything that's Ready to my store" });
+      expect(items(asked).map((i) => i.kind)).toEqual(["tool", "approval"]);
+      const card = items(asked)[1] as Extract<ChatItem, { kind: "approval" }>;
+      expect(card).toMatchObject({ name: "saveDraftsToStore", state: "pending" });
+      expect(card.preview?.titles).toHaveLength(2);
+      expect((card.args.listingIds as string[]).sort()).toEqual([...ids].sort());
+
+      const yes = await shop({ approve: { toolCallId: card.id, yes: true } });
+      expect(items(yes)[0]).toMatchObject({ state: "approved" });
+      const C = forWorkspace(c.workspace.id);
+      for (const id of ids) expect((await C.getListing(id))!.status).toBe("in_store");
+      // the shop chat is its own conversation, apart from any listing's
+      expect(await C.listingChat(null)).not.toBe(await C.listingChat(ids[0]!));
+    } finally {
+      await c.remove();
+    }
   });
 });

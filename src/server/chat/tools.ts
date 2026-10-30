@@ -11,11 +11,15 @@ import { defaultCaption } from "@/server/social/caption";
 import type { ChatTool } from "@/server/providers/types";
 
 /**
- * The listing chat's tools are ops from the registry, so they keep every op rule: auth
- * by workspace, Zod input, idempotency, undo and the op_runs record. The listing id is
- * fixed by the server and left out of each tool's input, so the model can't point a tool
- * at another listing.
+ * The chat's tools are ops from the registry, so they keep every op rule: auth by
+ * workspace, Zod input, idempotency, undo and the op_runs record. In a listing's chat
+ * the listing id is fixed by the server and left out of each tool's input, so the model
+ * can't point a tool at another listing. The shop chat names listings itself, found
+ * with findListings, and an id from another shop is simply "not found".
  */
+
+/** Which chat: one listing's, or the whole shop's when `listingId` is null. */
+export type ChatScope = { listingId: string | null };
 
 const LISTING_TOOLS = [
   "getListingSummary",
@@ -27,20 +31,24 @@ const LISTING_TOOLS = [
   "postReel",
   "saveDraftToStore",
 ] as const;
-export type ToolName = (typeof LISTING_TOOLS)[number];
+const SHOP_TOOLS = ["getShopSummary", "findListings", ...LISTING_TOOLS, "saveDraftsToStore"] as const;
+export type ToolName = (typeof SHOP_TOOLS)[number];
+
+const toolNames = (scope: ChatScope): readonly ToolName[] => (scope.listingId ? LISTING_TOOLS : SHOP_TOOLS);
 
 const opFor = (name: string): Op | null =>
-  (LISTING_TOOLS as readonly string[]).includes(name) ? (ops[name as ToolName] as Op) : null;
+  (SHOP_TOOLS as readonly string[]).includes(name) ? (ops[name as ToolName] as Op) : null;
 
 /** The model may leave out a reel's caption; the default one from the listing is used, and the seller sees it before posting. */
-function chatInput(name: ToolName): z.ZodObject {
-  const input = (ops[name].input as z.ZodObject).omit({ listingId: true });
+function chatInput(name: ToolName, scope: ChatScope): z.ZodObject {
+  const own = ops[name].input as z.ZodObject;
+  const input = scope.listingId && "listingId" in own.shape ? own.omit({ listingId: true }) : own;
   return name === "postReel" ? input.extend({ caption: z.string().trim().min(1).max(CAPTION_MAX).optional() }) : input;
 }
 
-export function listingTools(): ChatTool[] {
-  return LISTING_TOOLS.map((name) => {
-    const parameters: Record<string, unknown> = z.toJSONSchema(chatInput(name), {
+export function chatTools(scope: ChatScope): ChatTool[] {
+  return toolNames(scope).map((name) => {
+    const parameters: Record<string, unknown> = z.toJSONSchema(chatInput(name, scope), {
       io: "input",
       unrepresentable: "any",
     });
@@ -59,37 +67,52 @@ export const needsApproval = (name: string) => opFor(name)?.effect === "changes_
 /** Makes AI photos or reels, which cost the seller's daily quota and a minute each. */
 export const makesMedia = (name: string) => opFor(name)?.effect === "creates_media";
 
-/** Changes something the page shows, so it reloads once the chat is done. */
+/** Changes something a page shows, so it reloads once the chat is done. */
 export const changesListing = (name: string) => !!opFor(name) && opFor(name)!.effect !== "read";
 
-export type Checked = { ok: true; args: Record<string, unknown> } | { ok: false; error: string };
+export type Checked =
+  { ok: true; args: Record<string, unknown>; preview?: ToolCall["preview"] } | { ok: false; error: string };
 
 /**
  * Checks a call's arguments and completes them, before the call is stored: an approval
  * card must show exactly what will be sent, and the seller approves those stored args.
+ * In the shop chat the card also names the listings, since the seller can't see the ids.
  */
 export async function checkArgs(
   workspace: Workspace,
-  listingId: string,
+  scope: ChatScope,
   name: string,
   argsJson: string,
 ): Promise<Checked> {
-  if (!opFor(name)) return { ok: false, error: `There is no tool called ${name}.` };
+  if (!(toolNames(scope) as readonly string[]).includes(name))
+    return { ok: false, error: `There is no tool called ${name}.` };
   let raw: unknown;
   try {
     raw = JSON.parse(argsJson || "{}");
   } catch {
     return { ok: false, error: "The arguments weren't valid JSON." };
   }
-  const parsed = chatInput(name as ToolName).safeParse(raw);
+  const parsed = chatInput(name as ToolName, scope).safeParse(raw);
   if (!parsed.success) return { ok: false, error: `Invalid arguments: ${z.prettifyError(parsed.error).slice(0, 300)}` };
   const args = parsed.data as Record<string, unknown>;
+  const listingId = scope.listingId ?? (args.listingId as string | undefined);
   if (name === "postReel" && !args.caption) {
-    const caption = await listingCaption(workspace, listingId, args.lang as "en" | "bn");
+    const caption = listingId ? await listingCaption(workspace, listingId, args.lang as "en" | "bn") : null;
     if (!caption) return { ok: false, error: "This listing has no text in that language to write a caption from." };
     args.caption = caption;
   }
-  return { ok: true, args };
+  if (scope.listingId || !needsApproval(name)) return { ok: true, args };
+  const ids = name === "saveDraftsToStore" ? [...new Set(args.listingIds as string[])] : [listingId!];
+  const titles = await listingTitles(workspace, ids);
+  if (!titles) return { ok: false, error: "One of those listings isn't in this shop. Find it with findListings." };
+  return { ok: true, args, preview: { titles } };
+}
+
+async function listingTitles(workspace: Workspace, ids: string[]): Promise<string[] | null> {
+  const ws = forWorkspace(workspace.id);
+  const listings = await Promise.all(ids.map((id) => ws.getListing(id)));
+  if (listings.some((l) => !l)) return null;
+  return listings.map((l) => (l!.fields_json?.en as { title?: string } | undefined)?.title ?? l!.id);
 }
 
 async function listingCaption(workspace: Workspace, listingId: string, lang: "en" | "bn") {
@@ -121,15 +144,16 @@ const ERROR_TEXT: Record<string, string> = {
  */
 export async function runTool(
   workspace: Workspace,
-  listingId: string,
+  scope: ChatScope,
   call: ToolCall,
   confirmed = false,
 ): Promise<Record<string, unknown>> {
   const op = opFor(call.name);
   if (!op) return { ok: false, message: `There is no tool called ${call.name}.` };
+  const input = scope.listingId ? { ...call.args, listingId: scope.listingId } : call.args;
   let r: OpResult<unknown>;
   try {
-    r = await op.call(workspace, { ...call.args, listingId }, { via: "chat", idempotencyKey: call.id, confirmed });
+    r = await op.call(workspace, input, { via: "chat", idempotencyKey: call.id, confirmed });
   } catch (err) {
     console.error(`[chat] ${call.name} failed:`, err);
     return { ok: false, message: "Something went wrong on our side. Nothing else changed." };
