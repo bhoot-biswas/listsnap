@@ -18,7 +18,7 @@ import {
 import { SAM_COST_USD, SAM_MODEL, SamRejectedError, samSegment } from "./sam";
 import { liveAssist } from "./assist";
 import { BANGLA_SYSTEM, MATCH_SYSTEM, SELLER_CONTEXT, writeSystem } from "./prompts";
-import { photoDataUrl, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
+import { photoDataUrl, SPARK_EFFORT, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
 
 /**
  * The live Meta provider: Muse Spark plans, writes, translates and groups; SAM 3.1
@@ -48,7 +48,9 @@ const GroupSuggestion = z.object({
 });
 
 const info = { provider: "meta", model: SPARK_MODEL, endpoint: "chat/completions", mode: "live" } as const;
-const retried = (r: SparkResult<unknown>) => (r.requests > 1 ? " · retried unreadable answer" : "");
+// appended to every Spark summary: a retry, and how much of the prompt came from the cache
+const retried = (r: SparkResult<unknown>) =>
+  (r.requests > 1 ? " · retried unreadable answer" : "") + (r.cachedTokens ? ` · cached ${r.cachedTokens}` : "");
 const tokens = (r: ImageResult) => (r.tokens ? ` · ${r.tokens} tokens` : "");
 
 export const liveMeta: MetaProvider = {
@@ -62,6 +64,7 @@ export const liveMeta: MetaProvider = {
       () =>
         sparkJson({
           name: "PlanResult",
+          effort: SPARK_EFFORT.plan,
           schema: PlanResult,
           system: PLAN_SYSTEM,
           userText: "Look at this seller's photo and fill in the plan.",
@@ -84,6 +87,7 @@ export const liveMeta: MetaProvider = {
       () =>
         sparkJson({
           name: "Listing",
+          effort: SPARK_EFFORT.write,
           schema: ListingText,
           system: writeSystem(voice),
           userText: `Write the listing for the product in this photo. A first look found: ${firstLook}.`,
@@ -102,6 +106,7 @@ export const liveMeta: MetaProvider = {
       () =>
         sparkJson({
           name: "BanglaListing",
+          effort: SPARK_EFFORT.translate,
           schema: BanglaText,
           system: BANGLA_SYSTEM,
           userText: `Listing to localize:\n${JSON.stringify({ title, short_description, description, attributes, tags }, null, 2)}`,
@@ -121,6 +126,7 @@ export const liveMeta: MetaProvider = {
       () =>
         sparkJson({
           name: "GroupSuggestion",
+          effort: SPARK_EFFORT.group,
           schema: GroupSuggestion,
           system: GROUP_SYSTEM,
           userText: `The photo was planned as: ${JSON.stringify({ product: plan.sam_phrase, kind: plan.multi_kind })}. There are ${crops.length} items, in this order.`,
@@ -141,6 +147,7 @@ export const liveMeta: MetaProvider = {
       () =>
         sparkJson({
           name: "ProductMatch",
+          effort: SPARK_EFFORT.compare,
           schema: ProductMatch,
           system: MATCH_SYSTEM,
           userText: `The product is a ${phrase}. Image 1 is the product, image 2 is the AI photo.`,

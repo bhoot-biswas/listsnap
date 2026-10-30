@@ -2,7 +2,8 @@ import "server-only";
 import sharp from "sharp";
 import { z } from "zod";
 import { env } from "@/server/env";
-import { StepError } from "@/server/pipeline/run-step";
+import { PermanentError, StepError } from "@/server/pipeline/run-step";
+import { guard, noteRateLimit, record } from "../breaker";
 
 /**
  * Muse Spark through Chat Completions with strict structured output, the shape the
@@ -21,8 +22,12 @@ const PRICE_PER_M = { input: 1.25, output: 4.25 };
 const BUDGET_MS = 40_000;
 /** A retry after an unreadable answer only starts if a typical call (p90 ~15 s) still fits. */
 const RETRY_MIN_MS = 16_000;
-/** The spike measured quality at 1600 px; image tokens dominate the cost. */
-const PHOTO_PX = 1600;
+/**
+ * Image tokens dominate the cost and scale with size: a photo is 3,535 input tokens at
+ * 1600 px and 2,287 at 1280, the size the cookbook's perception recipe uses. Plans and
+ * listings written from 1280 px photos read as well in the effort spike.
+ */
+const PHOTO_PX = 1280;
 
 export const BUSY = "The AI service is busy right now. Try again in a minute; your photo is saved.";
 export const UNREADABLE = "The AI gave an answer we couldn't read. Try again.";
@@ -32,8 +37,37 @@ const Completion = z.object({
   choices: z
     .array(z.object({ message: z.object({ content: z.string().nullable() }), finish_reason: z.string().nullish() }))
     .min(1),
-  usage: z.object({ prompt_tokens: z.number(), completion_tokens: z.number() }).nullish(),
+  usage: z
+    .object({
+      prompt_tokens: z.number(),
+      completion_tokens: z.number(),
+      prompt_tokens_details: z.object({ cached_tokens: z.number().nullish() }).nullish(),
+      completion_tokens_details: z.object({ reasoning_tokens: z.number().nullish() }).nullish(),
+    })
+    .nullish(),
 });
+
+/**
+ * How much Spark thinks before answering. The API's default is "still being finalized"
+ * (cookbook, reasoning recipe), so every call names its own; `high` is the effective top.
+ */
+export type ReasoningEffort = "minimal" | "low" | "medium" | "high";
+
+/**
+ * Each Spark call's effort, as the effort spike kept them: plan and write gave equally
+ * good answers at `medium` and `high`, `medium` faster; translate and group gave the
+ * same answers at `minimal`, three times faster than `low`. The fidelity judge was right
+ * at both `low` and `minimal` and stays at `low`, as the safety check. Assist was not
+ * measured. One table, so a spike can try other levels through the same code.
+ */
+export const SPARK_EFFORT: Record<"plan" | "write" | "translate" | "group" | "compare" | "assist", ReasoningEffort> = {
+  plan: "medium",
+  write: "medium",
+  translate: "minimal",
+  group: "minimal",
+  compare: "low",
+  assist: "low",
+};
 
 export interface SparkResult<T> {
   data: T;
@@ -41,6 +75,10 @@ export interface SparkResult<T> {
   costUsd: number;
   /** How many requests it took: 2 means the first answer was unreadable. */
   requests: number;
+  /** Prompt tokens served from the prompt cache, across the requests. */
+  cachedTokens: number;
+  /** Thinking tokens, billed as output. */
+  reasoningTokens: number;
 }
 
 /**
@@ -78,41 +116,64 @@ export async function sparkJson<S extends z.ZodType>(opts: {
   userText: string;
   /** One photo, or several in order (grouping sends one crop per item). */
   imageUrl?: string | string[];
+  effort: ReasoningEffort;
 }): Promise<SparkResult<z.infer<S>>> {
   const key = env().modelApiKey;
   // not the seller's to fix, so a plain Error: the generic message plus a server log line
-  if (!key) throw new Error("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
+  if (!key) throw new PermanentError("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
 
-  const content: unknown[] = [{ type: "text", text: opts.userText }];
-  for (const url of [opts.imageUrl ?? []].flat()) content.push({ type: "image_url", image_url: { url } });
-  const body = JSON.stringify({
-    model: SPARK_MODEL,
-    messages: [
-      { role: "system", content: opts.system },
-      { role: "user", content },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: { name: opts.name, strict: true, schema: strictSchema(opts.schema) },
-    },
-  });
+  const body = JSON.stringify(sparkBody(opts));
 
   const deadline = performance.now() + BUDGET_MS;
   let costUsd = 0;
+  let cachedTokens = 0;
+  let reasoningTokens = 0;
   let model = SPARK_MODEL;
   for (let requests = 1; ; requests++) {
     const completion = await post(key, body, deadline - performance.now());
     model = completion.model ?? model;
-    if (completion.usage) {
-      costUsd +=
-        (completion.usage.prompt_tokens * PRICE_PER_M.input + completion.usage.completion_tokens * PRICE_PER_M.output) /
-        1e6;
+    const usage = completion.usage;
+    if (usage) {
+      costUsd += (usage.prompt_tokens * PRICE_PER_M.input + usage.completion_tokens * PRICE_PER_M.output) / 1e6;
+      cachedTokens += usage.prompt_tokens_details?.cached_tokens ?? 0;
+      reasoningTokens += usage.completion_tokens_details?.reasoning_tokens ?? 0;
     }
     const parsed = parseAnswer(opts.schema, completion.choices[0]!.message.content);
-    if (parsed.success) return { data: parsed.data, model, costUsd: round6(costUsd), requests };
+    if (parsed.success)
+      return { data: parsed.data, model, costUsd: round6(costUsd), requests, cachedTokens, reasoningTokens };
     console.warn(`[spark] ${opts.name}: unreadable answer (request ${requests}): ${parsed.error}`);
     if (requests >= 2 || deadline - performance.now() < RETRY_MIN_MS) throw new StepError(UNREADABLE);
   }
+}
+
+/**
+ * The request. Instructions go in a `developer` message, which the cookbook prefers over
+ * `system` (Spark applies `system` at that level anyway). The cache key names the step's
+ * stable prefix, so same-prefix calls land where their prefix is already cached.
+ */
+export function sparkBody(opts: {
+  name: string;
+  schema: z.ZodType;
+  system: string;
+  userText: string;
+  imageUrl?: string | string[];
+  effort: ReasoningEffort;
+}): Record<string, unknown> {
+  const content: unknown[] = [{ type: "text", text: opts.userText }];
+  for (const url of [opts.imageUrl ?? []].flat()) content.push({ type: "image_url", image_url: { url } });
+  return {
+    model: SPARK_MODEL,
+    messages: [
+      { role: "developer", content: opts.system },
+      { role: "user", content },
+    ],
+    reasoning_effort: opts.effort,
+    prompt_cache_key: `listsnap-${opts.name}-v1`,
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: opts.name, strict: true, schema: strictSchema(opts.schema) },
+    },
+  };
 }
 
 function parseAnswer<S extends z.ZodType>(
@@ -132,6 +193,7 @@ function parseAnswer<S extends z.ZodType>(
 }
 
 async function post(key: string, body: string, timeoutMs: number): Promise<z.infer<typeof Completion>> {
+  guard("spark", BUSY);
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}/chat/completions`, {
@@ -143,16 +205,21 @@ async function post(key: string, body: string, timeoutMs: number): Promise<z.inf
   } catch (err) {
     // timeouts and network drops are worth another attempt by the step runner
     console.warn("[spark] request failed:", err instanceof Error ? err.message : err);
+    record("spark", false);
     throw new StepError(BUSY);
   }
+  noteRateLimit("spark", res.headers);
   if (res.status === 429 || res.status >= 500) {
     console.warn(`[spark] HTTP ${res.status}`);
+    record("spark", false);
     throw new StepError(BUSY);
   }
+  record("spark", true);
   if (!res.ok) {
-    // 400/401/403/404 are our mistakes (schema, key, model access): keep the details server-side
+    // 400/401/403/404 are our mistakes (schema, key, model access): keep the details server-side,
+    // and don't retry, since the same request fails the same way
     const text = (await res.text()).slice(0, 500);
-    throw new Error(`Muse Spark HTTP ${res.status}: ${text}`);
+    throw new PermanentError(`Muse Spark HTTP ${res.status}: ${text}`);
   }
   const parsed = Completion.safeParse(await res.json().catch(() => null));
   if (!parsed.success) throw new Error(`Muse Spark sent an unexpected response: ${parsed.error.message.slice(0, 300)}`);

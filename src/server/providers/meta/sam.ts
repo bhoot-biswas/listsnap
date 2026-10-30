@@ -2,7 +2,8 @@ import "server-only";
 import { decodeMaskToRaster, parseImageStream, recordsOfKind } from "@meta-sam/parser";
 import { env } from "@/server/env";
 import { MAX_SIDE } from "@/server/media/store";
-import { StepError } from "@/server/pipeline/run-step";
+import { PermanentError, StepError } from "@/server/pipeline/run-step";
+import { guard, noteRateLimit, record } from "../breaker";
 import type { SegmentInstance } from "../types";
 import { BASE_URL, BUSY, photoDataUrl } from "./spark";
 
@@ -90,10 +91,11 @@ export function samBody(phrase: string, imageUrl: string): Record<string, unknow
 /** Every object SAM finds for the phrase, with its box, score and mask raster. */
 export async function samSegment(photo: Buffer, phrase: string): Promise<SamAnswer> {
   const key = env().modelApiKey;
-  if (!key) throw new Error("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
+  if (!key) throw new PermanentError("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
   // SAM answers in the pixel space of the image it was sent, so send the photo at its stored size
   const image = await photoDataUrl(photo, MAX_SIDE);
 
+  guard("sam", BUSY);
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}/responses`, {
@@ -104,11 +106,18 @@ export async function samSegment(photo: Buffer, phrase: string): Promise<SamAnsw
     });
   } catch (err) {
     console.warn("[sam] request failed:", err instanceof Error ? err.message : err);
+    record("sam", false);
     throw new StepError(BUSY);
   }
-  if (res.status === 429 || res.status >= 500) throw new StepError(BUSY);
+  noteRateLimit("sam", res.headers);
+  if (res.status === 429 || res.status >= 500) {
+    record("sam", false);
+    throw new StepError(BUSY);
+  }
+  record("sam", true);
   if (res.status === 400) throw new SamRejectedError(`SAM refused "${phrase}": ${(await res.text()).slice(0, 300)}`);
-  if (!res.ok || !res.body) throw new Error(`SAM HTTP ${res.status}: ${(await res.text()).slice(0, 500)}`);
+  if (!res.ok) throw new PermanentError(`SAM HTTP ${res.status}: ${(await res.text()).slice(0, 500)}`);
+  if (!res.body) throw new Error("SAM sent no stream.");
 
   const parsed = parseImageStream(sseEvents(res.body));
   // only the final result matters here; snapshots could feed a live outline later

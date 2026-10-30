@@ -2,7 +2,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { env } from "@/server/env";
-import { StepError } from "@/server/pipeline/run-step";
+import { PermanentError, StepError } from "@/server/pipeline/run-step";
+import { guard, noteRateLimit, record } from "../breaker";
 import type { PlanResult, Scene, SceneBrief } from "@/lib/schemas/pipeline";
 import { BASE_URL, BUSY } from "./spark";
 
@@ -63,6 +64,8 @@ const list = (items: string[], n: number, max: number) =>
 /**
  * Studio stays a plain backdrop whatever the brief says: the real cutout is the point of
  * it. The banner takes the brief's colours, since it has no product detail to protect.
+ * Like studio, the banner needs a surface seen from the photo's own angle: on an empty
+ * gradient the cutout floated in mid-air in every live run.
  */
 export function backgroundPrompt(
   scene: Scene,
@@ -71,11 +74,12 @@ export function backgroundPrompt(
 ): { prompt: string; size: string } {
   if (scene === "banner") {
     const palette = brief ? list(brief.palette, 3, 30) : [];
-    const tones = palette.length ? `soft gradient in ${palette.join(", ")} tones` : "soft warm gradient";
-    return {
-      prompt: `Wide clean promotional banner background, ${tones} with subtle light rays, large empty space, ${NO_TEXT}`,
-      size: "1536x768",
-    };
+    const tones = palette.length ? `in ${palette.join(", ")} tones` : "in soft warm neutral tones";
+    const prompt =
+      angle === "top_down"
+        ? `Wide top-down flat lay banner photograph of an empty smooth surface, soft linen or matte paper ${tones}, seen from directly above, soft even daylight with a gentle falloff toward the edges, very subtle texture, ${NO_TEXT}`
+        : `Wide product banner photograph at eye level: an empty smooth tabletop across the lower third, a softly blurred plain wall behind it ${tones}, soft window light from one side, ${NO_TEXT}`;
+    return { prompt, size: "1536x768" };
   }
   return { prompt: angle === "top_down" ? BACKGROUNDS.flatlay : BACKGROUNDS.studio, size: "1024x1024" };
 }
@@ -160,7 +164,8 @@ async function imagesCall(
   body: Record<string, unknown>,
 ): Promise<ImageResult> {
   const key = env().modelApiKey;
-  if (!key) throw new Error("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
+  if (!key) throw new PermanentError("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
+  guard("image", BUSY);
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}/${path}`, {
@@ -171,15 +176,21 @@ async function imagesCall(
     });
   } catch (err) {
     console.warn("[muse-image] request failed:", err instanceof Error ? err.message : err);
+    record("image", false);
     throw new StepError(BUSY);
   }
-  if (res.status === 429 || res.status >= 500) throw new StepError(BUSY);
+  noteRateLimit("image", res.headers);
+  if (res.status === 429 || res.status >= 500) {
+    record("image", false);
+    throw new StepError(BUSY);
+  }
+  record("image", true);
   if (!res.ok) {
     const text = await res.text();
     const code = ErrorBody.safeParse(safeJson(text)).data?.error.code;
     // a safety block is about the photo, so the seller hears it; it isn't billed either
-    if (code === "content_policy_violation") throw new StepError(BLOCKED);
-    throw new Error(`Muse Image HTTP ${res.status}: ${text.slice(0, 500)}`);
+    if (code === "content_policy_violation") throw new StepError(BLOCKED, { permanent: true });
+    throw new PermanentError(`Muse Image HTTP ${res.status}: ${text.slice(0, 500)}`);
   }
   const parsed = ImagesResponse.safeParse(await res.json().catch(() => null));
   if (!parsed.success) throw new Error(`Muse Image sent an unexpected response: ${parsed.error.message.slice(0, 300)}`);

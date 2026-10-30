@@ -9,5 +9,11 @@ export default defineConfig({
       "server-only": path.resolve(import.meta.dirname, "tests/server-only-stub.ts"),
     },
   },
-  test: { include: ["src/**/*.test.ts", "tests/**/*.test.ts"], environment: "node" },
+  test: {
+    include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    environment: "node",
+    // the *.db tests drive whole jobs against a database other test files use at the same
+    // time; under that load a job can pass the 5 s default
+    testTimeout: 30_000,
+  },
 });

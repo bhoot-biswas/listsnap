@@ -132,11 +132,15 @@ export async function renderStep(ctx: ListingStepContext, scene: Scene): Promise
     check = { same: true, colorSimilarity: fidelity.colorSimilarity };
   } else {
     const bg = await meta().background(step, scene, p.camera_angle, brief);
+    // the banner keeps the left side free for a title, and gets the same shadow as the photo's
+    // angle would cast: an outline below a flat lay, a contact shadow on a tabletop
     const size =
-      scene === "banner" ? { width: 1536, height: 768, scale: 0.8 } : { width: 1024, height: 1024, scale: 0.72 };
+      scene === "banner"
+        ? { width: 1536, height: 768, scale: 0.8, centerX: 0.66 }
+        : { width: 1024, height: 1024, scale: 0.72 };
     image = await compositeOnBackground(bg, product, {
       ...size,
-      shadow: p.camera_angle === "top_down" && scene !== "banner" ? "drop" : "contact",
+      shadow: p.camera_angle === "top_down" ? "drop" : "contact",
     });
   }
   const { width, height } = await dimensions(image);

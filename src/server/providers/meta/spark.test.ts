@@ -5,9 +5,15 @@ import { StepError } from "@/server/pipeline/run-step";
 beforeAll(() => {
   vi.stubEnv("MODEL_API_KEY", "test-key");
 });
-afterEach(() => vi.unstubAllGlobals());
+// the circuit breaker remembers failures across calls; each test starts closed
+const { resetBreakers } = await import("../breaker");
+afterEach(() => {
+  vi.unstubAllGlobals();
+  resetBreakers();
+});
 
-const { BUSY, UNREADABLE, sparkJson, strictSchema } = await import("./spark");
+const { BUSY, UNREADABLE, sparkBody, sparkJson, strictSchema } = await import("./spark");
+const { PermanentError } = await import("@/server/pipeline/run-step");
 
 const plan: PlanResult = {
   sam_phrase: "jamdani saree",
@@ -38,7 +44,7 @@ const stubFetch = (...responses: (Response | Error)[]) => {
   return fn;
 };
 
-const call = () => sparkJson({ name: "PlanResult", schema: PlanResult, system: "s", userText: "u" });
+const call = () => sparkJson({ name: "PlanResult", schema: PlanResult, system: "s", userText: "u", effort: "low" });
 
 describe("strictSchema", () => {
   it("stays inside Spark's strict subset", () => {
@@ -97,5 +103,45 @@ describe("sparkJson", () => {
     const err = await call().catch((e) => e);
     expect(err).not.toBeInstanceOf(StepError);
     expect(err.message).toContain("HTTP 400");
+  });
+});
+
+describe("sparkBody", () => {
+  it("sends the instructions as a developer message, its effort and a stable cache key", () => {
+    const body = sparkBody({
+      name: "PlanResult",
+      schema: PlanResult,
+      system: "rules",
+      userText: "u",
+      effort: "minimal",
+    });
+    expect(body).toMatchObject({
+      reasoning_effort: "minimal",
+      prompt_cache_key: "listsnap-PlanResult-v1",
+      messages: [{ role: "developer", content: "rules" }, { role: "user" }],
+    });
+  });
+});
+
+describe("sparkJson errors", () => {
+  it("marks a refused request permanent, so the step isn't retried", async () => {
+    stubFetch(new Response("bad", { status: 400 }));
+    await expect(call()).rejects.toBeInstanceOf(PermanentError);
+  });
+
+  it("adds up cached and reasoning tokens", async () => {
+    stubFetch(
+      Response.json({
+        model: "muse-spark-1.3",
+        choices: [{ message: { content: JSON.stringify(plan) }, finish_reason: "stop" }],
+        usage: {
+          prompt_tokens: 4000,
+          completion_tokens: 500,
+          prompt_tokens_details: { cached_tokens: 900 },
+          completion_tokens_details: { reasoning_tokens: 120 },
+        },
+      }),
+    );
+    expect(await call()).toMatchObject({ cachedTokens: 900, reasoningTokens: 120, requests: 1 });
   });
 });

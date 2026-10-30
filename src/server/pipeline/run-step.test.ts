@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { GENERIC_STEP_ERROR, runStep, StepError, type StepKey, type StepRow, type StepStore } from "./run-step";
+import {
+  GENERIC_STEP_ERROR,
+  PermanentError,
+  runStep,
+  StepError,
+  type StepKey,
+  type StepRow,
+  type StepStore,
+} from "./run-step";
 
 /** The same semantics as job_steps, in memory, with a clock the test controls. */
 function memoryStore() {
@@ -32,8 +40,15 @@ function memoryStore() {
     async complete(k, result) {
       Object.assign(rows.get(id(k))!, { status: "done", result, lastError: null, lockedUntil: 0 });
     },
-    async fail(k, error) {
-      Object.assign(rows.get(id(k))!, { status: "failed", lastError: error, lockedUntil: 0 });
+    async fail(k, error, adjust) {
+      const r = rows.get(id(k))!;
+      const attempts =
+        adjust && "exhaust" in adjust
+          ? Math.max(r.attempts, adjust.exhaust)
+          : adjust?.refund
+            ? Math.max(0, r.attempts - 1)
+            : r.attempts;
+      Object.assign(r, { status: "failed", lastError: error, lockedUntil: 0, attempts });
     },
     async reset(k) {
       const r = rows.get(id(k))!;
@@ -139,5 +154,37 @@ describe("runStep step rules", () => {
       throw new Error("You have an error in your SQL syntax near 'JSON)'");
     });
     expect(out).toMatchObject({ state: "failed", error: GENERIC_STEP_ERROR });
+  });
+
+  it("uses up the attempts at once when a retry can't help", async () => {
+    const { store } = memoryStore();
+    const refused = async () => {
+      throw new PermanentError("Muse Spark HTTP 400: unknown field");
+    };
+    expect(await runStep(store, key, opts, refused)).toMatchObject({
+      state: "failed",
+      error: GENERIC_STEP_ERROR,
+      attempts: 3,
+      exhausted: true,
+    });
+    const blocked = async () => {
+      throw new StepError("This photo couldn't be turned into an AI photo.", { permanent: true });
+    };
+    const other = { ...key, step: "render" };
+    expect(await runStep(store, other, opts, blocked)).toMatchObject({
+      error: "This photo couldn't be turned into an AI photo.",
+      exhausted: true,
+    });
+  });
+
+  it("gives the attempt back when the service was never called", async () => {
+    const { store } = memoryStore();
+    const open = async () => {
+      throw new StepError("The AI service is busy.", { notAttempted: true });
+    };
+    for (let i = 0; i < 5; i++)
+      expect(await runStep(store, key, opts, open)).toMatchObject({ state: "failed", attempts: 0, exhausted: false });
+    // once the service is back, the step still has all its attempts
+    expect(await runStep(store, key, opts, async () => "ok")).toEqual({ state: "done", result: "ok", fresh: true });
   });
 });

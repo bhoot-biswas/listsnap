@@ -78,15 +78,22 @@ export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoChec
 export async function compositeOnBackground(
   background: Buffer,
   product: Buffer,
-  opts: { width: number; height: number; scale?: number; shadow: "drop" | "contact" },
+  opts: {
+    width: number;
+    height: number;
+    scale?: number;
+    shadow: "drop" | "contact";
+    /** Where the product's centre sits across the frame, 0–1; a banner keeps room on the left for text. */
+    centerX?: number;
+  },
 ): Promise<Buffer> {
-  const { width, height, scale = 0.7 } = opts;
+  const { width, height, scale = 0.7, centerX = 0.5 } = opts;
   const bg = await sharp(background).resize(width, height, { fit: "cover" }).png().toBuffer();
   const p = await sharp(product)
     .resize(Math.round(width * scale), Math.round(height * scale), { fit: "inside" })
     .png()
     .toBuffer({ resolveWithObject: true });
-  const left = Math.round((width - p.info.width) / 2);
+  const left = Math.max(0, Math.min(width - p.info.width, Math.round(width * centerX - p.info.width / 2)));
   const top =
     opts.shadow === "drop"
       ? Math.round((height - p.info.height) / 2)
