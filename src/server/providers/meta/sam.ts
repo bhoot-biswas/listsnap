@@ -14,7 +14,25 @@ import { BASE_URL, BUSY, photoDataUrl } from "./spark";
 
 export const SAM_MODEL = "sam-3.1";
 export const SAM_COST_USD = 0.0025;
-const TIMEOUT_MS = 30_000;
+/**
+ * The segment step holds a 45 s lock and makes at most two rounds of calls (the planned
+ * phrase, then the alternatives together), so each must end well inside half of it.
+ */
+const TIMEOUT_MS = 18_000;
+
+/**
+ * SAM refused this request (a 400): the phrase or the image broke one of its rules. The
+ * same request would fail again, so the step moves on rather than spending attempts.
+ */
+export class SamRejectedError extends Error {
+  override name = "SamRejectedError";
+}
+
+export interface SamAnswer {
+  instances: SegmentInstance[];
+  /** Malformed lines the parser skipped; a completed stream can still carry some. */
+  diagnostics: number;
+}
 
 /** Server-sent events: blank-line separated blocks, data lines joined, [DONE] skipped. */
 async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<{ type: string }> {
@@ -49,8 +67,28 @@ async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<{ ty
   if (last) yield last;
 }
 
+/** The request body: one noun phrase and the photo, with confidence and compact masks. */
+export function samBody(phrase: string, imageUrl: string): Record<string, unknown> {
+  return {
+    model: SAM_MODEL,
+    stream: true,
+    input: [
+      {
+        type: "message",
+        role: "user",
+        content: [
+          { type: "input_text", text: phrase },
+          { type: "input_image", image_url: imageUrl },
+        ],
+      },
+    ],
+    // one_bit masks are several times smaller than lossless; the cutout only needs 0/1
+    metadata: { include_confidence: "true", mask_encoding: "one_bit" },
+  };
+}
+
 /** Every object SAM finds for the phrase, with its box, score and mask raster. */
-export async function samSegment(photo: Buffer, phrase: string): Promise<SegmentInstance[]> {
+export async function samSegment(photo: Buffer, phrase: string): Promise<SamAnswer> {
   const key = env().modelApiKey;
   if (!key) throw new Error("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
   // SAM answers in the pixel space of the image it was sent, so send the photo at its stored size
@@ -61,21 +99,7 @@ export async function samSegment(photo: Buffer, phrase: string): Promise<Segment
     res = await fetch(`${BASE_URL}/responses`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", Accept: "text/event-stream" },
-      body: JSON.stringify({
-        model: SAM_MODEL,
-        stream: true,
-        input: [
-          {
-            type: "message",
-            role: "user",
-            content: [
-              { type: "input_text", text: phrase },
-              { type: "input_image", image_url: image },
-            ],
-          },
-        ],
-        metadata: { include_confidence: "true" },
-      }),
+      body: JSON.stringify(samBody(phrase, image)),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (err) {
@@ -83,6 +107,7 @@ export async function samSegment(photo: Buffer, phrase: string): Promise<Segment
     throw new StepError(BUSY);
   }
   if (res.status === 429 || res.status >= 500) throw new StepError(BUSY);
+  if (res.status === 400) throw new SamRejectedError(`SAM refused "${phrase}": ${(await res.text()).slice(0, 300)}`);
   if (!res.ok || !res.body) throw new Error(`SAM HTTP ${res.status}: ${(await res.text()).slice(0, 500)}`);
 
   const parsed = parseImageStream(sseEvents(res.body));
@@ -94,8 +119,10 @@ export async function samSegment(photo: Buffer, phrase: string): Promise<Segment
     throw new StepError(BUSY);
   }
 
+  if (result.diagnostics.length) console.warn(`[sam] ${result.diagnostics.length} malformed line(s) skipped`);
+
   const boxes = recordsOfKind(result.records, "box");
-  return recordsOfKind(result.records, "mask").map((m) => {
+  const instances = recordsOfKind(result.records, "mask").map((m) => {
     const box = boxes.find((b) => b.objectId === m.objectId);
     const { left, top, right, bottom } = m.bounds;
     return {
@@ -104,4 +131,5 @@ export async function samSegment(photo: Buffer, phrase: string): Promise<Segment
       mask: { raster: decodeMaskToRaster(m.mask), width: m.mask.width, height: m.mask.height },
     };
   });
+  return { instances, diagnostics: result.diagnostics.length };
 }
