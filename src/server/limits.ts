@@ -15,23 +15,31 @@ export async function reserveListingSlot(
   workspace: Workspace,
   request: Request,
 ): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
-  if (!(await ws.reserveListing(workspace.limits.listings))) return { ok: false, response: limitReached() };
-  if (!workspace.isDemo) return { ok: true, release: () => ws.releaseListing() };
+  const release = await takeListingSlot(ws, workspace, clientIp(request));
+  return release ? { ok: true, release } : { ok: false, response: limitReached() };
+}
 
-  const e = env();
-  // the first address in the header is the visitor's; the rest are proxies
-  const ip = request.headers.get(e.ipHeader)?.split(",")[0]?.trim() || "unknown";
-  const ipHash = demoIpLimit.hash(ip, e.authSecret);
+/** The visitor's address as Nginx saw it: the first in the header, the rest are proxies. */
+export const clientIp = (request: Request): string =>
+  request.headers.get(env().ipHeader)?.split(",")[0]?.trim() || "unknown";
+
+/** The same slot for callers without a request, such as a chat tool; null at the limit. */
+export async function takeListingSlot(
+  ws: WorkspaceScope,
+  workspace: Workspace,
+  ip: string,
+): Promise<(() => Promise<void>) | null> {
+  if (!(await ws.reserveListing(workspace.limits.listings))) return null;
+  if (!workspace.isDemo) return () => ws.releaseListing();
+
+  const ipHash = demoIpLimit.hash(ip, env().authSecret);
   if (!(await demoIpLimit.reserve(ipHash))) {
     await ws.releaseListing();
-    return { ok: false, response: limitReached() };
+    return null;
   }
-  return {
-    ok: true,
-    release: async () => {
-      await ws.releaseListing();
-      await demoIpLimit.release(ipHash);
-    },
+  return async () => {
+    await ws.releaseListing();
+    await demoIpLimit.release(ipHash);
   };
 }
 

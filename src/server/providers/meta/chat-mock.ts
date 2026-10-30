@@ -37,6 +37,9 @@ export function mockChatTurn(input: ChatInput): ChatTurn {
       : reply("I can't do that here.");
 
   if (shop) {
+    // a photo on its own, or with "sell" or "listing", is a new product
+    if (last.photoIds?.length && (!text || /sell|listing|বিক্রি|লিস্টিং/.test(text)))
+      return call("startListing", { photoIds: last.photoIds });
     if (/ready/.test(text)) return call("findListings", { status: "ready" });
     if (/review/.test(text)) return call("findListings", { status: "needs_review" });
     if (/left|how many/.test(text)) return call("getShopSummary");

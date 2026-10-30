@@ -2,6 +2,10 @@ import { z } from "zod";
 
 /** The longest message a seller can send; a chat turn is a request, not a document. */
 export const CHAT_MESSAGE_MAX = 1000;
+/** Photos one message can carry: enough for a product from a few sides. */
+export const CHAT_PHOTOS_MAX = 4;
+
+const PhotoIds = z.array(z.string().min(1).max(36)).max(CHAT_PHOTOS_MAX);
 
 /** A tool call as we store it. The id is ours, so it can serve as the op's idempotency key. */
 export const ToolCall = z.object({
@@ -15,7 +19,8 @@ export type ToolCall = z.infer<typeof ToolCall>;
 
 /** One stored message of a listing's chat, in the order the model saw them. */
 export const ChatMessage = z.discriminatedUnion("role", [
-  z.object({ role: z.literal("user"), content: z.string() }),
+  // photos the seller attached, as media ids; the model sees the latest message's photos
+  z.object({ role: z.literal("user"), content: z.string(), photoIds: PhotoIds.optional() }),
   z.object({
     role: z.literal("assistant"),
     content: z.string().nullable(),
@@ -26,11 +31,18 @@ export const ChatMessage = z.discriminatedUnion("role", [
 export type ChatMessage = z.infer<typeof ChatMessage>;
 
 /**
- * What the chat box sends: a message (in a new chat when `newChat` is set), or the
- * seller's answer to an approval card.
+ * What the chat box sends: a message with any photos already uploaded (in a new chat
+ * when `newChat` is set), or the seller's answer to an approval card. A photo alone is
+ * a message too.
  */
 export const ChatRequest = z.union([
-  z.object({ message: z.string().trim().min(1).max(CHAT_MESSAGE_MAX), newChat: z.boolean().default(false) }),
+  z
+    .object({
+      message: z.string().trim().max(CHAT_MESSAGE_MAX),
+      photoIds: PhotoIds.default([]),
+      newChat: z.boolean().default(false),
+    })
+    .refine((m) => m.message.length > 0 || m.photoIds.length > 0),
   z.object({ approve: z.object({ toolCallId: z.string().min(1).max(100), yes: z.boolean() }) }),
 ]);
 export type ChatRequest = z.infer<typeof ChatRequest>;
@@ -39,13 +51,15 @@ export type ChatRequest = z.infer<typeof ChatRequest>;
 export interface ToolExtras {
   media?: { url: string; video: boolean };
   link?: string;
+  /** A page of ours to open, such as the listing a photo just started. */
+  open?: string;
   /** Listings a search found, each linking to its Review page. */
   listings?: { id: string; title: string; status: string; href: string }[];
 }
 
 /** What the chat box draws. Tool and approval items share their tool call's id. */
 export type ChatItem =
-  | { kind: "user"; id: string; text: string }
+  | { kind: "user"; id: string; text: string; photos?: string[] }
   | { kind: "assistant"; id: string; text: string }
   | ({ kind: "tool"; id: string; name: string; ok: boolean } & ToolExtras)
   | ({

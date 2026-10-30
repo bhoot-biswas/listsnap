@@ -105,6 +105,8 @@ export interface ChatInput {
   system: string;
   messages: ChatMessage[];
   tools: ChatTool[];
+  /** Photos the model looks at, as data URLs by media id: only the latest message's, to keep each turn small. */
+  images?: Record<string, string>;
 }
 
 /** The model's turn. Tool arguments arrive as the model wrote them and are checked by the caller. */

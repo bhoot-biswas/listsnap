@@ -4,7 +4,7 @@ import { defineOp, type Op } from "./define-op";
 import { editListingFields, getListingSummary, saveListingEdit, undoLast } from "./listing-ops";
 import { makeReel, postReel, renderLook, renderScene, saveDraftToStore } from "./pipeline-ops";
 import { setBrandKit } from "./brand-ops";
-import { findListings, getShopSummary, saveDraftsToStore } from "./shop-ops";
+import { findListings, getShopSummary, saveDraftsToStore, startListing } from "./shop-ops";
 
 export type { Effect, Op, OpError, OpMeta, OpResult } from "./define-op";
 
@@ -26,6 +26,7 @@ const base = {
   setBrandKit,
   getShopSummary,
   findListings,
+  startListing,
   saveDraftsToStore,
 };
 

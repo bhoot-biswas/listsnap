@@ -126,6 +126,35 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     expect(logged.length).toBeGreaterThan(0);
     expect(logged.some((l) => /review|instagram|store/i.test(l.summary) && !l.summary.startsWith("tools"))).toBe(false);
   });
+  it("starts a listing from a photo sent in the shop chat, and refuses another shop's photo", async () => {
+    const { saveMedia } = await import("@/server/media/store");
+    const { chatItems } = await import("@/server/chat/view");
+    const photo = await samplePhoto("kurti.jpg");
+    const sent = await saveMedia(a.workspace.id, "original", photo, { mime: "image/jpeg", width: 1280, height: 1280 });
+    const shop = async (req: Partial<ChatRequest>, workspace = a.workspace) => {
+      const events: ChatEvent[] = [];
+      await runChat(
+        workspace,
+        { listingId: null },
+        { newChat: true, message: "", photoIds: [], ...req } as ChatRequest,
+        (e) => events.push(e),
+      );
+      return events;
+    };
+
+    expect(await shop({ photoIds: [sent.id] }, b.workspace)).toContainEqual({ type: "error", code: "generic" });
+
+    const events = await shop({ photoIds: [sent.id] });
+    const started = items(events).find((i) => i.kind === "tool")!;
+    expect(started).toMatchObject({ name: "startListing", ok: true, open: expect.stringMatching(/^\/job\//) });
+    const jobId = (started as { open: string }).open.split("/").at(-1)!;
+    expect(await A.getJob(jobId)).toMatchObject({ id: jobId });
+
+    // a reload shows the photo in the seller's message
+    const history = await A.chatMessages((await A.listingChat(null))!);
+    expect(chatItems(history)[0]).toMatchObject({ kind: "user", photos: [`/media/${sent.id}`] });
+  });
+
   it("saves every Ready listing from the shop chat under one approval that names them", async () => {
     const { execute } = await import("@/server/db/pool");
     const c = await createTestWorkspace();

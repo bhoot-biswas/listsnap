@@ -3,18 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Loader2, MessageSquarePlus, SendHorizontal } from "lucide-react";
+import { ImagePlus, Loader2, MessageSquarePlus, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { CHAT_MESSAGE_MAX, type ChatEvent, type ChatItem } from "@/lib/schemas/chat";
+import { resizeForUpload } from "@/lib/resize-image";
+import { CHAT_MESSAGE_MAX, CHAT_PHOTOS_MAX, type ChatEvent, type ChatItem } from "@/lib/schemas/chat";
 import { ChatEntry } from "./chat-items";
 
 /**
  * The conversation and its message box, shared by a listing's chat (a side panel on
  * Review) and the shop chat (its own page). Each request streams events, one JSON
  * object per line; the conversation is stored on the server, so a reload shows it
- * again, and the page refreshes afterwards to show whatever the chat changed.
+ * again, and the page refreshes afterwards to show whatever the chat changed. Photos
+ * upload as soon as they're picked, so sending only names them.
  */
 export function ChatPanel({
   endpoint,
@@ -46,7 +48,10 @@ export function ChatPanel({
   // undefined: idle; null: the model is thinking; a name: that tool is running
   const [working, setWorking] = useState<string | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(0);
   const end = useRef<HTMLDivElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
 
   // after a refresh the server's copy is the truth; never swap it in mid-request
   const [server, setServer] = useState(initial);
@@ -104,13 +109,43 @@ export function ChatPanel({
     }
   }
 
+  async function attach(files: File[]) {
+    setError(null);
+    for (const file of files.slice(0, CHAT_PHOTOS_MAX - photos.length)) {
+      setUploading((n) => n + 1);
+      try {
+        const form = new FormData();
+        form.append("photo", await resizeForUpload(file), file.name);
+        const res = await fetch("/api/chat/photos", { method: "POST", body: form });
+        const body = (await res.json().catch(() => null)) as {
+          id?: string;
+          url?: string;
+          error?: { message?: string };
+        } | null;
+        if (!res.ok || !body?.id || !body.url) throw new Error(body?.error?.message ?? "");
+        const photo = { id: body.id, url: body.url };
+        setPhotos((cur) => (cur.length < CHAT_PHOTOS_MAX ? [...cur, photo] : cur));
+      } catch (err) {
+        setError((err as Error).message || t("photoFailed"));
+      } finally {
+        setUploading((n) => n - 1);
+      }
+    }
+  }
+
   function send(message: string, newChat = false) {
     const clean = message.trim();
-    if (!clean || busy) return;
+    if ((!clean && !photos.length) || busy || uploading) return;
     setText("");
-    const mine: ChatItem = { kind: "user", id: `local-${Date.now()}`, text: clean };
+    setPhotos([]);
+    const mine: ChatItem = {
+      kind: "user",
+      id: `local-${Date.now()}`,
+      text: clean,
+      ...(photos.length && { photos: photos.map((p) => p.url) }),
+    };
     setItems((cur) => (newChat ? [mine] : [...cur, mine]));
-    void request({ message: clean, newChat });
+    void request({ message: clean, photoIds: photos.map((p) => p.id), newChat });
   }
 
   const status =
@@ -182,7 +217,7 @@ export function ChatPanel({
 
       <form
         className={cn(
-          "flex items-end gap-2 border-t bg-background p-3",
+          "space-y-2 border-t bg-background p-3",
           layout === "page" && "sticky bottom-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
         )}
         onSubmit={(e) => {
@@ -190,25 +225,79 @@ export function ChatPanel({
           send(text, items.length === 0);
         }}
       >
-        <Textarea
-          aria-label={t("label")}
-          placeholder={placeholder}
-          value={text}
-          maxLength={CHAT_MESSAGE_MAX}
-          rows={2}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              send(text, items.length === 0);
-            }
-          }}
-          className="min-h-11 resize-none text-sm"
-        />
-        <Button type="submit" size="icon" className="size-11 shrink-0" disabled={busy || !text.trim()}>
-          <SendHorizontal className="size-4" aria-hidden="true" />
-          <span className="sr-only">{t("send")}</span>
-        </Button>
+        {(photos.length > 0 || uploading > 0) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {photos.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="group relative size-16 overflow-hidden rounded-md border"
+                onClick={() => setPhotos((cur) => cur.filter((c) => c.id !== p.id))}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- our own /media URL */}
+                <img src={p.url} alt="" className="size-full object-cover" />
+                <span className="absolute top-0.5 right-0.5 rounded-full bg-background/90 p-0.5">
+                  <X className="size-3.5" aria-hidden="true" />
+                </span>
+                <span className="sr-only">{t("removePhoto")}</span>
+              </button>
+            ))}
+            {uploading > 0 && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
+                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                {t("uploading")}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <input
+            ref={picker}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => {
+              void attach([...(e.target.files ?? [])]);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-11 shrink-0"
+            disabled={busy || photos.length + uploading >= CHAT_PHOTOS_MAX}
+            onClick={() => picker.current?.click()}
+          >
+            <ImagePlus className="size-4" aria-hidden="true" />
+            <span className="sr-only">{t("attach")}</span>
+          </Button>
+          <Textarea
+            aria-label={t("label")}
+            placeholder={placeholder}
+            value={text}
+            maxLength={CHAT_MESSAGE_MAX}
+            rows={2}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                send(text, items.length === 0);
+              }
+            }}
+            className="min-h-11 resize-none text-sm"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            className="size-11 shrink-0"
+            disabled={busy || uploading > 0 || (!text.trim() && !photos.length)}
+          >
+            <SendHorizontal className="size-4" aria-hidden="true" />
+            <span className="sr-only">{t("send")}</span>
+          </Button>
+        </div>
       </form>
     </div>
   );

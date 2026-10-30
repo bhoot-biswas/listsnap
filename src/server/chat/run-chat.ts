@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import type { Workspace } from "@/server/db/workspaces";
 import { forWorkspace } from "@/server/db/scope";
 import { meta } from "@/server/providers";
+import { photoDataUrl } from "@/server/providers/meta/spark";
+import { readMedia } from "@/server/media/store";
 import { StepError } from "@/server/pipeline/run-step";
 import type { ChatEvent, ChatMessage, ChatRequest, ToolCall } from "@/lib/schemas/chat";
 import { chatSystem } from "./prompt";
@@ -37,6 +39,8 @@ export async function runChat(
   scope: ChatScope,
   req: ChatRequest,
   emit: (e: ChatEvent) => void,
+  /** The visitor's address, which a demo shop's listing limit counts by. */
+  clientIp?: string,
 ): Promise<void> {
   const ws = forWorkspace(workspace.id);
   const listing = scope.listingId ? await ws.getListing(scope.listingId) : null;
@@ -51,23 +55,25 @@ export async function runChat(
 
   if ("message" in req) {
     if ((await ws.chatCallsToday()) >= CHAT_CALLS_PER_DAY) return emit({ type: "error", code: "limit" });
+    const photoIds = [...new Set(req.photoIds)];
+    if ((await ws.chatPhotos(photoIds)).length !== photoIds.length) return emit({ type: "error", code: "generic" });
     if (!chatId || req.newChat) {
       // a card left open in the old chat can't be answered any more, so nothing is sent
-      chatId = await ws.startChat(scope.listingId, req.message);
+      chatId = await ws.startChat(scope.listingId, req.message || "Photo");
       history.length = 0;
     }
     for (const call of pendingCalls(history)) {
       await add({ role: "tool", toolCallId: call.id, name: call.name, result: MOVED_ON });
       emit({ type: "item", item: approvalItem(call, "declined") });
     }
-    await add({ role: "user", content: req.message });
+    await add({ role: "user", content: req.message, ...(photoIds.length && { photoIds }) });
   } else {
     const call = pendingCalls(history).find((c) => c.id === req.approve.toolCallId);
     if (!call) return emit({ type: "error", code: "answered" });
     let result: Record<string, unknown> = DECLINED;
     if (req.approve.yes) {
       emit({ type: "working", name: call.name });
-      result = await runTool(workspace, scope, call, true);
+      result = await runTool(workspace, scope, call, true, clientIp);
       changed = result.ok === true;
     }
     await add({ role: "tool", toolCallId: call.id, name: call.name, result });
@@ -80,11 +86,12 @@ export async function runChat(
   const ctx = { workspaceId: workspace.id, jobId: listing?.job_id ?? null, step: "chat" };
   const system = await chatSystem(workspace, scope);
   const tools = chatTools(scope);
+  const images = await latestPhotos(workspace.id, history);
   let media = 0;
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       emit({ type: "working", name: null });
-      const answer = await meta().chat(ctx, { system, messages: history, tools });
+      const answer = await meta().chat(ctx, { system, messages: history, tools, images });
       // our own ids: the model's may repeat across turns, and an id is an op's idempotency key
       const checked = await Promise.all(
         answer.toolCalls.map(async (c) => ({
@@ -119,7 +126,7 @@ export async function runChat(
           };
         } else {
           emit({ type: "working", name: call.name });
-          result = await runTool(workspace, scope, call);
+          result = await runTool(workspace, scope, call, false, clientIp);
           if (result.ok && changesListing(call.name)) changed = true;
         }
         await add({ role: "tool", toolCallId: call.id, name: call.name, result });
@@ -145,4 +152,15 @@ export async function runChat(
     }
   }
   emit({ type: "done", changed });
+}
+
+/** The photos of the seller's latest message, ready for the model; older ones it knows by id. */
+async function latestPhotos(workspaceId: string, history: ChatMessage[]): Promise<Record<string, string>> {
+  const last = history.findLast((m) => m.role === "user");
+  const out: Record<string, string> = {};
+  for (const id of (last?.role === "user" && last.photoIds) || []) {
+    const media = await readMedia(workspaceId, id);
+    if (media) out[id] = await photoDataUrl(media.data);
+  }
+  return out;
 }

@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import type { ChatMessage, ToolCall } from "@/lib/schemas/chat";
 import { sparkChat } from "@/server/providers/meta/chat";
+import { photoDataUrl } from "@/server/providers/meta/spark";
 import { listingSystem, shopSystem } from "@/server/chat/prompt";
 import { NO_REEL, chatTools, needsApproval, parseToolArgs } from "@/server/chat/tools";
 import { CASES, type ChatCase, type ExpectedCall } from "./cases";
@@ -30,13 +31,21 @@ async function run(c: ChatCase): Promise<Run> {
   const scope = { listingId: c.scope === "listing" ? SAREE_SUMMARY.id : null };
   const system = c.scope === "listing" ? listingSystem(listingFacts(c.facts)) : shopSystem(SHOP_FACTS);
   const tools = chatTools(scope);
-  const messages: ChatMessage[] = [...(c.history ?? []), { role: "user", content: c.say }];
+  // photos are named photo-1, photo-2…, as media ids would be, and shown as the app shows them
+  const photoIds = (c.photos ?? []).map((_, i) => `photo-${i + 1}`);
+  const images: Record<string, string> = {};
+  for (const [i, file] of (c.photos ?? []).entries())
+    images[photoIds[i]!] = await photoDataUrl(readFileSync(path.join(process.cwd(), "public/samples", file)));
+  const messages: ChatMessage[] = [
+    ...(c.history ?? []),
+    { role: "user", content: c.say, ...(photoIds.length && { photoIds }) },
+  ];
   const out: Run = { calls: [], invalid: [], reply: "", costUsd: 0 };
   // the shop's made-up listings all have both reels
   const reelsMade = c.scope === "listing" ? [...listingFacts(c.facts).reelsMade] : ["en", "bn"];
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const { turn: answer, costUsd } = await sparkChat({ system, messages, tools });
+    const { turn: answer, costUsd } = await sparkChat({ system, messages, tools, images });
     out.costUsd += costUsd;
     if (answer.content) out.reply += `${answer.content}\n`;
     const calls = answer.toolCalls.map((tc) => {

@@ -860,7 +860,8 @@
       "saveDraftToStore": "Saving to your store…",
       "getShopSummary": "Reading your shop…",
       "findListings": "Finding listings…",
-      "saveDraftsToStore": "Saving to your store…"
+      "saveDraftsToStore": "Saving to your store…",
+      "startListing": "Starting the listing…"
     },
     "tool": {
       "getListingSummary": "Read the listing",
@@ -874,7 +875,8 @@
       "failed": "Not done: {what}",
       "getShopSummary": "Read your shop",
       "findListings": "Found listings",
-      "saveDraftsToStore": "Saved to your store"
+      "saveDraftsToStore": "Saved to your store",
+      "startListing": "Started a new listing"
     },
     "approval": {
       "postReel": "Post the {lang} reel to {where}?",
@@ -899,7 +901,7 @@
       "answered": "That was already answered.",
       "generic": "Something went wrong. Nothing else changed; try again."
     },
-    "shopIntro": "Ask about your whole shop in English or Bangla: which listings need review, photos and reels for several at once, saving everything that's ready to your store. I always ask before anything goes to your store or your pages.",
+    "shopIntro": "Ask about your whole shop in English or Bangla: which listings need review, photos and reels for several at once, saving everything that's ready to your store. Send a product photo to start a new listing. I always ask before anything goes to your store or your pages.",
     "shopSuggestions": {
       "review": "Which listings need review?",
       "ready": "Save everything that's Ready to my store",
@@ -907,6 +909,12 @@
       "left": "How many AI photos are left today?"
     },
     "pageTitle": "Assistant",
-    "shopPlaceholder": "Ask about your shop…"
+    "shopPlaceholder": "Ask about your shop…",
+    "attach": "Add a photo",
+    "removePhoto": "Remove this photo",
+    "photoAlt": "Photo you sent",
+    "uploading": "Adding the photo…",
+    "photoFailed": "That photo didn’t upload. Try again.",
+    "openListing": "Open the listing"
   }
 }

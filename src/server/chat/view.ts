@@ -20,6 +20,8 @@ export function toolExtras(name: string, result: unknown): ToolExtras {
         href: `/job/${l.jobId}/review?l=${l.id}`,
       })),
     };
+  const href = (result as { href?: unknown } | null)?.href;
+  if (name === "startListing" && typeof href === "string") return { open: href };
   const r = (result as { result?: { mediaId?: unknown; permalink?: unknown } } | null)?.result;
   if (!r) return {};
   return {
@@ -62,7 +64,13 @@ export function chatItems(history: ChatMessage[]): ChatItem[] {
     if (m.role === "tool") results.set(m.toolCallId, (m.result ?? {}) as { ok?: boolean; declined?: boolean });
   const items: ChatItem[] = [];
   history.forEach((m, i) => {
-    if (m.role === "user") items.push({ kind: "user", id: `m${i}`, text: m.content });
+    if (m.role === "user")
+      items.push({
+        kind: "user",
+        id: `m${i}`,
+        text: m.content,
+        ...(m.photoIds?.length && { photos: m.photoIds.map(mediaUrl) }),
+      });
     if (m.role !== "assistant") return;
     if (m.content) items.push({ kind: "assistant", id: `m${i}`, text: m.content });
     for (const c of m.toolCalls) {

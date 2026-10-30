@@ -31,7 +31,7 @@ const LISTING_TOOLS = [
   "postReel",
   "saveDraftToStore",
 ] as const;
-const SHOP_TOOLS = ["getShopSummary", "findListings", ...LISTING_TOOLS, "saveDraftsToStore"] as const;
+const SHOP_TOOLS = ["getShopSummary", "findListings", "startListing", ...LISTING_TOOLS, "saveDraftsToStore"] as const;
 export type ToolName = (typeof SHOP_TOOLS)[number];
 
 const toolNames = (scope: ChatScope): readonly ToolName[] => (scope.listingId ? LISTING_TOOLS : SHOP_TOOLS);
@@ -170,13 +170,14 @@ export async function runTool(
   scope: ChatScope,
   call: ToolCall,
   confirmed = false,
+  clientIp?: string,
 ): Promise<Record<string, unknown>> {
   const op = opFor(call.name);
   if (!op) return { ok: false, message: `There is no tool called ${call.name}.` };
   const input = scope.listingId ? { ...call.args, listingId: scope.listingId } : call.args;
   let r: OpResult<unknown>;
   try {
-    r = await op.call(workspace, input, { via: "chat", idempotencyKey: call.id, confirmed });
+    r = await op.call(workspace, input, { via: "chat", idempotencyKey: call.id, confirmed, clientIp });
   } catch (err) {
     console.error(`[chat] ${call.name} failed:`, err);
     return { ok: false, message: "Something went wrong on our side. Nothing else changed." };

@@ -56,6 +56,28 @@ describe("listing chat", () => {
     for (const key of ["stop", "n", "logit_bias", "logprobs", "temperature"]) expect(body).not.toHaveProperty(key);
   });
 
+  it("shows the model the latest photos and names every photo by id", () => {
+    const messages: ChatMessage[] = [
+      { role: "user", content: "", photoIds: ["p1"] },
+      { role: "assistant", content: "Nice saree.", toolCalls: [] },
+      { role: "user", content: "Sell this one", photoIds: ["p2"] },
+    ];
+    const body = chatBody({
+      system: "rules",
+      messages,
+      tools: chatTools({ listingId: null }),
+      images: { p2: "data:image/jpeg;base64,AA" },
+    }) as { messages: { content: unknown }[] };
+    expect(body.messages[1]!.content).toEqual([{ type: "text", text: "[Attached photos: p1]" }]);
+    expect(body.messages[3]!.content).toEqual([
+      { type: "text", text: "Sell this one\n\n[Attached photos: p2]" },
+      { type: "image_url", image_url: { url: "data:image/jpeg;base64,AA" } },
+    ]);
+    expect(mockChatTurn({ system: "", messages, tools: chatTools({ listingId: null }) }).toolCalls).toEqual([
+      { name: "startListing", argsJson: '{"photoIds":["p2"]}' },
+    ]);
+  });
+
   it("waits for the seller on store and posting calls only", () => {
     expect(pendingCalls(history).map((c) => c.id)).toEqual(["c2"]);
     const answered: ChatMessage[] = [
