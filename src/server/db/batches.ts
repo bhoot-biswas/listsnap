@@ -1,12 +1,23 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { execute, select, selectOne } from "./pool";
+import { LISTING_COLUMNS, type ListingRow } from "./listings";
+import type { ItemRow, JobRow, PhotoRow, StepRowView } from "./scope";
 
 /**
  * Bulk uploads, bound to one workspace and spread into forWorkspace(). A batch is just
  * a label on its jobs: each photo is an ordinary job, so refresh, retry and Review
  * work the same as for a single snap.
  */
+
+/** Every job of a batch with its rows, read in one query per table, for the bulk page's poll. */
+export interface BatchJobData {
+  jobs: JobRow[];
+  photos: (PhotoRow & { job_id: string })[];
+  steps: (StepRowView & { job_id: string })[];
+  items: (ItemRow & { job_id: string })[];
+  listings: ListingRow[];
+}
 
 export interface BatchSummaryRow {
   id: string;
@@ -66,6 +77,42 @@ export function batchQueries(ws: string) {
     },
 
     /** The batch's jobs in upload order. */
+    /**
+     * The bulk page polls every couple of seconds for up to 20 jobs; reading them one job
+     * at a time was about 160 queries a poll. Steps come without their results, which only
+     * the single job page shows.
+     */
+    async batchJobData(batchId: string): Promise<BatchJobData> {
+      const inBatch = "job_id IN (SELECT id FROM jobs WHERE batch_id = ? AND workspace_id = ?)";
+      const params = [ws, batchId, ws];
+      const [jobs, photos, steps, items, listings] = await Promise.all([
+        select<JobRow>(
+          "SELECT id, status, group_mode, camera_angle, created_at, archived_at FROM jobs WHERE batch_id = ? AND workspace_id = ? ORDER BY created_at, id",
+          [batchId, ws],
+        ),
+        select<PhotoRow & { job_id: string }>(
+          `SELECT job_id, id, media_id, width, height, sort FROM photos WHERE workspace_id = ? AND ${inBatch} ORDER BY sort`,
+          params,
+        ),
+        select<StepRowView & { job_id: string }>(
+          `SELECT job_id, step, target, status, attempts, last_error, NULL AS result_json, (locked_until > UTC_TIMESTAMP(3)) AS lock_valid
+             FROM job_steps WHERE workspace_id = ? AND ${inBatch}`,
+          params,
+        ),
+        select<ItemRow & { job_id: string }>(
+          `SELECT p.job_id, i.id, i.photo_id, i.instance_idx, i.box_json, i.score, i.cutout_media_id, i.cutout_png_media_id, i.color, i.kept
+             FROM items i JOIN photos p ON p.id = i.photo_id
+            WHERE i.workspace_id = ? AND p.${inBatch} ORDER BY p.sort, i.instance_idx`,
+          params,
+        ),
+        select<ListingRow>(
+          `SELECT ${LISTING_COLUMNS} FROM listings WHERE workspace_id = ? AND ${inBatch} ORDER BY sort`,
+          params,
+        ),
+      ]);
+      return { jobs, photos, steps, items, listings };
+    },
+
     batchJobIds: async (batchId: string): Promise<string[]> =>
       (
         await select<{ id: string }>(

@@ -48,7 +48,7 @@ export interface RecentListingRow {
   updated_at: Date;
 }
 
-const LISTING_COLUMNS =
+export const LISTING_COLUMNS =
   "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, price_bdt, wc_product_id, sent_at, edited_at, archived_at, updated_at";
 
 export function listingQueries(ws: string) {
