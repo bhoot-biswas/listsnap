@@ -1,7 +1,14 @@
 import { apiViewer } from "@/server/auth/session";
+import { forWorkspace } from "@/server/db/scope";
 import { mediaUrl, normalisePhoto, saveMedia } from "@/server/media/store";
 import { fail, ok, unauthorized } from "@/server/http";
 import { BRAND_PHOTO_MAX_BYTES } from "@/lib/schemas/brand-kit";
+
+/**
+ * A kit uses one photo, so this is room for second thoughts. Every upload is kept on disk
+ * and a demo shop costs nothing to open, so without a cap one visitor could fill the disk.
+ */
+const PHOTOS_PER_DAY = 10;
 
 const TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
@@ -13,6 +20,12 @@ const TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "i
 export async function POST(request: Request) {
   const viewer = await apiViewer();
   if (!viewer) return unauthorized();
+  if ((await forWorkspace(viewer.workspace.id).brandPhotosToday()) >= PHOTOS_PER_DAY)
+    return fail(
+      429,
+      "limit_reached",
+      "You've added today's shop photos. You can add more after 6:00 AM Bangladesh time.",
+    );
   let form: FormData;
   try {
     form = await request.formData();
