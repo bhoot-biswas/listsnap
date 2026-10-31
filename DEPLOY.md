@@ -173,7 +173,7 @@ install -m 755 /srv/listsnap/deploy/backup-db.sh /etc/cron.daily/listsnap-db
 
 Both databases are dumped every night and kept for 7 days. Photos are in `/var/lib/listsnap/media`. Hostinger's VPS snapshots cover the whole disk.
 
-Demo shops expire after a day. Delete them, with their photos and their drafts in the demo store, every night after the backup:
+Demo shops expire after a day. Delete them, with their photos and their drafts in the demo store, every night after the backup. The same run deletes cutouts no listing uses any more (left behind when a photo is cut out again):
 
 ```bash
 cat > /etc/cron.d/listsnap-demo <<'EOF'

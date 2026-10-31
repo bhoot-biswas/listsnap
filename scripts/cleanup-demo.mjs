@@ -13,6 +13,9 @@
  * usage. Demo-store drafts are moved to the store's trash, not deleted, so a mistake can be
  * undone from WooCommerce. If the store can't be reached the shop is kept and tried again
  * next night, so no draft is left behind without its record.
+ *
+ * It also deletes cutouts no item uses any more, in every shop: running segment again (a
+ * retry) replaces a photo's items but leaves the earlier run's files and rows behind.
  */
 import { rm } from "node:fs/promises";
 import path from "node:path";
@@ -91,6 +94,34 @@ try {
     dryRun
       ? `[cleanup-demo] ${shops.length} expired demo shop(s) due; nothing deleted (dry run).`
       : `[cleanup-demo] deleted ${deleted} of ${shops.length} expired demo shop(s).`,
+  );
+
+  // A day's wait keeps out of reach a segment step that is running now: it saves its
+  // files before the items that point to them. Nothing made from a cutout may lose it.
+  const [unused] = await db.query(
+    `SELECT m.id, m.path FROM media m
+      WHERE m.kind IN ('main', 'cutout') AND m.listing_id IS NULL
+        AND m.created_at < UTC_TIMESTAMP(3) - INTERVAL 1 DAY
+        AND NOT EXISTS (SELECT 1 FROM items i WHERE i.cutout_media_id = m.id OR i.cutout_png_media_id = m.id)
+        AND NOT EXISTS (SELECT 1 FROM media d WHERE d.from_media_id = m.id)
+      LIMIT ${BATCH * 5}`,
+  );
+  let swept = 0;
+  for (const { id, path: rel } of unused) {
+    const abs = path.resolve(mediaDir, rel);
+    if (!abs.startsWith(mediaDir + path.sep)) {
+      console.warn(`[cleanup-demo] skipping media ${id} with a path outside the media folder`);
+      continue;
+    }
+    if (dryRun) continue;
+    await rm(abs, { force: true });
+    await db.query("DELETE FROM media WHERE id = ?", [id]);
+    swept++;
+  }
+  console.log(
+    dryRun
+      ? `[cleanup-demo] ${unused.length} unused cutout(s) due; nothing deleted (dry run).`
+      : `[cleanup-demo] deleted ${swept} unused cutout(s).`,
   );
 } finally {
   await db.end();
