@@ -19,6 +19,7 @@ const sampleFile = (name: string) =>
 export async function seedDemoWorkspace(workspaceId: string): Promise<void> {
   const ws = forWorkspace(workspaceId);
   for (const sample of DEMO_SAMPLES) await seedSample(ws, sample);
+  await ws.countSampleListings(DEMO_SAMPLES.length);
 }
 
 async function seedSample(ws: WorkspaceScope, s: DemoSample): Promise<void> {
@@ -74,13 +75,14 @@ async function seedSample(ws: WorkspaceScope, s: DemoSample): Promise<void> {
   };
   const group: GroupResult = { mode: s.mode, auto: s.mode === "single", colors: s.colors, reason: s.reason };
   const render: RenderResult = { scene: "studio", mediaId: studioMedia.id, aiLabel: "ai_background" };
+  // about what each step takes on the live models
   await recordDoneSteps(ws.id, jobId, [
-    { step: "plan", target: "-", result: s.plan },
-    { step: "segment", target: "-", result: segment },
-    { step: "group", target: "-", result: group },
-    { step: "write", target: listingId, result: s.en },
-    { step: "translate", target: listingId, result: s.bn },
-    { step: "render", target: `${listingId}:studio`, result: render },
+    { step: "plan", target: "-", result: s.plan, seconds: 8 },
+    { step: "segment", target: "-", result: segment, seconds: 4 },
+    { step: "group", target: "-", result: group, seconds: 0.5 },
+    { step: "write", target: listingId, result: s.en, seconds: 8 },
+    { step: "translate", target: listingId, result: s.bn, seconds: 4 },
+    { step: "render", target: `${listingId}:studio`, result: render, seconds: 9 },
   ]);
   await ws.updateJob(jobId, { status: "ready", groupMode: s.mode, cameraAngle: s.plan.camera_angle });
 }
