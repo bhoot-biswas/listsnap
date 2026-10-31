@@ -5,7 +5,7 @@ import type { StoreKind } from "./stores";
  * The services a shop can connect, in the order Connections lists them. The list, the
  * detail pages and the dashboard all read from here, so a third store is one entry.
  */
-export const SERVICES = ["woo", "shopify", "meta"] as const;
+export const SERVICES = ["shopify", "woo", "meta"] as const;
 export const Service = z.enum(SERVICES);
 export type Service = z.infer<typeof Service>;
 

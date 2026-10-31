@@ -28,8 +28,8 @@ describe.skipIf(!enabled)("Connections overview (MariaDB)", async () => {
   it("lists every service as not connected for a new shop", async () => {
     const o = await connectionsOverview(a.workspace);
     expect(o.services.map((s) => [s.service, s.group, s.status])).toEqual([
-      ["woo", "store", "none"],
       ["shopify", "store", "none"],
+      ["woo", "store", "none"],
       ["meta", "social", "none"],
     ]);
     expect(o.severalStores).toBe(false);
@@ -47,8 +47,9 @@ describe.skipIf(!enabled)("Connections overview (MariaDB)", async () => {
     await A.setConnectionChecks("woo", "broken", []);
     const o = await connectionsOverview(a.workspace);
     expect(o.severalStores).toBe(true);
-    expect(o.services[0]).toMatchObject({ status: "broken", address: "myshop.example", saveDrafts: false });
-    expect(o.services[1]).toMatchObject({ status: "demo", address: null, saveDrafts: true });
+    const of = (k: string) => o.services.find((s) => s.service === k);
+    expect(of("woo")).toMatchObject({ status: "broken", address: "myshop.example", saveDrafts: false });
+    expect(of("shopify")).toMatchObject({ status: "demo", address: null, saveDrafts: true });
     // another shop sees none of it
     expect(await statuses(b.workspace)).toEqual({ woo: "none", shopify: "none", meta: "none" });
   });
@@ -56,7 +57,7 @@ describe.skipIf(!enabled)("Connections overview (MariaDB)", async () => {
   it("drops a disconnected store back to not connected", async () => {
     await forWorkspace(a.workspace.id).disconnect("shopify");
     const o = await connectionsOverview(a.workspace);
-    expect(o.services[1]!.status).toBe("none");
+    expect(o.services.find((s) => s.service === "shopify")!.status).toBe("none");
     expect(o.severalStores).toBe(false);
   });
 
