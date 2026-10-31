@@ -7,10 +7,9 @@ const MAX_BYTES = 15 * 1024 * 1024;
 const TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
 /** Why an uploaded file can't be used, as the response to send; null when it looks fine. */
-export function photoFileProblem(f: File): Response | null {
-  if (f.type && !TYPES.has(f.type))
-    return fail(415, "unsupported_file", "That file isn't a photo. Use JPG, PNG or HEIC.");
-  if (f.size > MAX_BYTES) return fail(413, "too_large", "That photo is over 15 MB. Try a smaller one.");
+export async function photoFileProblem(f: File): Promise<Response | null> {
+  if (f.type && !TYPES.has(f.type)) return fail(415, "unsupported_file", "notPhoto");
+  if (f.size > MAX_BYTES) return fail(413, "too_large", "photoTooLarge", { mb: MAX_BYTES / 1024 / 1024 });
   return null;
 }
 
@@ -26,5 +25,4 @@ export async function readPhotoFile(f: File): Promise<{ data: Buffer; width: num
   }
 }
 
-export const unreadablePhoto = () =>
-  fail(415, "unsupported_file", "That file isn't a photo we can read. Use JPG, PNG or HEIC.");
+export const unreadablePhoto = () => fail(415, "unsupported_file", "unreadablePhoto");

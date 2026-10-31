@@ -22,17 +22,17 @@ export async function POST(request: Request) {
   try {
     form = await request.formData();
   } catch {
-    return fail(400, "bad_request", "Send the photos as multipart form data.");
+    return fail(400, "bad_request", "sendPhotos");
   }
   const files = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
-  if (!files.length) return fail(400, "no_photo", "Add a photo to start.");
-  if (files.length > MAX_PHOTOS) return fail(400, "too_many", `Up to ${MAX_PHOTOS} photos of one product.`);
+  if (!files.length) return fail(400, "no_photo", "addPhotoToStart");
+  if (files.length > MAX_PHOTOS) return fail(400, "too_many", "tooManyPhotos", { max: MAX_PHOTOS });
   const ws = forWorkspace(viewer.workspace.id);
   // a bulk upload sends its photos one per request, each tagged with the batch
   const batchId = typeof form.get("batchId") === "string" ? (form.get("batchId") as string) : null;
-  if (batchId && !(await ws.getBatch(batchId))) return fail(404, "not_found", "This bulk upload isn't in your shop.");
+  if (batchId && !(await ws.getBatch(batchId))) return fail(404, "not_found", "batchNotInShop");
   for (const f of files) {
-    const problem = photoFileProblem(f);
+    const problem = await photoFileProblem(f);
     if (problem) return problem;
   }
 

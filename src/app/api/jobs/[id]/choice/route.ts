@@ -14,10 +14,10 @@ export async function POST(request: Request, ctx: RouteContext<"/api/jobs/[id]/c
   if (!viewer) return unauthorized();
   const { id } = await ctx.params;
   const body = Choice.safeParse(await request.json().catch(() => null));
-  if (!body.success) return fail(400, "invalid", "Pick at least one item and how to list them.");
+  if (!body.success) return fail(400, "invalid", "pickItemsAndMode");
   const r = await applyChoice(viewer.workspace, id, body.data);
   if (r === "not_found") return notFound();
-  if (r === "not_waiting") return fail(409, "not_waiting", "This job isn't waiting for a choice any more.");
-  if (r === "invalid") return fail(400, "invalid", "Pick at least one item from this photo.");
+  if (r === "not_waiting") return fail(409, "not_waiting", "notWaiting");
+  if (r === "invalid") return fail(400, "invalid", "pickOneItem");
   return ok({ ok: true });
 }

@@ -11,10 +11,10 @@ export async function POST(request: Request, ctx: RouteContext<"/api/jobs/[id]/s
   if (!viewer) return unauthorized();
   const { id, step } = await ctx.params;
   const parsed = Step.safeParse(step);
-  if (!parsed.success) return fail(404, "unknown_step", "Unknown step.");
+  if (!parsed.success) return fail(404, "unknown_step", "unknownStep");
   const force = new URL(request.url).searchParams.get("retry") === "1";
   const r = await executeJobStep(viewer.workspace, id, parsed.data, force);
   if (!r.found) return notFound();
-  if ("notReady" in r) return fail(409, "not_ready", "An earlier step hasn't finished yet.");
+  if ("notReady" in r) return fail(409, "not_ready", "earlierStep");
   return stepResponse(r.outcome);
 }

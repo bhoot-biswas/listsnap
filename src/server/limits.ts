@@ -16,7 +16,7 @@ export async function reserveListingSlot(
   request: Request,
 ): Promise<{ ok: true; release: () => Promise<void> } | { ok: false; response: Response }> {
   const release = await takeListingSlot(ws, workspace, clientIp(request));
-  return release ? { ok: true, release } : { ok: false, response: limitReached() };
+  return release ? { ok: true, release } : { ok: false, response: await limitReached() };
 }
 
 /**
@@ -47,5 +47,4 @@ export async function takeListingSlot(
 }
 
 /** The page shows its own translated card for this code; the message is the fallback. */
-export const limitReached = () =>
-  fail(429, "limit_reached", "You've made today's listings. Your limit resets at 6:00 AM Bangladesh time.");
+export const limitReached = () => fail(429, "limit_reached", "listingLimit");
