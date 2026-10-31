@@ -2,6 +2,8 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { APIError } from "better-auth/api";
 import { getAuth } from "@/server/auth/auth";
 import { ProfileFields } from "@/server/auth/profile-fields";
 import { requireWorkspace } from "@/server/auth/session";
@@ -43,4 +45,24 @@ export async function saveTheme(theme: string): Promise<void> {
   const viewer = await requireWorkspace();
   if (!parsed.success || viewer.user.isDemo) return;
   await getAuth().api.updateUser({ headers: await headers(), body: { theme: parsed.data } });
+}
+
+export type DeleteAccountState = { error: "signInAgain" | "failed" } | null;
+
+/**
+ * Deletes the account and its shop for good. Better Auth asks for a recent sign-in, so a
+ * stolen old session can't do it; the seller is told to sign in again instead.
+ */
+export async function deleteAccount(): Promise<DeleteAccountState> {
+  const viewer = await requireWorkspace();
+  if (viewer.user.isDemo) return { error: "failed" };
+  try {
+    await getAuth().api.deleteUser({ headers: await headers(), body: {} });
+  } catch (err) {
+    if (err instanceof APIError && (err.body as { code?: string } | undefined)?.code === "SESSION_EXPIRED")
+      return { error: "signInAgain" };
+    console.error("[profile] account deletion failed:", err);
+    return { error: "failed" };
+  }
+  redirect("/");
 }

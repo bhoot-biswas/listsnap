@@ -3,13 +3,15 @@ import { getTranslations } from "next-intl/server";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ListingStatus } from "@/server/db/scope";
 import { cn } from "@/lib/utils";
 
 export const LISTING_STATUSES = ["processing", "needs_review", "ready", "in_store", "posted", "failed"] as const;
+/** What a chip can show: a status, or the archived listings, which no other chip includes. */
+export const LISTING_VIEWS = [...LISTING_STATUSES, "archived"] as const;
+export type ListingView = (typeof LISTING_VIEWS)[number];
 
 /** Builds a Listings URL; filters and search live in the query string, so they survive reloads and sharing. */
-export function listingsHref(p: { status?: ListingStatus | null; q?: string; page?: number }) {
+export function listingsHref(p: { status?: ListingView | null; q?: string; page?: number }) {
   const s = new URLSearchParams();
   if (p.status) s.set("status", p.status);
   if (p.q) s.set("q", p.q);
@@ -20,7 +22,7 @@ export function listingsHref(p: { status?: ListingStatus | null; q?: string; pag
 
 /**
  * Status chips with counts, and a plain GET search form: both work without JavaScript.
- * Processing and Failed only show while something is in them.
+ * Processing, Failed and Archived only show while something is in them.
  */
 export async function ListingFilters({
   status,
@@ -28,15 +30,15 @@ export async function ListingFilters({
   counts,
   all,
 }: {
-  status: ListingStatus | null;
+  status: ListingView | null;
   q: string;
-  counts: Partial<Record<ListingStatus, number>>;
+  counts: Partial<Record<ListingView, number>>;
   all: number;
 }) {
   const t = await getTranslations("listings");
   const tStatus = await getTranslations("status");
   const chips = LISTING_STATUSES.filter((s) => !(s === "processing" || s === "failed") || counts[s] || s === status);
-  const chip = (key: ListingStatus | null, label: string, n: number) => (
+  const chip = (key: ListingView | null, label: string, n: number) => (
     <li key={key ?? "all"}>
       <Link
         href={listingsHref({ status: key, q })}
@@ -58,6 +60,7 @@ export async function ListingFilters({
         <ul className="flex gap-2">
           {chip(null, t("all"), all)}
           {chips.map((s) => chip(s, tStatus(s), counts[s] ?? 0))}
+          {(counts.archived || status === "archived") && chip("archived", t("archived"), counts.archived ?? 0)}
         </ul>
       </nav>
       <form role="search" action="/listings" className="flex gap-2 lg:w-80">

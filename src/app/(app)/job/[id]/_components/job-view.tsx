@@ -17,12 +17,14 @@ import { SaveToStore } from "@/components/app/save-to-store";
 import { PhotoStage } from "./photo-stage";
 import { BeforeAfter } from "./before-after";
 import { lookOf } from "@/lib/schemas/looks";
+import { ArchiveButton } from "@/components/app/archive-button";
 
 const SAVABLE = new Set(["ready", "needs_review"]);
 const EDITABLE = new Set(["ready", "needs_review", "in_store", "posted"]);
 
-export function JobView({ initial }: { initial: JobState }) {
+export function JobView({ initial, archived }: { initial: JobState; archived: boolean }) {
   const t = useTranslations("job");
+  const tArchive = useTranslations("archive");
   const tCommon = useTranslations("common");
   const { state, offline, stalled, retry, choose, resume } = useJobRunner(initial);
   const photo = state.photos[0];
@@ -46,7 +48,12 @@ export function JobView({ initial }: { initial: JobState }) {
 
   return (
     <>
-      <TopBar title={t("title")} />
+      <TopBar title={t("title")} actions={<ArchiveButton kind="job" id={state.id} archived={archived} />} />
+      {archived && (
+        <p role="status" className="bg-muted px-4 py-2 text-center text-sm">
+          {tArchive("jobNotice")}
+        </p>
+      )}
       {offline && (
         <p role="status" className="flex items-center justify-center gap-2 bg-muted px-4 py-2 text-sm">
           <WifiOff className="size-4" aria-hidden="true" />

@@ -20,6 +20,7 @@ import type { Look } from "@/lib/schemas/looks";
 import { TextFields, type TextValue } from "./text-fields";
 import { VariantFields } from "./variant-fields";
 import { ListingChat } from "./listing-chat";
+import { ArchiveButton } from "@/components/app/archive-button";
 import type { ChatItem } from "@/lib/schemas/chat";
 
 export type { ReviewPhoto } from "./review-side";
@@ -40,6 +41,7 @@ export function ReviewForm({
   status,
   inStore,
   storeBehind,
+  archived,
   others,
   looks,
   reels,
@@ -61,9 +63,11 @@ export function ReviewForm({
   inStore: boolean;
   /** Edited since the store draft was saved. */
   storeBehind: boolean;
+  archived: boolean;
   others: { id: string; n: number; status: ListingStatus; current: boolean }[];
 }) {
   const t = useTranslations("review");
+  const tArchive = useTranslations("archive");
   const [edit, setEdit] = useState(initial);
   const [lang, setLang] = useState<"en" | "bn">("en");
   const [state, setState] = useState<SaveState>("saved");
@@ -126,9 +130,7 @@ export function ReviewForm({
   };
 
   // extras start folded, unless something was made there or a link (Done's "Make a reel") points at them
-  const [extrasOpen, setExtrasOpen] = useState(
-    looks.made.length > 0 || Object.values(reels.made).some(Boolean),
-  );
+  const [extrasOpen, setExtrasOpen] = useState(looks.made.length > 0 || Object.values(reels.made).some(Boolean));
   const extras = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     // opening the element fires onToggle, which keeps the state in step
@@ -214,8 +216,17 @@ export function ReviewForm({
             ← {t("back")}
           </Link>
         )}
-        <ListingChat listingId={listingId} initial={chat.items} beforeSend={saver.flush} />
+        <div className="flex items-center gap-2">
+          <ArchiveButton kind="listing" id={listingId} archived={archived} />
+          <ListingChat listingId={listingId} initial={chat.items} beforeSend={saver.flush} />
+        </div>
       </div>
+
+      {archived && (
+        <p role="status" className="rounded-xl border bg-muted px-4 py-3 text-sm">
+          {tArchive("listingNotice")}
+        </p>
+      )}
 
       {/*
         Phone: photo, the checks, then the fields, with the extras last. Desktop: photo,

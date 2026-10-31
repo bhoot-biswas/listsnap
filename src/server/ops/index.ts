@@ -1,7 +1,14 @@
 import "server-only";
 import { z } from "zod";
 import { defineOp, type Op } from "./define-op";
-import { editListingFields, getListingSummary, saveListingEdit, undoLast } from "./listing-ops";
+import {
+  archiveJob,
+  archiveListing,
+  editListingFields,
+  getListingSummary,
+  saveListingEdit,
+  undoLast,
+} from "./listing-ops";
 import { makeReel, postReel, renderLook, renderScene, saveDraftToStore } from "./pipeline-ops";
 import { setBrandKit } from "./brand-ops";
 import { findListings, getShopSummary, saveDraftsToStore, startListing } from "./shop-ops";
@@ -18,6 +25,8 @@ const base = {
   saveListingEdit,
   editListingFields,
   undoLast,
+  archiveListing,
+  archiveJob,
   renderScene,
   renderLook,
   makeReel,
