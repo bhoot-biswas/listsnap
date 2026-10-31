@@ -3,6 +3,7 @@ import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { listingHref } from "@/lib/listing-links";
 import { localTitle } from "@/lib/titles";
 import type { ActivityRow } from "@/server/db/scope";
+import { relativeTime } from "@/lib/relative-time";
 
 /** What changed lately: drafts sent to the store and connection changes. */
 export async function Activity({ rows }: { rows: ActivityRow[] }) {
@@ -28,7 +29,7 @@ export async function Activity({ rows }: { rows: ActivityRow[] }) {
             ) : (
               <span>{t(e.type === "connection_removed" ? "removed" : "saved", { kind: e.ref_id ?? "woo" })}</span>
             )}
-            <span className="block text-xs text-muted-foreground">{format.relativeTime(e.created_at)}</span>
+            <span className="block text-xs text-muted-foreground">{relativeTime(format, e.created_at)}</span>
           </li>
         ))}
       </ol>

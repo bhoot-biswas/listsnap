@@ -4,6 +4,7 @@ import { ButtonLink } from "@/components/app/button-link";
 import { listingHref } from "@/lib/listing-links";
 import { localTitle } from "@/lib/titles";
 import type { AttentionRow } from "@/server/db/scope";
+import { relativeTime } from "@/lib/relative-time";
 
 /** Unsure drafts, failed steps and unfinished jobs, each with one button. Empty reads as good news. */
 export async function NeedsAttention({ rows }: { rows: AttentionRow[] }) {
@@ -38,7 +39,7 @@ export async function NeedsAttention({ rows }: { rows: AttentionRow[] }) {
                     {localTitle(r, locale).text ?? t(paused ? "unfinishedTitle" : "untitled")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {t(r.kind)} · {format.relativeTime(r.created_at)}
+                    {t(r.kind)} · {relativeTime(format, r.created_at)}
                   </p>
                 </div>
                 <ButtonLink href={href} variant="outline" size="sm" className="h-11 md:h-8">

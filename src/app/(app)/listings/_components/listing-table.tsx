@@ -10,6 +10,7 @@ import { sized } from "@/lib/media-size";
 import { suggestedPrice } from "@/lib/schemas/review";
 import type { ListingListRow } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
+import { relativeTime } from "@/lib/relative-time";
 
 function Thumb({ mediaId, size }: { mediaId: string | null; size: number }) {
   return (
@@ -48,7 +49,7 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
       title: localTitle(r, locale).text ?? t("untitled"),
       lang: localTitle(r, locale).lang,
       price: price == null ? "–" : `৳${format.number(price)}`,
-      created: format.relativeTime(r.created_at),
+      created: relativeTime(format, r.created_at),
     };
   });
 

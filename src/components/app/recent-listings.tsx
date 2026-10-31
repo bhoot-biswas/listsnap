@@ -7,6 +7,7 @@ import { localTitle } from "@/lib/titles";
 import type { RecentListingRow } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
 import { sized } from "@/lib/media-size";
+import { relativeTime } from "@/lib/relative-time";
 
 /** The last few listings (beside Snap, on the Dashboard), so a seller can jump back to one. */
 export async function RecentListings({
@@ -54,7 +55,7 @@ export async function RecentListings({
                   <p lang={localTitle(r, locale).lang} className="truncate text-sm font-medium">
                     {localTitle(r, locale).text ?? "…"}
                   </p>
-                  <p className="text-xs text-muted-foreground">{format.relativeTime(r.updated_at)}</p>
+                  <p className="text-xs text-muted-foreground">{relativeTime(format, r.updated_at)}</p>
                 </div>
                 <StatusBadge status={r.status} />
               </Link>
