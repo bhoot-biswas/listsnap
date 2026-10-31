@@ -40,7 +40,6 @@ export function ListingChat({
           intro={t("intro")}
           placeholder={t("placeholder")}
           suggestions={SUGGESTIONS.map((s) => t(`suggestions.${s}`))}
-          layout="panel"
           visible={open}
           beforeSend={beforeSend}
         />

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { cn } from "@/lib/utils";
 import type { ChatItem } from "@/lib/schemas/chat";
+import { ChatText } from "./chat-text";
 
 const isBangla = (text: string) => /[ঀ-৿]/.test(text);
 
@@ -35,43 +36,57 @@ export function ChatEntry({
             ))}
           </div>
         )}
-        {item.text && (
-          <p
-            lang={isBangla(item.text) ? "bn" : undefined}
-            className={cn(
-              "max-w-[85%] rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap",
-              mine ? "bg-primary text-primary-foreground" : "bg-muted",
-            )}
-          >
-            <span className="sr-only">{mine ? t("you") : t("assistant")}: </span>
-            {item.text}
-          </p>
-        )}
+        {item.text &&
+          (mine ? (
+            <p
+              lang={isBangla(item.text) ? "bn" : undefined}
+              className="max-w-[85%] rounded-2xl bg-muted px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap"
+            >
+              <span className="sr-only">{t("you")}: </span>
+              {item.text}
+            </p>
+          ) : (
+            <div
+              lang={isBangla(item.text) ? "bn" : undefined}
+              className="w-full space-y-2 text-sm leading-relaxed [overflow-wrap:anywhere]"
+            >
+              <span className="sr-only">{t("assistant")}: </span>
+              <ChatText text={item.text} />
+            </div>
+          ))}
       </div>
     );
   }
 
-  if (item.kind === "tool") {
-    const what = t.has(`tool.${item.name}`) ? t(`tool.${item.name}`) : item.name;
+  if (item.kind === "tool")
     return (
       <div className="space-y-2">
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {item.ok ? (
-            <Check className="size-3.5 text-success" aria-hidden="true" />
-          ) : (
-            <X className="size-3.5 text-destructive" aria-hidden="true" />
-          )}
-          {item.ok ? what : t("tool.failed", { what })}
-        </p>
+        <ToolLine item={item} />
         <Made item={item} />
       </div>
     );
-  }
 
   return <Approval item={item} busy={busy} onAnswer={onAnswer} />;
 }
 
-function Made({ item }: { item: Extract<ChatItem, { kind: "tool" | "approval" }> }) {
+/** "✓ Made a reel", or "✗ Not done: Made a reel". */
+export function ToolLine({ item }: { item: Extract<ChatItem, { kind: "tool" }> }) {
+  const t = useTranslations("chat");
+  const what = t.has(`tool.${item.name}`) ? t(`tool.${item.name}`) : item.name;
+  return (
+    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      {item.ok ? (
+        <Check className="size-3.5 text-success" aria-hidden="true" />
+      ) : (
+        <X className="size-3.5 text-destructive" aria-hidden="true" />
+      )}
+      {item.ok ? what : t("tool.failed", { what })}
+    </p>
+  );
+}
+
+/** What a tool made: the listing it started, the listings it found, a photo or reel, a post's link. */
+export function Made({ item }: { item: Extract<ChatItem, { kind: "tool" | "approval" }> }) {
   const t = useTranslations("chat.approval");
   const tChat = useTranslations("chat");
   return (
