@@ -63,9 +63,10 @@ export async function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
                 <Link
                   href={m.listing_id ? `/job/${m.job_id}/review?l=${m.listing_id}` : `/job/${m.job_id}`}
                   lang={title.lang}
-                  className="line-clamp-1 text-sm font-medium hover:underline"
+                  className="-my-3 block py-3 text-sm font-medium hover:underline md:my-0 md:py-0"
                 >
-                  {title.text ?? t("untitled")}
+                  {/* clamped inside the padding, which only makes the link easier to tap */}
+                  <span className="line-clamp-1">{title.text ?? t("untitled")}</span>
                 </Link>
               ) : (
                 <p className="line-clamp-1 text-sm text-muted-foreground">{t("untitled")}</p>

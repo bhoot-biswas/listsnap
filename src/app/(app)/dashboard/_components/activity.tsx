@@ -21,7 +21,7 @@ export async function Activity({ rows }: { rows: ActivityRow[] }) {
             {e.type === "sent_to_store" && e.job_id ? (
               <Link
                 href={listingHref({ job_id: e.job_id, id: e.ref_id, status: "in_store" })}
-                className="hover:underline"
+                className="inline-flex min-h-11 items-center hover:underline md:min-h-0"
               >
                 {t("sent_to_store", { title: localTitle(e, locale).text ?? t("untitled") })}
               </Link>
