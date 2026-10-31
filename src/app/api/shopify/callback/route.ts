@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { apiViewer } from "@/server/auth/session";
 import { markOnboarded } from "@/server/db/workspaces";
 import { verifyCallbackHmac } from "@/server/providers/shopify/oauth";
-import { STATE_COOKIE, appSecret, finishInstall, readStateCookie } from "@/server/stores/shopify-connect";
+import {
+  STATE_COOKIE,
+  appSecret,
+  finishInstall,
+  readStateCookie,
+  shopifyOffered,
+} from "@/server/stores/shopify-connect";
 import { SHOP_DOMAIN } from "@/lib/shopify-connection";
 
 // Shopify's own timestamp on the callback; an old link is refused even with a valid hmac
@@ -32,6 +38,7 @@ export async function GET(request: Request) {
   if (!viewer) redirect("/sign-in");
   // "denied" covers the seller pressing Cancel in Shopify, which comes back without a code
   if (query.get("error") || !code) redirect(back("denied") as Route);
+  if (!shopifyOffered()) redirect(back("failed") as Route);
   if (
     !saved ||
     saved.state !== query.get("state") ||

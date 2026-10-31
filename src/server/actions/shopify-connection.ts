@@ -8,7 +8,7 @@ import { forWorkspace } from "@/server/db/scope";
 import { markOnboarded } from "@/server/db/workspaces";
 import { shopify } from "@/server/providers";
 import { resolveShopifyStore, shopifySettings } from "@/server/stores/shopify-store";
-import { settingsAfterCheck } from "@/server/stores/shopify-connect";
+import { settingsAfterCheck, shopifyOffered } from "@/server/stores/shopify-connect";
 import { ShopifySettings } from "@/lib/shopify-connection";
 
 /**
@@ -21,7 +21,7 @@ import { ShopifySettings } from "@/lib/shopify-connection";
 export async function connectShopifyDemo(form: FormData): Promise<void> {
   const viewer = await requireWorkspace({ allowOnboarding: true });
   const next = form.get("next") === "onboarding" ? "onboarding" : "connections";
-  if (!viewer.workspace.isDemo && (shopify().mode === "mock" || env().demoShopify)) {
+  if (!viewer.workspace.isDemo && shopifyOffered() && (shopify().mode === "mock" || env().demoShopify)) {
     await forWorkspace(viewer.workspace.id).saveConnection("shopify", {
       baseUrl: null,
       credentialsEnc: null,

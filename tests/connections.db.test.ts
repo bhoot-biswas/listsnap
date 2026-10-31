@@ -61,6 +61,18 @@ describe.skipIf(!enabled)("Connections overview (MariaDB)", async () => {
     expect(o.severalStores).toBe(false);
   });
 
+  it("leaves Shopify out in production until its keys are set", async () => {
+    const { env } = await import("@/server/env");
+    const e = env() as { prod: boolean };
+    e.prod = true;
+    try {
+      // b has no Shopify connection, and production here still runs the mock
+      expect(Object.keys(await statuses(b.workspace))).toEqual(["woo", "meta"]);
+    } finally {
+      e.prod = false;
+    }
+  });
+
   it("gives a demo shop only our test store, and its Facebook row", async () => {
     expect(await statuses({ ...b.workspace, isDemo: true })).toEqual({ woo: "demo", meta: "none" });
   });

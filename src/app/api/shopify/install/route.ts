@@ -3,7 +3,7 @@ import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { apiViewer } from "@/server/auth/session";
 import { env } from "@/server/env";
-import { STATE_COOKIE, authorizeUrl, stateCookie } from "@/server/stores/shopify-connect";
+import { STATE_COOKIE, authorizeUrl, shopifyOffered, stateCookie } from "@/server/stores/shopify-connect";
 import { normaliseShopDomain } from "@/lib/shopify-connection";
 
 /**
@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   const next = query.get("next") === "onboarding" ? "onboarding" : "connections";
   const back = next === "onboarding" ? "/onboarding?step=store&" : "/connections/add/shopify?";
   if (viewer.workspace.isDemo) redirect(`${back}shopify=demo` as Route);
+  if (!shopifyOffered()) redirect(`${back}shopify=failed` as Route);
   let shop: string;
   try {
     shop = normaliseShopDomain(query.get("shop") ?? "");

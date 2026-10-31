@@ -53,6 +53,14 @@ export function readStateCookie(value: string | undefined): State | null {
 /** The app secret that signs callbacks and webhooks; the mock has a fixed one so its flow can be tried. */
 export const appSecret = () => env().shopify.clientSecret || (shopify().mode === "mock" ? "mock-shopify-secret" : "");
 
+/**
+ * Shopify is offered only where connecting really works: live with the app's keys, or
+ * outside production, where the mock lets the whole flow be tried. A production site
+ * still on the mock would let sellers "connect" a store that saves nowhere.
+ */
+export const shopifyOffered = () =>
+  !env().prod || (shopify().mode === "live" && !!env().shopify.clientId && !!appSecret());
+
 export const redirectUri = () => `${env().siteUrl}/api/shopify/callback`;
 
 /**
