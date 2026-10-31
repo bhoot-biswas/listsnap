@@ -1119,7 +1119,22 @@
       "today": "Today",
       "yesterday": "Yesterday",
       "week": "Earlier this week",
-      "older": "Older"
+      "older": "Older",
+      "showOlder": "Show older",
+      "newest": "Back to the newest"
+    },
+    "manage": {
+      "menu": "More for this conversation",
+      "rename": "Rename",
+      "delete": "Delete",
+      "title": "Conversation name",
+      "save": "Save",
+      "cancel": "Cancel",
+      "deleteQuestion": "Delete this conversation?",
+      "deleteHint": "Photos, reels and drafts it made stay where they are.",
+      "deleted": "Conversation deleted",
+      "renameFailed": "Couldn't rename it. Try again.",
+      "deleteFailed": "Couldn't delete it. Try again."
     }
   },
   "stepText": {
