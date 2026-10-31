@@ -65,6 +65,8 @@ export async function runChat(
       // a card left open in the old chat can't be answered any more, so nothing is sent
       chatId = await ws.startChat(scope.listingId, req.message || "Photo");
       history.length = 0;
+      // early, so the page can give the conversation its own address while the model works
+      emit({ type: "chat", chatId });
     }
     for (const call of pendingCalls(history)) {
       await add({ role: "tool", toolCallId: call.id, name: call.name, result: MOVED_ON });

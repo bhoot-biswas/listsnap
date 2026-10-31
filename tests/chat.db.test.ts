@@ -49,6 +49,8 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
 
   it("runs a tool as an op and answers", async () => {
     const priced = await chat({ message: "Set the price to 1,250" });
+    // the listing's first message starts a conversation, named before anything else
+    expect(priced[0]).toEqual({ type: "chat", chatId: await A.listingChat(listingId) });
     expect(items(priced)[0]).toMatchObject({ kind: "tool", name: "editListingFields", ok: true });
     expect((await A.getListing(listingId))!.price_bdt).toBe(1250);
 
@@ -58,6 +60,7 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
       { kind: "assistant", text: "Done." },
     ]);
     expect(events.at(-1)).toEqual({ type: "done", changed: true, chatId: await A.listingChat(listingId) });
+    expect(events.some((e) => e.type === "chat")).toBe(false);
     const runs = await select<{ op: string; via: string }>(
       "SELECT op, via FROM op_runs WHERE workspace_id = ? AND op = 'makeReel'",
       [a.workspace.id],
@@ -132,6 +135,8 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     expect(earlier).toBeDefined();
     const events = await chat({ message: "What's the price?", chatId: earlier!.id });
     expect(events.at(-1)).toMatchObject({ type: "done", chatId: earlier!.id });
+    // only a conversation the message starts is announced
+    expect(events.some((e) => e.type === "chat")).toBe(false);
     expect(
       (await A.chatMessages(earlier!.id)).some((m) => m.role === "user" && m.content === "What's the price?"),
     ).toBe(true);

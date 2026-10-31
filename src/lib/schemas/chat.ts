@@ -79,10 +79,12 @@ export type ChatItem =
 
 /**
  * The response is a stream of these, one JSON object per line. `working` names the tool
- * running (null while the model thinks); `done` says whether anything on the page changed,
- * and which conversation the request went to.
+ * running (null while the model thinks); `chat` names a conversation the message just started,
+ * before anything else; `done` says whether anything on the page changed, and which
+ * conversation the request went to.
  */
 export type ChatEvent =
+  | { type: "chat"; chatId: string }
   | { type: "item"; item: ChatItem }
   | { type: "working"; name: string | null }
   | { type: "error"; code: "busy" | "limit" | "steps" | "answered" | "generic"; message?: string }
