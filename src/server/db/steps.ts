@@ -52,6 +52,13 @@ export function sqlStepStore(workspaceId: string): StepStore {
       return r.affectedRows === 1;
     },
 
+    async renew(key, lockMs) {
+      await execute(
+        `UPDATE job_steps SET locked_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND WHERE ${where} AND status = 'running'`,
+        [lockMs * 1000, ...k(key)],
+      );
+    },
+
     async complete(key, result) {
       await execute(
         `UPDATE job_steps SET status = 'done', result_json = ?, last_error = NULL, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,

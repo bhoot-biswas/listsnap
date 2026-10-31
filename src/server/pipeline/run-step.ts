@@ -5,7 +5,8 @@
  *
  * 1. States are pending | running | done | failed, with a lock, attempts and last error.
  * 2. A done step returns its saved result without doing the work again.
- * 3. Work starts only after an atomic claim; a held lock answers "running".
+ * 3. Work starts only after an atomic claim; a held lock answers "running". The lock is
+ *    renewed while the work runs, so a slow call isn't started a second time.
  * 4. An expired lock or a failure can be claimed again, up to maxAttempts; then the
  *    step stays failed until someone presses "Try again" (force).
  * 5. A failure that can't succeed on a retry (a refused request) uses up the attempts at
@@ -42,6 +43,8 @@ export interface StepStore {
    * Returns whether this caller won.
    */
   claim(key: StepKey, lockMs: number, maxAttempts: number): Promise<boolean>;
+  /** Pushes a running row's lock lockMs past now; a row no longer running is left alone. */
+  renew(key: StepKey, lockMs: number): Promise<void>;
   complete(key: StepKey, result: unknown): Promise<void>;
   /** `exhaust` sets attempts to at least maxAttempts; `refund` takes this attempt back. */
   fail(key: StepKey, error: string, adjust?: { exhaust: number } | { refund: true }): Promise<void>;
@@ -94,6 +97,7 @@ export async function runStep<T>(
     };
   }
 
+  const heartbeat = keepLocked(store, key, opts.lockMs);
   try {
     const result = await work();
     await store.complete(key, result);
@@ -109,7 +113,29 @@ export async function runStep<T>(
     const row = await store.get(key);
     const attempts = row?.attempts ?? maxAttempts;
     return { state: "failed", error, attempts, exhausted: attempts >= maxAttempts };
+  } finally {
+    clearInterval(heartbeat);
   }
+}
+
+/** How many lock lengths a step may hold on before it is treated as stuck. */
+export const LOCK_RENEWALS = 4;
+
+/**
+ * Lock times are estimates, and a slow Muse Image render or a reel waiting behind another
+ * can outlast one. If the lock ran out mid-work, the page's next poll would claim the
+ * step and do it again: a second paid image, a second store draft. So while this process
+ * works the lock is renewed; if the process dies, renewals stop and the lock runs out as
+ * before. Renewals end after LOCK_RENEWALS lock lengths, so a hung call still frees the step.
+ */
+function keepLocked(store: StepStore, key: StepKey, lockMs: number): ReturnType<typeof setInterval> {
+  let renewals = LOCK_RENEWALS * 3;
+  const timer = setInterval(() => {
+    if (renewals-- <= 0) return clearInterval(timer);
+    store.renew(key, lockMs).catch((err) => console.error("[pipeline] lock renewal failed:", err));
+  }, lockMs / 3);
+  timer.unref?.();
+  return timer;
 }
 
 /**
