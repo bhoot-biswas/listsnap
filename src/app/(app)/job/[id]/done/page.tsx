@@ -12,6 +12,7 @@ import { loadJobState } from "@/server/pipeline/job-state";
 import type { StoreResult } from "@/server/pipeline/store-step";
 import type { JobState } from "@/lib/job-state";
 import { cn } from "@/lib/utils";
+import { requestLocale } from "@/server/step-text";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("done"))("title") };
@@ -29,7 +30,7 @@ function makingSeconds(state: JobState): number | null {
 export default async function DonePage({ params }: PageProps<"/job/[id]/done">) {
   const viewer = await requireWorkspace();
   const { id } = await params;
-  const state = await loadJobState(viewer.workspace, id);
+  const state = await loadJobState(viewer.workspace, id, await requestLocale());
   if (!state) notFound();
   const ws = forWorkspace(viewer.workspace.id);
   const saved = await Promise.all(

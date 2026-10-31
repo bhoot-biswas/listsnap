@@ -20,7 +20,7 @@ export const encryptWooKeys = (keys: { key: string; secret: string }) => encrypt
 
 export function demoWooStore(): WooStore {
   const demo = env().demoWoo;
-  if (!demo) throw new StepError("The demo store isn't set up yet. Try again later.");
+  if (!demo) throw new StepError("demoStoreMissing");
   return demo;
 }
 
@@ -33,10 +33,10 @@ export async function wooSettings(workspace: Workspace): Promise<WooSettings> {
 export async function resolveWooStore(workspace: Workspace): Promise<{ store: WooStore; settings: WooSettings }> {
   if (workspace.isDemo) return { store: demoWooStore(), settings: WooSettings.parse({ demo: true }) };
   const c = await forWorkspace(workspace.id).storeConnection("woo");
-  if (!c || c.status === "disconnected") throw new StepError("Connect your WooCommerce store first, in Connections.");
+  if (!c || c.status === "disconnected") throw new StepError("connectStore");
   const settings = WooSettings.parse(c.settings_json ?? {});
   if (settings.demo) return { store: demoWooStore(), settings };
-  if (!c.base_url || !c.credentials_enc) throw new StepError("Connect your WooCommerce store first, in Connections.");
+  if (!c.base_url || !c.credentials_enc) throw new StepError("connectStore");
   return { store: { url: c.base_url, ...Keys.parse(JSON.parse(decryptSecret(c.credentials_enc))) }, settings };
 }
 

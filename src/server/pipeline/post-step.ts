@@ -19,18 +19,14 @@ const VIDEO_LINK_TTL_S = 60 * 60;
 export async function postStep(ctx: ListingStepContext, req: PostRequest): Promise<PostResult> {
   const { ws, listing } = ctx;
   const reel = ReelResult.safeParse(await ws.stepResult(listing.job_id, "reel", `${listing.id}:showcase:${req.lang}`));
-  if (!reel.success) throw new StepError("Make the reel first; then it can be posted.");
+  if (!reel.success) throw new StepError("makeReelFirst");
 
   const conn = await metaConnection(ws);
-  if (!conn) throw new StepError("Connect your Facebook Page first, on the Connections page.");
+  if (!conn) throw new StepError("connectFacebook");
   const live = env().providers[req.destination] === "live";
-  if (conn.settings.test && live)
-    throw new StepError("This shop has a test connection. Connect your real Facebook Page to post.");
+  if (conn.settings.test && live) throw new StepError("testConnection");
   const account = conn.account(req.destination);
-  if (!account)
-    throw new StepError(
-      "Your Facebook Page has no Instagram business account linked, so there's nowhere on Instagram to post.",
-    );
+  if (!account) throw new StepError("noInstagram");
 
   const call = { workspaceId: ws.id, jobId: listing.job_id, step: "post" };
   const videoUrl = signedMediaUrl(ws.id, reel.data.mediaId, "video/mp4", VIDEO_LINK_TTL_S);

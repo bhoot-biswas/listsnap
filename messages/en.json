@@ -561,7 +561,8 @@
     "itemN": "Item {n, number}",
     "chooseSending": "Starting…",
     "chooseFailed": "That didn’t go through. Check your connection and try again.",
-    "stalled": "Couldn’t reach ListSnap, so your listing has paused."
+    "stalled": "Couldn’t reach ListSnap, so your listing has paused.",
+    "seeUsage": "See today’s usage"
   },
   "errors": {
     "title": "Something went wrong",
@@ -949,6 +950,53 @@
       "empty": "No conversations yet.",
       "failed": "Couldn’t load your conversations. Try again.",
       "current": "On screen"
+    }
+  },
+  "stepText": {
+    "errors": {
+      "generic": "Something went wrong on our side. Your work is saved.",
+      "timedOut": "The step took too long and was stopped.",
+      "busy": "The AI service is busy right now. Try again in a minute; your photo is saved.",
+      "unreadable": "The AI gave an answer we couldn't read. Try again.",
+      "blocked": "This photo couldn't be turned into an AI photo. Try a different photo; your listing is saved.",
+      "noPhoto": "This job has no photo.",
+      "photoMissing": "The photo file is missing.",
+      "stepNotDone": "An earlier step hasn't finished yet.",
+      "cutoutMissing": "The cutout for this item is missing.",
+      "englishNotWritten": "The English listing isn't written yet.",
+      "imagesUsedUp": "You've made today's AI photos. More can be made after 6:00 AM Bangladesh time; your listing is saved.",
+      "productChanged": "The AI photo changed your product ({differences}), so it wasn't kept. Try again for a new one; your other photos are ready.",
+      "notFinished": "This listing isn't finished yet.",
+      "textMissing": "The listing text is missing. Make the listing again.",
+      "noBanglaText": "This listing has no Bangla text yet, so a Bangla reel can't be made.",
+      "noTitle": "This listing has no title yet.",
+      "addPriceFirst": "Add a price first; the reel shows it.",
+      "mainImageMissing": "The main image for this listing is missing.",
+      "reelPhotoMissing": "One of the photos for this reel is missing.",
+      "reelsUsedUp": "You've made today's reels. More can be made after 6:00 AM Bangladesh time.",
+      "makeReelFirst": "Make the reel first; then it can be posted.",
+      "connectFacebook": "Connect your Facebook Page first, on the Connections page.",
+      "testConnection": "This shop has a test connection. Connect your real Facebook Page to post.",
+      "noInstagram": "Your Facebook Page has no Instagram business account linked, so there's nowhere on Instagram to post.",
+      "demoStoreMissing": "The demo store isn't set up yet. Try again later.",
+      "connectStore": "Connect your WooCommerce store first, in Connections.",
+      "storePhotoFor": "The store couldn't download the photo for \"{name}\". Try again.",
+      "storeColor": "The store didn't accept the color \"{name}\". Check its name and try again.",
+      "storeKeys": "Your store didn't accept ListSnap's keys. Check them in Connections (read/write access).",
+      "storeNotWoo": "ListSnap couldn't find WooCommerce at your store address. Check it in Connections.",
+      "storeProblem": "Your store had a problem (error {status}). Your listing is safe here.",
+      "storePhotos": "Your store couldn't download the product photos. Check that it can reach ListSnap, then try again.",
+      "storeSaid": "Your store said: {message}",
+      "storeError": "Store error {status}",
+      "storeHttps": "Your store address must start with https://.",
+      "storePrivate": "That store address isn't reachable from the internet.",
+      "storeNoAnswer": "Your store didn't answer. Your listing is safe here; try again in a moment."
+    },
+    "details": {
+      "lookingFor": "Looking for: \"{phrase}\"",
+      "found": "{count, plural, one {# item} other {# items}} for \"{phrase}\" · fills {fill, number}% of the frame",
+      "foundRetried": "{count, plural, one {# item} other {# items}} for \"{phrase}\" (after trying \"{first}\") · fills {fill, number}% of the frame",
+      "quoted": "\"{title}\""
     }
   }
 }

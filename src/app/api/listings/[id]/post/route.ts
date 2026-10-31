@@ -2,6 +2,7 @@ import { apiViewer } from "@/server/auth/session";
 import { ops } from "@/server/ops";
 import { fail, notFound, stepResponse, unauthorized } from "@/server/http";
 import { PostRequest } from "@/lib/schemas/social";
+import { requestLocale, text } from "@/server/step-text";
 
 /**
  * Posts a listing's reel to Facebook or Instagram. The body is `{ lang, destination,
@@ -17,6 +18,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
   const r = await ops.postReel.call(viewer.workspace, { listingId: id, ...body.data }, { via: "ui", confirmed: true });
   if (r.ok) return stepResponse(r.value.outcome);
   if (r.error === "not_found") return notFound();
-  if (r.error === "not_ready") return fail(409, "not_ready", r.message ?? "This listing isn't finished yet.");
+  if (r.error === "not_ready")
+    return fail(409, "not_ready", text(await requestLocale(), "stepText.errors.notFinished"));
   return fail(400, "invalid", "Invalid request.");
 }

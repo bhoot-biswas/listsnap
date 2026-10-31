@@ -183,7 +183,10 @@ describe("generateImage and editImage", () => {
     );
     const err = await generateImage("p", "1024x1024", "u").catch((e: unknown) => e);
     expect(err).toBeInstanceOf(StepError);
-    expect((err as Error).message).toBe(BLOCKED);
+    expect((err as StepError).key).toBe(BLOCKED);
+    expect((err as Error).message).toBe(
+      "This photo couldn't be turned into an AI photo. Try a different photo; your listing is saved.",
+    );
     // the same photo would be blocked again, so the step doesn't spend more attempts
     expect((err as StepError).permanent).toBe(true);
   });

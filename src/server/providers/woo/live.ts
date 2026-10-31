@@ -36,7 +36,7 @@ export const liveWoo: WooProvider = {
   mode: "live",
 
   async saveDraft(ctx, store, input) {
-    if (!store) throw new StepError("Connect your WooCommerce store first, in Connections.");
+    if (!store) throw new StepError("connectStore");
     const api = wooApi(ctx, store);
     const categoryId = input.category
       ? await findOrCreateTerm(api, "products/categories", input.category, input.fallbackCategoryId)

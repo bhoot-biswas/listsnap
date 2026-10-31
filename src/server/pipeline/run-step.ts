@@ -15,6 +15,8 @@
  *    edit) runs a done step again; the pipeline never does.
  */
 
+import { storedError, text, type StepErrorKey, type TextParams } from "@/server/step-text";
+
 export interface StepKey {
   jobId: string;
   step: string;
@@ -83,10 +85,10 @@ export async function runStep<T>(
     if (row.status === "done") return { state: "done", result: row.result as T, fresh: false };
     if (row.status === "running" && row.lockValid) return { state: "running" };
     // Out of attempts. A run that died holding the lock still says "running"; record it.
-    if (row.status === "running") await store.fail(key, row.lastError ?? "The step took too long and was stopped.");
+    if (row.status === "running") await store.fail(key, row.lastError ?? storedError("timedOut"));
     return {
       state: "failed",
-      error: row.lastError ?? "The step took too long and was stopped.",
+      error: row.lastError ?? storedError("timedOut"),
       attempts: row.attempts,
       exhausted: true,
     };
@@ -111,17 +113,22 @@ export async function runStep<T>(
 }
 
 /**
- * An error whose message was written for the seller ("The photo file is missing.",
- * "The AI is busy right now."). Steps and providers throw these on purpose.
+ * An error written for the seller ("The photo file is missing.", "The AI is busy right
+ * now."). Steps and providers throw these on purpose. It names its words by key, so they
+ * reach the seller in their language; the message is the English, for the log and the chat model.
  */
 export class StepError extends Error {
   override name = "StepError";
+  readonly key: StepErrorKey;
+  readonly params?: TextParams;
   /** Retrying can't help (a safety block on this photo). */
   readonly permanent: boolean;
   /** The service was never called (the circuit breaker was open), so it costs no attempt. */
   readonly notAttempted: boolean;
-  constructor(message: string, opts: { permanent?: boolean; notAttempted?: boolean } = {}) {
-    super(message);
+  constructor(key: StepErrorKey, opts: { params?: TextParams; permanent?: boolean; notAttempted?: boolean } = {}) {
+    super(text("en", `stepText.errors.${key}`, opts.params));
+    this.key = key;
+    this.params = opts.params;
     this.permanent = !!opts.permanent;
     this.notAttempted = !!opts.notAttempted;
   }
@@ -141,15 +148,15 @@ function failureKind(err: unknown): "permanent" | "not_attempted" | "retry" {
   return "retry";
 }
 
-export const GENERIC_STEP_ERROR = "Something went wrong on our side. Your work is saved.";
+export const GENERIC_STEP_ERROR = storedError("generic");
 
 /**
- * What goes into last_error, which the seller sees: a StepError's own words, cut
- * short; anything else (a database error, a bug) becomes one generic line, and the
- * real message goes to the server log only.
+ * What goes into last_error, which the seller sees: a StepError's key and values, put
+ * into words in the seller's language when shown; anything else (a database error, a bug)
+ * becomes one generic line, and the real message goes to the server log only.
  */
 export function describeError(err: unknown): string {
-  if (err instanceof StepError) return err.message.slice(0, 480);
+  if (err instanceof StepError) return storedError(err.key, err.params);
   console.error("[pipeline] unexpected step error:", err);
   return GENERIC_STEP_ERROR;
 }

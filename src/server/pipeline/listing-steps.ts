@@ -33,14 +33,14 @@ const call = (ctx: ListingStepContext, step: string) => ({ workspaceId: ctx.ws.i
 
 async function plan(ctx: ListingStepContext): Promise<PlanResult> {
   const p = await ctx.ws.stepResult<PlanResult>(ctx.listing.job_id, "plan");
-  if (!p) throw new StepError("The plan step hasn't finished yet.");
+  if (!p) throw new StepError("stepNotDone");
   return p;
 }
 
 async function originalPhoto(ctx: ListingStepContext): Promise<Buffer> {
   const [photo] = await ctx.ws.photos(ctx.listing.job_id);
   const file = photo ? await readMedia(ctx.ws.id, photo.media_id) : null;
-  if (!file) throw new StepError("The photo file is missing.");
+  if (!file) throw new StepError("photoMissing");
   return file.data;
 }
 
@@ -56,7 +56,7 @@ async function itemImages(
   const items = await ctx.ws.items(ctx.listing.job_id);
   const first = items.find((i) => i.id === ctx.listing.item_ids_json[0]);
   const main = first?.cutout_media_id ? await readMedia(ctx.ws.id, first.cutout_media_id) : null;
-  if (!main || !first?.cutout_media_id) throw new StepError("The cutout for this item is missing.");
+  if (!main || !first?.cutout_media_id) throw new StepError("cutoutMissing");
   const png = first.cutout_png_media_id ? await readMedia(ctx.ws.id, first.cutout_png_media_id) : null;
   const photo = (await ctx.ws.photos(ctx.listing.job_id)).find((p) => p.id === first.photo_id);
   return {
@@ -83,7 +83,7 @@ export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
 
 export async function translateStep(ctx: ListingStepContext): Promise<BanglaText> {
   const en = ListingText.safeParse(ctx.listing.fields_json?.en);
-  if (!en.success) throw new StepError("The English listing isn't written yet.");
+  if (!en.success) throw new StepError("englishNotWritten");
   const bn = await meta().translate(call(ctx, "translate"), en.data);
   await ctx.ws.saveListingText(ctx.listing.id, "bn", bn);
   return bn;
@@ -121,10 +121,7 @@ async function shopScene(ctx: ListingStepContext, kit: BrandKit): Promise<SceneK
 async function onImageSlot<T>(ctx: ListingStepContext, make: (made: () => void) => Promise<T>): Promise<T> {
   if (!(await ctx.ws.reserveImage(ctx.workspace.limits.images)))
     // permanent: retrying today can't help, so it shouldn't spend the step's attempts
-    throw new StepError(
-      "You've made today's AI photos. More can be made after 6:00 AM Bangladesh time; your listing is saved.",
-      { permanent: true },
-    );
+    throw new StepError("imagesUsedUp", { permanent: true });
   let billed = false;
   try {
     return await make(() => {
@@ -148,10 +145,7 @@ async function checkedScene(
   const image = await meta().editScene(step, input.main, "lifestyle", input.phrase, input.brief, input.kit);
   made();
   const fidelity = await checkFidelity(step, input.product, image, input.phrase);
-  if (!fidelity.same)
-    throw new StepError(
-      `The AI photo changed your product (${fidelity.differences}), so it wasn't kept. Try again for a new one; your other photos are ready.`,
-    );
+  if (!fidelity.same) throw new StepError("productChanged", { params: { differences: fidelity.differences } });
   return { image, check: { same: true, colorSimilarity: fidelity.colorSimilarity } };
 }
 

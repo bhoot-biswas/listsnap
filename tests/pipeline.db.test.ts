@@ -200,9 +200,7 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
     const { vi } = await import("vitest");
     const { mockMeta } = await import("@/server/providers/meta/mock");
     const { StepError } = await import("@/server/pipeline/run-step");
-    const spy = vi
-      .spyOn(mockMeta, "background")
-      .mockRejectedValue(new StepError("The AI is busy right now.", { notAttempted: true }));
+    const spy = vi.spyOn(mockMeta, "background").mockRejectedValue(new StepError("busy", { notAttempted: true }));
     const shop = await createTestWorkspace({ scenes: ["studio"], listingLanguages: ["en"] });
     try {
       const jobId = await createTestJob(shop.workspace.id, await samplePhoto("saree.jpg"));

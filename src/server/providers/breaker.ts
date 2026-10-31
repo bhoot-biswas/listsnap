@@ -1,5 +1,6 @@
 import "server-only";
 import { StepError } from "@/server/pipeline/run-step";
+import type { StepErrorKey } from "@/server/step-text";
 
 /**
  * A circuit breaker per outside service. When Meta is down, a bulk upload would otherwise
@@ -22,10 +23,10 @@ const state = new Map<Service, { failures: number; openedAt: number | null }>();
 const of = (s: Service) => state.get(s) ?? state.set(s, { failures: 0, openedAt: null }).get(s)!;
 
 /** Throws when the service's breaker is open; lets one trial through after the cooldown. */
-export function guard(service: Service, busyMessage: string, now = Date.now()): void {
+export function guard(service: Service, busy: StepErrorKey, now = Date.now()): void {
   const s = of(service);
   if (s.openedAt === null) return;
-  if (now - s.openedAt < BREAKER_COOLDOWN_MS) throw new StepError(busyMessage, { notAttempted: true });
+  if (now - s.openedAt < BREAKER_COOLDOWN_MS) throw new StepError(busy, { notAttempted: true });
   // half-open: this call is the trial; a failure reopens at once because failures stay high
   s.openedAt = null;
 }

@@ -95,7 +95,7 @@ describe("sparkJson", () => {
       stubFetch(r);
       const err = await call().catch((e) => e);
       expect(err).toBeInstanceOf(StepError);
-      expect(err.message).toBe(BUSY);
+      expect(err.key).toBe(BUSY);
     }
   });
 

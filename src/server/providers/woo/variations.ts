@@ -117,9 +117,7 @@ export async function syncVariations(
   const failed = answers.findIndex((a) => a.error);
   if (failed < 0) return;
   const name = sent[failed]?.color ?? "";
-  throw new StepError(
-    answers[failed]!.error!.code.includes("image")
-      ? `The store couldn't download the photo for "${name}". Try again.`
-      : `The store didn't accept the color "${name}". Check its name and try again.`,
-  );
+  throw new StepError(answers[failed]!.error!.code.includes("image") ? "storePhotoFor" : "storeColor", {
+    params: { name },
+  });
 }
