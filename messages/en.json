@@ -690,6 +690,9 @@
   },
   "review": {
     "title": "Review listing",
+    "stillMakingTitle": "This listing is still being made",
+    "stillMakingBody": "The text and photos are on their way. You can review it as soon as it's done.",
+    "stillMakingLink": "See progress",
     "back": "Back",
     "listingN": "Listing {n}",
     "photos": "Photos",
