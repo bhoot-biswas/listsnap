@@ -46,12 +46,19 @@ describe.skipIf(!enabled)("job_steps lock SQL (MariaDB)", async () => {
   it("runs the work once across parallel runStep calls and saves the result", async () => {
     const key = { jobId: job, step: "write", target: randomUUID() };
     let calls = 0;
+    // the winner holds its lock until the other four have answered: with a fixed sleep, a
+    // loser slowed down by a busy test database could arrive after the work was done
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
     const work = async () => {
       calls++;
-      await new Promise((r) => setTimeout(r, 50));
+      await held;
       return { title: "Jamdani Saree" };
     };
-    const outcomes = await Promise.all(Array.from({ length: 5 }, () => runStep(store, key, { lockMs: 45_000 }, work)));
+    const runs = Array.from({ length: 5 }, () => runStep(store, key, { lockMs: 45_000 }, work));
+    let answered = 0;
+    for (const run of runs) void run.then(() => ++answered === 4 && release());
+    const outcomes = await Promise.all(runs);
     expect(calls).toBe(1);
     expect(outcomes.filter((o) => o.state === "done")).toHaveLength(1);
     expect(outcomes.filter((o) => o.state === "running")).toHaveLength(4);
