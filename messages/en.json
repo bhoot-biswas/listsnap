@@ -531,7 +531,7 @@
     "chooseVariants": "One product, color options",
     "chooseConfirm": "Continue with {count, plural, one {# item} other {# items}}",
     "suggested": "Suggested",
-    "doneTitle": "{count, plural, one {Your listing is ready} other {Your # listings are ready}}",
+    "doneTitle": "{count, plural, one {Your listing is made} other {Your # listings are made}}",
     "doneBody": "Check the text, then save it to your store. Products are always saved as drafts.",
     "review": "Review",
     "newListing": "Snap another",
