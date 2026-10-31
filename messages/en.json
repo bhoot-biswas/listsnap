@@ -81,12 +81,94 @@
     "confirmButton": "Sign in"
   },
   "landing": {
-    "title": "From one photo to a store-ready listing",
-    "body": "ListSnap finds the product in your photo, cuts it out, writes the listing in English and Bangla, makes studio photos and saves a draft to your WooCommerce store.",
-    "start": "Get started",
-    "openShop": "Open your shop",
     "pricing": "Pricing",
-    "steps": "Photo → cutout → listing → studio photos → store draft"
+    "howItWorks": "How it works",
+    "signIn": "Sign in",
+    "openShop": "Open your shop",
+    "start": "Get started",
+    "tryDemo": "Try the demo shop",
+    "startingDemo": "Opening the demo shop…",
+    "nav": "Main",
+    "hero": {
+      "eyebrow": "For small online sellers on Shopify, WooCommerce and Instagram",
+      "title": "One photo. A store-ready listing.",
+      "body": "ListSnap cuts out your product, writes the listing in English and your customers' language, makes studio photos and saves a draft to your Shopify or WooCommerce store.",
+      "languages": "Now in English and Bangla, more languages coming.",
+      "signIn": "Sign in with Google or email",
+      "note": "Free during the beta · Nothing is published without you",
+      "compare": "Compare the phone photo with the studio photo",
+      "photoAlt": "A phone photo of a red saree on a cluttered desk",
+      "studioAlt": "The same saree, cut out onto a clean studio background",
+      "listing": "Listing"
+    },
+    "made": "Made with Meta's Muse Spark, SAM 3.1 and Muse Image.",
+    "outcomes": {
+      "title": "What you get",
+      "listing": {
+        "title": "A listing in two languages",
+        "body": "Title, description, tags, category and a suggested price. The second language reads naturally, not word for word.",
+        "alt": "Bangles laid out on a bed, with each one found and outlined"
+      },
+      "photos": {
+        "title": "Studio photos and seasonal looks",
+        "body": "Your real product on a clean background, and AI scenes for a wedding, a festival or an outdoor shoot, always labelled.",
+        "alt": "One bangle on a clean studio background"
+      },
+      "draft": {
+        "title": "Saved as a draft, ready to post",
+        "body": "Goes to your Shopify or WooCommerce store as a draft. Make a reel and post it to Facebook and Instagram when you're ready.",
+        "alt": "A kurti on a clean studio background",
+        "storeDraft": "Store draft",
+        "post": "Instagram post"
+      },
+      "also": "Also: bulk uploads, several items in one photo, and a shop assistant you can ask in English or Bangla."
+    },
+    "how": {
+      "title": "How it works",
+      "intro": "From your phone to your store in about a minute.",
+      "snap": {
+        "title": "Snap",
+        "body": "Take a photo on your phone, or upload up to five angles."
+      },
+      "work": {
+        "title": "ListSnap gets to work",
+        "body": "It finds the product, cuts it out and writes the listing."
+      },
+      "polish": {
+        "title": "Check and polish",
+        "body": "Change anything, ask the assistant, try a seasonal look."
+      },
+      "save": {
+        "title": "Save as a draft",
+        "body": "It goes to your store as a draft. You publish when you're happy."
+      },
+      "mockTitle": "Title",
+      "mockSaved": "Saved as a draft",
+      "trust": {
+        "title": "Your shop stays yours",
+        "draft": {
+          "title": "Always a draft",
+          "body": "ListSnap never publishes for you."
+        },
+        "keys": {
+          "title": "Your keys stay locked",
+          "body": "Store keys are encrypted and never shown again."
+        },
+        "photos": {
+          "title": "Your photos, your shop",
+          "body": "Sent to Meta's models only to make your listings."
+        }
+      }
+    },
+    "closing": {
+      "title": "Try it with your next product.",
+      "body": "Free during the beta: 20 listings and 60 photos a day.",
+      "pricing": "See pricing"
+    },
+    "footer": {
+      "hackathon": "Built for the Meta AI Developer Hackathon",
+      "github": "GitHub"
+    }
   },
   "pricing": {
     "title": "Pricing",
