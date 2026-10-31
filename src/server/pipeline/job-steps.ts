@@ -1,6 +1,6 @@
 import "server-only";
 import { searchPhrases } from "./phrase-search";
-import { addContents, mergeSetPieces } from "./set-merge";
+import { addContents, joinPieces, mergeSetPieces } from "./set-merge";
 import { StepError } from "./run-step";
 import { crop, dimensions, fillsFrame, MAIN_SIZE, photoCheck, whiteMain, type Box } from "@/server/image-ops";
 import { maskCutout } from "@/server/image-ops/cutout";
@@ -88,6 +88,8 @@ export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
   let found: SegmentInstance[] = search.found;
   if (!found.length) found = [{ box: { x: 0, y: 0, w: photo.width, h: photo.height }, score: null }];
   found = found.sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h).slice(0, MAX_ITEMS);
+  // more than two is several pairs (a tray of earrings), which the group step handles
+  if (plan.multi_kind === "pair" && found.length === 2) found = [joinPieces(found)];
   if (search.found.length) found = addContents(found, contents);
   // back in reading order after keeping the largest
   found.sort((a, b) => a.box.x - b.box.x || a.box.y - b.box.y);
@@ -108,10 +110,8 @@ export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
     saved.push({ box: inst.box, score: inst.score, cutoutMediaId: media.id, cutoutPngMediaId: pngMedia?.id ?? null });
   }
   const itemIds = await ctx.ws.replaceItems(photo.id, saved);
-  const check = await photoCheck(
-    data,
-    saved.map((s) => s.box),
-  );
+  // the whole-photo stand-in for a miss isn't a product the seller could move or step back from
+  const check = await photoCheck(data, search.found.length ? saved.map((s) => s.box) : []);
   await ctx.ws.setPhotoCheck(photo.id, check);
 
   return {
@@ -139,7 +139,8 @@ export async function groupStep(ctx: JobStepContext): Promise<GroupResult> {
   const ids = items.map((i) => i.id);
 
   if (items.length <= 1 || plan.multi_kind === "pair" || plan.multi_kind === "identical_copies") {
-    const mode = items.length <= 1 ? "single" : plan.multi_kind === "pair" ? "pair" : "identical";
+    // a pair is one item once its two pieces are joined, and is still sold as a pair
+    const mode = plan.multi_kind === "pair" ? "pair" : items.length <= 1 ? "single" : "identical";
     const groups =
       mode === "identical" ? [{ itemIds: [ids[0]!], stockQty: items.length }] : [{ itemIds: ids, stockQty: null }];
     await ctx.ws.createListings(ctx.jobId, groups);

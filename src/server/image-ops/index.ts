@@ -88,7 +88,8 @@ export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoChec
   const W = meta.width ?? 1;
   const H = meta.height ?? 1;
   const area = W * H;
-  const covered = boxes.reduce((s, b) => s + b.w * b.h, 0);
+  // no boxes: SAM found nothing and the whole photo is the item, so where it sits says nothing
+  const covered = boxes.length ? boxes.reduce((s, b) => s + b.w * b.h, 0) : area;
   const fillPercent = Math.min(100, Math.round((covered / area) * 100));
 
   const small = sharp(photo).greyscale().resize(512, 512, { fit: "inside" });
@@ -103,7 +104,7 @@ export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoChec
   const exposure = luma < 60 ? "dark" : luma > 215 ? "bright" : "ok";
   const isSharp = sharpness >= 6;
   const hints: string[] = [];
-  if (fillPercent < 25) hints.push("too_small");
+  if (boxes.length && fillPercent < 25) hints.push("too_small");
   const full = boxes.some((b) => fillsFrame(b, W, H));
   if (full) hints.push("too_close");
   // a box on the photo's edge usually means the item goes on past it

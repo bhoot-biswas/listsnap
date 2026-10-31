@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addContents, mergeSetPieces } from "./set-merge";
+import { addContents, joinPieces, mergeSetPieces } from "./set-merge";
 
 const full = (w: number, h: number) => ({ raster: new Uint8Array(w * h).fill(1), width: w, height: h });
 
@@ -21,6 +21,17 @@ describe("mergeSetPieces", () => {
     const a = { box: { x: 10, y: 10, w: 50, h: 50 }, score: 0.9 };
     const b = { box: { x: 12, y: 11, w: 48, h: 49 }, score: 0.8 };
     expect(mergeSetPieces([a, b])).toHaveLength(1);
+  });
+
+  it("joins a whole cluster of touching pots, so the one in front leaves no bite", () => {
+    // back pots barely touch each other; the front pot overlaps both a little
+    const back1 = { box: { x: 0, y: 0, w: 40, h: 60 }, score: 0.9, mask: full(40, 60) };
+    const back2 = { box: { x: 39, y: 0, w: 40, h: 60 }, score: 0.9, mask: full(40, 60) };
+    const front = { box: { x: 30, y: 50, w: 20, h: 30 }, score: 0.9, mask: full(20, 30) };
+    const [item, ...rest] = mergeSetPieces([back1, back2, front]);
+    expect(rest).toHaveLength(0);
+    expect(item!.box).toEqual({ x: 0, y: 0, w: 79, h: 80 });
+    expect(item!.mask!.raster[55 * 79 + 40]).toBe(1); // where the front pot covers the back ones
   });
 
   it("keeps pieces lying apart as separate items", () => {
@@ -50,5 +61,16 @@ describe("addContents", () => {
     const b = { box: { x: 30, y: 0, w: 40, h: 40 }, score: 0.9 };
     const stray = { box: { x: 200, y: 200, w: 10, h: 10 }, score: 0.9 };
     expect(addContents([a, b], [stray])).toEqual([a, b]);
+  });
+});
+
+describe("joinPieces", () => {
+  it("makes a pair of earrings one item covering both", () => {
+    const left = { box: { x: 0, y: 0, w: 20, h: 40 }, score: 0.8, mask: full(20, 40) };
+    const right = { box: { x: 50, y: 5, w: 20, h: 40 }, score: 0.9, mask: full(20, 40) };
+    const pair = joinPieces([left, right]);
+    expect(pair.box).toEqual({ x: 0, y: 0, w: 70, h: 45 });
+    expect(pair.mask!.raster[10 * 70 + 30]).toBe(0); // the gap between them
+    expect(pair.mask!.raster[10 * 70 + 60]).toBe(1); // the right earring
   });
 });

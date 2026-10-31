@@ -36,6 +36,14 @@ describe("photoCheck", () => {
     expect(check.hints).not.toContain("cut_off");
   });
 
+  it("gives no size or position hints when nothing was found", async () => {
+    const check = await photoCheck(await photo(), []);
+    expect(check.fillPercent).toBe(100);
+    expect(check.hints).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/too_small|too_close|cut_off|overlap/)]),
+    );
+  });
+
   it("does not add cut-off to an item that fills the frame", async () => {
     const check = await photoCheck(await photo(), [{ x: 0, y: 0, w: 200, h: 100 }]);
     expect(check.hints).not.toContain("cut_off");
