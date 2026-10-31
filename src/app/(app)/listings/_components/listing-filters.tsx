@@ -57,7 +57,7 @@ export async function ListingFilters({
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <nav aria-label={t("filters")} className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-        <ul className="flex gap-2">
+        <ul className="flex gap-2 md:flex-wrap">
           {chip(null, t("all"), all)}
           {chips.map((s) => chip(s, tStatus(s), counts[s] ?? 0))}
           {(counts.archived || status === "archived") && chip("archived", t("archived"), counts.archived ?? 0)}

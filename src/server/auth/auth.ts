@@ -8,6 +8,7 @@ import { getPool } from "@/server/db/pool";
 import { createWorkspaceForUser, deleteSoleWorkspaces } from "@/server/db/workspaces";
 import { removeWorkspaceMedia } from "@/server/media/store";
 import { seedDemoWorkspace } from "@/server/demo/seed";
+import { requestLocale } from "@/server/step-text";
 import { sendMagicLinkMail } from "./mail";
 import { checkUserWrite } from "./profile-fields";
 
@@ -133,7 +134,7 @@ function build() {
         sendMagicLink: async ({ email, url }) => {
           const confirm = new URL(url);
           confirm.pathname = "/sign-in/confirm";
-          sendMagicLinkMail(email, confirm.toString());
+          sendMagicLinkMail(email, confirm.toString(), await requestLocale());
         },
       }),
       anonymous({ emailDomainName: "demo.listsnap.invalid", generateName: () => "Demo seller" }),

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { Check, Loader2 } from "lucide-react";
+import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { StatusBadge } from "@/components/app/status-badge";
 import { quickEditListing } from "@/server/actions/review";
 import { parseAmount } from "@/lib/amount";
@@ -64,21 +65,6 @@ function InlineField({
         {saved === "saved" && <Check className="size-3.5 text-success" aria-label={t("edited")} />}
       </span>
     </div>
-  );
-}
-
-function Dots({ value }: { value: number | null }) {
-  if (value === null) return <span className="text-muted-foreground">—</span>;
-  const n = Math.max(1, Math.round(value * 5));
-  return (
-    <span className="flex gap-0.5" aria-label={`${Math.round(value * 100)}%`}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <span
-          key={i}
-          className={cn("size-2 rounded-full", i <= n ? (value < 0.7 ? "bg-warning" : "bg-success") : "bg-muted")}
-        />
-      ))}
-    </span>
   );
 }
 
@@ -235,7 +221,11 @@ export function BatchTable({
                   )}
                 </td>
                 <td className="p-3 max-lg:hidden">
-                  <Dots value={r.listing?.confidence ?? null} />
+                  {r.listing?.confidence != null ? (
+                    <ConfidenceDots confidence={r.listing.confidence} />
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </td>
                 <td className="p-3">
                   <RowStatus row={r} active={activeJobIds.has(r.jobId)} />

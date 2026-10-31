@@ -75,7 +75,7 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
         ))}
       </ul>
 
-      <div className="overflow-hidden rounded-xl border bg-card max-md:hidden">
+      <div className="relative overflow-x-auto rounded-xl border bg-card max-md:hidden">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>

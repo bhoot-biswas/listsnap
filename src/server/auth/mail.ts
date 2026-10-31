@@ -3,8 +3,8 @@ import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "@/server/env";
 
 /**
- * Sign-in emails through Hostinger SMTP, Bangla first with English below, because the
- * reader may use either language and reads the email after the page is gone.
+ * Sign-in emails through Hostinger SMTP, in both languages because the reader may use
+ * either and reads the email after the page is gone: the one they asked in comes first.
  *
  * Sends are not awaited (Better Auth's advice), so a link request takes the same time
  * whether or not the address has an account. Without SMTP in development the link is
@@ -64,7 +64,8 @@ const COPY = {
   },
 };
 
-export function sendMagicLinkMail(to: string, url: string): void {
+export function sendMagicLinkMail(to: string, url: string, lang: "en" | "bn"): void {
+  const [first, second] = lang === "bn" ? (["bn", "en"] as const) : (["en", "bn"] as const);
   const link = escape(url);
   const block = (c: (typeof COPY)["en"], lang: string) => `
     <div lang="${lang}" style="margin:0 0 28px">
@@ -75,25 +76,26 @@ export function sendMagicLinkMail(to: string, url: string): void {
   const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#F7F8F6;font-family:'Hind Siliguri',Arial,sans-serif;color:#14201A">
   <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #DCE2DA;border-radius:12px;padding:28px">
     <p style="margin:0 0 24px;font-weight:700;font-size:18px;color:#0E7357">ListSnap</p>
-    ${block(COPY.bn, "bn")}
+    ${block(COPY[first], first)}
     <hr style="border:none;border-top:1px solid #DCE2DA;margin:0 0 28px">
-    ${block(COPY.en, "en")}
+    ${block(COPY[second], second)}
     <p style="margin:24px 0 0;font-size:12px;color:#5A6961;word-break:break-all">${link}</p>
   </div></body></html>`;
   const text = [
-    COPY.bn.body,
+    COPY[first].body,
     "",
     url,
     "",
-    COPY.bn.footer,
+    COPY[first].footer,
     "",
     "────────",
     "",
-    COPY.en.body,
+    COPY[second].body,
     "",
     url,
     "",
-    COPY.en.footer,
+    COPY[second].footer,
   ].join("\n");
-  queueMail({ to, subject: "ListSnap-এ ঢোকার লিংক · Your ListSnap sign-in link", text, html });
+  const subjects = { en: "Your ListSnap sign-in link", bn: "ListSnap-এ ঢোকার লিংক" };
+  queueMail({ to, subject: `${subjects[first]} · ${subjects[second]}`, text, html });
 }
