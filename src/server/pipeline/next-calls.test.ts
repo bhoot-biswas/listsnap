@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSettled, nextCalls, renderTarget, type NextInput, type StepState } from "./next-calls";
+import { isSettled, nextCalls, renderTarget, stepBefore, type NextInput, type StepState } from "./next-calls";
 
 const done = (step: string, target = "-"): StepState => ({ step, target, status: "done", attempts: 1 });
 const failed = (step: string, target: string, attempts: number): StepState => ({
@@ -16,6 +16,12 @@ describe("nextCalls", () => {
     expect(nextCalls(base)).toEqual([{ kind: "job", step: "plan" }]);
     expect(nextCalls({ ...base, steps: [done("plan")] })).toEqual([{ kind: "job", step: "segment" }]);
     expect(nextCalls({ ...base, steps: [done("plan"), done("segment")] })).toEqual([{ kind: "job", step: "group" }]);
+  });
+
+  it("names the step each job step waits for", () => {
+    expect(stepBefore("plan")).toBeNull();
+    expect(stepBefore("segment")).toBe("plan");
+    expect(stepBefore("group")).toBe("segment");
   });
 
   it("calls nothing while the seller is choosing items", () => {

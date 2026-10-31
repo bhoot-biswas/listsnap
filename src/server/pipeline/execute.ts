@@ -11,7 +11,7 @@ import { postStep } from "./post-step";
 import type { PostRequest } from "@/lib/schemas/social";
 import type { Look } from "@/lib/schemas/looks";
 import type { ReelLang, ReelTemplate } from "@/lib/schemas/reels";
-import { isSettled, renderTarget, type JobStepName, type ListingStepName } from "./next-calls";
+import { isSettled, renderTarget, stepBefore, type JobStepName, type ListingStepName } from "./next-calls";
 
 /**
  * The entry points Route Handlers call. Each finds the record inside the workspace
@@ -34,10 +34,14 @@ export async function executeJobStep(
   jobId: string,
   step: JobStepName,
   force = false,
-): Promise<ExecuteResult> {
+): Promise<ExecuteResult | { found: true; notReady: true }> {
   const ws = forWorkspace(workspace.id);
   const job = await ws.getJob(jobId);
   if (!job) return { found: false };
+  // checked before the claim: a step called early would otherwise use up its attempts,
+  // and group run before segment makes a listing with no items that can't be undone
+  const before = stepBefore(step);
+  if (before && !(await ws.stepResult(jobId, before))) return { found: true, notReady: true };
   // "Try again" on a job that gave up puts it back to work
   if (force && job.status === "failed") await ws.transitionJob(jobId, "failed", "processing");
   const ctx = { ws, jobId };
