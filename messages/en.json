@@ -231,7 +231,11 @@
         "render": "Making studio photos",
         "assist": "AI help on Review",
         "store": "Saving to the store",
-        "connect": "Checking the store connection"
+        "connect": "Checking the store connection",
+        "look": "Making more looks",
+        "reel": "Making reels",
+        "post": "Posting to Facebook and Instagram",
+        "chat": "Assistant"
       }
     },
     "log": {

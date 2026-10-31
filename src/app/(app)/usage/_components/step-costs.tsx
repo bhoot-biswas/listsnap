@@ -1,7 +1,21 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import type { UsageStep } from "@/server/db/scope";
 
-const KNOWN = new Set(["plan", "segment", "group", "write", "translate", "render", "assist", "store", "connect"]);
+const KNOWN = new Set([
+  "plan",
+  "segment",
+  "group",
+  "write",
+  "translate",
+  "render",
+  "assist",
+  "store",
+  "connect",
+  "look",
+  "reel",
+  "post",
+  "chat",
+]);
 
 /**
  * Where the money goes, step by step, straight from the API log: the model behind each

@@ -30,7 +30,7 @@ export async function PageSkeleton({ shape = "page" }: { shape?: Shape }) {
     <div role="status" aria-live="polite">
       <span className="sr-only">{t("loading")}</span>
       <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/90 px-4 backdrop-blur md:px-6">
-        <SidebarTrigger className="-ml-1 size-10 md:size-8" />
+        <SidebarTrigger className="-ml-1 size-11 md:size-8" />
         <Skeleton className="h-5 w-32" />
       </header>
       <div aria-hidden="true" className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:px-6">
