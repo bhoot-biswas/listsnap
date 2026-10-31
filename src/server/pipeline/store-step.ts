@@ -5,7 +5,7 @@ import type { Workspace } from "@/server/db/workspaces";
 import { woo } from "@/server/providers";
 import { resolveWooStore } from "@/server/stores/woo-store";
 import { ListingText } from "@/lib/schemas/pipeline";
-import { suggestedPrice } from "@/lib/schemas/review";
+import { listingPrice, suggestedPrice } from "@/lib/schemas/review";
 import { listingVariants } from "@/lib/variants";
 import { runStep, StepError } from "./run-step";
 import type { ExecuteResult } from "./execute";
@@ -58,7 +58,7 @@ async function saveDraft(ws: WorkspaceScope, workspace: Workspace, listing: List
     ws.items(listing.job_id),
     ws.listingMedia([listing.id]),
   ]);
-  const price = listing.price_bdt ?? suggestedPrice(text.price_hint_bdt, workspace.settings.priceRounding);
+  const price = listingPrice(listing.price_bdt, text.price_hint_bdt, workspace.settings.priceRounding);
   const colors = listingVariants(job?.group_mode ?? null, listing.item_ids_json, items, listing.fields_json?.variants)
     ?.filter((v) => v.on)
     .map((v) => ({

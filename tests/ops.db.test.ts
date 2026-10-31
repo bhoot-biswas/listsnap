@@ -279,6 +279,13 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     expect(await behind()).toBe(false);
   });
 
+  it("makes a reel with the suggested price when the seller hasn't set one, as the store does", async () => {
+    await ops.editListingFields.call(a.workspace, { listingId, priceBdt: null }, { via: "ui" });
+    expect((await A.getListing(listingId))!.price_bdt).toBeNull();
+    const made = await ops.makeReel.call(a.workspace, { listingId, lang: "bn" }, { via: "ui" });
+    expect(made).toMatchObject({ ok: true, value: { outcome: { state: "done" } } });
+  });
+
   it("posts a reel only when confirmed and connected, and never twice", async () => {
     const post = (destination: "facebook" | "instagram", confirmed = true) =>
       ops.postReel.call(

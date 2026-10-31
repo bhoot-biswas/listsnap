@@ -5,6 +5,8 @@ import { readMedia, saveMedia } from "@/server/media/store";
 import { video } from "@/server/providers";
 import { pickPhotos, reelVariables } from "@/server/reels/inputs";
 import { REEL_LANGS, type ReelLang, type ReelResult, type ReelTemplate } from "@/lib/schemas/reels";
+import { ListingText } from "@/lib/schemas/pipeline";
+import { listingPrice } from "@/lib/schemas/review";
 
 /**
  * Step `reel` (on request): one 9:16 video of a finished listing in one language, made
@@ -15,7 +17,13 @@ export async function reelStep(ctx: ListingStepContext, lang: ReelLang, template
   const { ws, workspace, listing } = ctx;
   const text = listing.fields_json?.[lang] as { title?: string } | undefined;
   if (!text?.title) throw new StepError(lang === "bn" ? "noBanglaText" : "noTitle");
-  if (listing.price_bdt === null) throw new StepError("addPriceFirst");
+  const en = ListingText.safeParse(listing.fields_json?.en);
+  const priceBdt = listingPrice(
+    listing.price_bdt,
+    en.success ? en.data.price_hint_bdt : undefined,
+    workspace.settings.priceRounding,
+  );
+  if (priceBdt === null) throw new StepError("addPriceFirst");
 
   const [items, media] = await Promise.all([ws.items(listing.job_id), ws.listingMedia([listing.id])]);
   const mainId = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id;
@@ -33,7 +41,7 @@ export async function reelStep(ctx: ListingStepContext, lang: ReelLang, template
   const variables = reelVariables({
     lang,
     title: text.title,
-    priceBdt: listing.price_bdt,
+    priceBdt,
     shop: workspace.name,
     labels: photos.labels,
     kit: workspace.settings.brandKit.colors,
