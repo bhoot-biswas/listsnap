@@ -18,6 +18,9 @@ import { colorAttribute, syncVariations } from "./variations";
 
 export const LISTING_META_KEY = "_listsnap_listing_id";
 
+/** Set when the draft is created. The store keeps SKUs unique and finds them exactly, unlike a title. */
+export const listingSku = (listingId: string) => `listsnap-${listingId}`;
+
 interface Term {
   id: number;
   name: string;
@@ -78,7 +81,12 @@ export const liveWoo: WooProvider = {
 
     const saved = existing
       ? await api.put<Product>(`products/${existing.id}`, body, { timeoutMs: IMAGE_TIMEOUT_MS })
-      : await api.post<Product>("products", { ...body, status: "draft" }, { timeoutMs: IMAGE_TIMEOUT_MS });
+      : // the SKU only on create: a seller who sets their own later keeps it
+        await api.post<Product>(
+          "products",
+          { ...body, status: "draft", sku: listingSku(input.listingId) },
+          { timeoutMs: IMAGE_TIMEOUT_MS },
+        );
     if (variants && color) {
       // the store answers with the images in the order they were sent
       const ids = new Map(sent.flatMap((r, i) => (saved.images[i] ? [[r.mediaId, saved.images[i].id]] : [])));
@@ -105,9 +113,10 @@ export const editUrl = (store: WooStore, productId: number) =>
 /**
  * The product to update: the one saved before, unless it has since been deleted or
  * trashed. With no saved id, a draft that carries this listing's id is looked for
- * too, in case an earlier save reached the store but its answer was lost.
+ * too, in case an earlier save reached the store but its answer was lost: by SKU, which
+ * still matches after the seller edits the title, then by title for drafts made before SKUs.
  */
-async function findProduct(api: WooApi, input: WooDraftInput): Promise<Product | null> {
+export async function findProduct(api: WooApi, input: WooDraftInput): Promise<Product | null> {
   if (input.productId) {
     try {
       const p = await api.get<Product>(`products/${input.productId}`);
@@ -117,8 +126,12 @@ async function findProduct(api: WooApi, input: WooDraftInput): Promise<Product |
     }
     return null;
   }
+  const ours = (p: Product) => p.meta_data.some((m) => m.key === LISTING_META_KEY && m.value === input.listingId);
+  const bySku = await api.get<Product[]>("products", { sku: listingSku(input.listingId) });
+  const match = bySku.find((p) => p.status !== "trash" && ours(p));
+  if (match) return match;
   const found = await api.get<Product[]>("products", { search: input.title, status: "draft", per_page: 20 });
-  return found.find((p) => p.meta_data.some((m) => m.key === LISTING_META_KEY && m.value === input.listingId)) ?? null;
+  return found.find(ours) ?? null;
 }
 
 /**

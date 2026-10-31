@@ -38,6 +38,10 @@ function memoryStore() {
       Object.assign(r, { status: "running", attempts: r.attempts + 1, lockedUntil: now + lockMs });
       return true;
     },
+    async renew(k, lockMs) {
+      const r = rows.get(id(k))!;
+      if (r.status === "running") r.lockedUntil = now + lockMs;
+    },
     async complete(k, result) {
       Object.assign(rows.get(id(k))!, { status: "done", result, lastError: null, lockedUntil: 0 });
     },
@@ -102,6 +106,49 @@ describe("runStep step rules", () => {
       state: "done",
       result: "second try",
     });
+  });
+
+  it("keeps the lock while slow work runs, so a poll doesn't start it again", async () => {
+    vi.useFakeTimers();
+    try {
+      const { store, advance, row } = memoryStore();
+      let release!: () => void;
+      const work = vi.fn(() => new Promise<string>((r) => (release = () => r("ok"))));
+      const first = runStep(store, key, opts, work);
+      await vi.waitFor(() => expect(work).toHaveBeenCalled());
+      // twice the lock length, in the steps the timer fires at
+      for (let t = 0; t < 6; t++) {
+        advance(15_000);
+        await vi.advanceTimersByTimeAsync(15_000);
+      }
+      expect(await runStep(store, key, opts, work)).toEqual({ state: "running" });
+      release();
+      expect(await first).toMatchObject({ state: "done", result: "ok" });
+      expect(work).toHaveBeenCalledTimes(1);
+      expect(row(key)?.attempts).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops renewing a lock held too long, so a hung call frees the step", async () => {
+    vi.useFakeTimers();
+    try {
+      const { store, advance } = memoryStore();
+      const hung = vi.fn(() => new Promise<string>(() => {}));
+      void runStep(store, key, opts, hung);
+      await vi.waitFor(() => expect(hung).toHaveBeenCalled());
+      for (let t = 0; t < 3 * 6; t++) {
+        advance(15_000);
+        await vi.advanceTimersByTimeAsync(15_000);
+      }
+      expect(await runStep(store, key, opts, async () => "second try")).toMatchObject({
+        state: "done",
+        result: "second try",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("runs a finished step again only when a new version is asked for", async () => {
