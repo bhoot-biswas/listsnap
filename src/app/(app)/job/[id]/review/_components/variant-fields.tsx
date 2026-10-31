@@ -53,13 +53,16 @@ export function VariantFields({
           const name = v.color.trim() || t("colorName");
           return (
             <li key={v.itemId} className={cn("flex flex-wrap items-center gap-3 p-3", !v.on && "opacity-60")}>
-              <input
-                type="checkbox"
-                className="size-5 accent-primary"
-                checked={v.on}
-                onChange={(e) => set(i, { on: e.target.checked })}
-                aria-label={t("sellColor", { color: name })}
-              />
+              {/* a 44 px tap area on phone that takes no more room than the box */}
+              <label className="-m-3 flex size-11 shrink-0 cursor-pointer items-center justify-center md:m-0 md:size-auto">
+                <input
+                  type="checkbox"
+                  className="size-5 accent-primary"
+                  checked={v.on}
+                  onChange={(e) => set(i, { on: e.target.checked })}
+                  aria-label={t("sellColor", { color: name })}
+                />
+              </label>
               {photos[v.itemId] && (
                 <Image
                   src={sized(photos[v.itemId]!, 96)}

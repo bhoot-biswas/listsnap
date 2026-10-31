@@ -93,7 +93,7 @@ export function JobView({ initial, archived }: { initial: JobState; archived: bo
                       <li key={h}>{t(`hints.${h}`, { fill: state.check!.fillPercent })}</li>
                     ))}
                   </ul>
-                  <ButtonLink href="/snap" variant="outline">
+                  <ButtonLink href="/snap" variant="outline" className="h-11 md:h-10">
                     {t("retake")}
                   </ButtonLink>
                 </aside>
@@ -162,6 +162,7 @@ export function JobView({ initial, archived }: { initial: JobState; archived: bo
                         <ButtonLink
                           href={`/job/${state.id}/review?l=${l.id}`}
                           variant={finished ? "outline" : "default"}
+                          className="h-11 md:h-10"
                         >
                           {finished ? t("review") : t("reviewNow")}
                         </ButtonLink>
