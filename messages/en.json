@@ -546,7 +546,7 @@
     "chooseVariants": "One product, color options",
     "chooseConfirm": "Continue with {count, plural, one {# item} other {# items}}",
     "suggested": "Suggested",
-    "doneTitle": "{count, plural, one {Your listing is ready} other {Your # listings are ready}}",
+    "doneTitle": "{count, plural, one {Your listing is made} other {Your # listings are made}}",
     "doneBody": "Check the text, then save it to your store. Products are always saved as drafts.",
     "review": "Review",
     "newListing": "Snap another",
@@ -705,6 +705,9 @@
   },
   "review": {
     "title": "Review listing",
+    "stillMakingTitle": "This listing is still being made",
+    "stillMakingBody": "The text and photos are on their way. You can review it as soon as it's done.",
+    "stillMakingLink": "See progress",
     "back": "Back",
     "listingN": "Listing {n}",
     "photos": "Photos",

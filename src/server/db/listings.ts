@@ -139,6 +139,18 @@ export function listingQueries(ws: string) {
     },
 
     /**
+     * A listing's last automatic step finished. Only Processing moves, so the two steps that
+     * can finish together (translate and a render) settle it once between them.
+     */
+    async settleListing(id: string, status: "needs_review" | "ready") {
+      await execute("UPDATE listings SET status = ? WHERE id = ? AND workspace_id = ? AND status = 'processing'", [
+        status,
+        id,
+        ws,
+      ]);
+    },
+
+    /**
      * The seller ticked off (or reopened) Review's checklist. Only Needs review and Ready
      * move; a listing already in the store or posted keeps its status.
      */

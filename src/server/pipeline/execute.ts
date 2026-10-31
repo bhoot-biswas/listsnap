@@ -2,7 +2,7 @@ import "server-only";
 import { sqlStepStore } from "@/server/db/steps";
 import { forWorkspace, type WorkspaceScope } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
-import { GroupMode, Scene } from "@/lib/schemas/pipeline";
+import { GroupMode, Scene, writtenStatus } from "@/lib/schemas/pipeline";
 import { runStep, type StepOutcome } from "./run-step";
 import { groupStep, planStep, segmentStep } from "./job-steps";
 import { lookStep, renderStep, translateStep, writeStep } from "./listing-steps";
@@ -84,6 +84,7 @@ export async function executeListingStep(
     if (step === "write" && outcome.state === "failed" && outcome.exhausted)
       await ws.setListingStatus(listingId, "failed");
   }
+  await settleListing(ws, workspace, listingId);
   await settleJob(ws, workspace, listing.job_id);
   return { found: true, outcome };
 }
@@ -187,6 +188,30 @@ export async function applyChoice(
 /** Scenes made automatically: `separate` gets studio only per item (to keep image costs down). */
 export function autoScenes(workspace: Workspace, groupMode: string | null): Scene[] {
   return groupMode === "separate" ? ["studio"] : workspace.settings.scenes;
+}
+
+/**
+ * Moves a written listing out of Processing once its own Bangla and photos are done or out
+ * of attempts, so it never shows Ready (or gets saved to the store) half made.
+ */
+async function settleListing(ws: WorkspaceScope, workspace: Workspace, listingId: string): Promise<void> {
+  const listing = await ws.getListing(listingId);
+  // no confidence yet means the English text isn't written
+  if (!listing || listing.status !== "processing" || listing.confidence === null) return;
+  const job = await ws.getJob(listing.job_id);
+  if (!job) return;
+  const input = {
+    jobStatus: job.status,
+    steps: await ws.steps(job.id),
+    listingIds: [listingId],
+    scenes: autoScenes(workspace, job.group_mode),
+    translate: workspace.settings.listingLanguages.includes("bn"),
+  };
+  if (!isSettled(input)) return;
+  await ws.settleListing(
+    listingId,
+    writtenStatus({ confidence: listing.confidence, check_notes: listing.check_notes ?? [] }),
+  );
 }
 
 /** Marks the job ready or failed once nothing is left to run. */

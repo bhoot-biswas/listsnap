@@ -10,7 +10,6 @@ import type { ListingRow, WorkspaceScope } from "@/server/db/scope";
 import { brandVoice, type Workspace } from "@/server/db/workspaces";
 import {
   ListingText,
-  REVIEW_THRESHOLD,
   sceneBrief,
   type BanglaText,
   type PlanResult,
@@ -73,10 +72,12 @@ export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
   const text = ListingText.parse(
     await meta().write(call(ctx, "write"), await originalPhoto(ctx), p, brandVoice(ctx.workspace.settings)),
   );
+  // Bangla and the photos are still to come, so the listing stays in Processing until
+  // they settle; this also brings back a listing whose earlier write gave up
   await ctx.ws.saveListingText(ctx.listing.id, "en", text, {
     confidence: text.confidence,
     checkNotes: text.check_notes,
-    status: text.confidence < REVIEW_THRESHOLD ? "needs_review" : "ready",
+    status: "processing",
   });
   return text;
 }

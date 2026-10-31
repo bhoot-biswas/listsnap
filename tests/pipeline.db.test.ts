@@ -9,7 +9,7 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
   const { getPool } = await import("@/server/db/pool");
   const { forWorkspace } = await import("@/server/db/scope");
   const { readMedia } = await import("@/server/media/store");
-  const { applyChoice, executeJobStep } = await import("@/server/pipeline/execute");
+  const { applyChoice, executeJobStep, executeListingStep } = await import("@/server/pipeline/execute");
   const { loadJobState } = await import("@/server/pipeline/job-state");
 
   const shop = await createTestWorkspace({ scenes: ["studio"], listingLanguages: ["en", "bn"] });
@@ -57,6 +57,20 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
     const again = await executeJobStep(shop.workspace, jobId, "plan");
     expect(again).toMatchObject({ found: true, outcome: { state: "done", fresh: false } });
     expect((await ws.apiCalls(jobId)).length).toBe(callsBefore);
+  });
+
+  it("keeps a written listing in Processing until its Bangla and photos are made", async () => {
+    const jobId = await createTestJob(shop.workspace.id, await samplePhoto("saree.jpg"));
+    for (const step of ["plan", "segment", "group"] as const) await executeJobStep(shop.workspace, jobId, step);
+    const [listing] = await ws.listings(jobId);
+    await executeListingStep(shop.workspace, listing!.id, "write");
+    const written = await ws.getListing(listing!.id);
+    expect(written!.confidence).not.toBeNull();
+    expect(written!.status).toBe("processing");
+
+    await runJob(shop.workspace, jobId);
+    // the mock saree comes back unsure and with something to check
+    expect((await ws.getListing(listing!.id))!.status).toBe("needs_review");
   });
 
   it("waits for the seller on a multi-item photo, then makes one listing per kept item", async () => {

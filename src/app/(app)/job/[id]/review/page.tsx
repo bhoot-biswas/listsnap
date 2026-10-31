@@ -16,6 +16,7 @@ import { defaultCaption } from "@/server/social/caption";
 import { metaConnection, publicMeta } from "@/server/social/connection";
 import { chatItems, chatRevision } from "@/server/chat/view";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
+import { StillMaking } from "./_components/still-making";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("review"))("title") };
@@ -31,7 +32,17 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
   const ws = forWorkspace(viewer.workspace.id);
   const job = await ws.getJob(id);
   if (!job) notFound();
-  const listings = (await ws.listings(id)).filter((x) => EDITABLE.has(x.status));
+  const all = await ws.listings(id);
+  const listings = all.filter((x) => EDITABLE.has(x.status));
+  // an old link, or a refresh while the Bangla and photos are still being made
+  const asked = all.find((x) => x.id === l);
+  if (asked?.status === "processing" || (!listings.length && all.some((x) => x.status === "processing")))
+    return (
+      <>
+        <TopBar title={(await getTranslations("review"))("title")} />
+        <StillMaking jobId={id} />
+      </>
+    );
   const listing = listings.find((x) => x.id === l) ?? listings[0];
   if (!listing) notFound();
 
