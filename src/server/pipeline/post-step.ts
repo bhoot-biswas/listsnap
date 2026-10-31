@@ -35,13 +35,15 @@ export async function postStep(ctx: ListingStepContext, req: PostRequest): Promi
       ? await facebook().postReel(call, { page: account, videoUrl, caption: req.caption })
       : await instagram().postReel(call, { account, videoUrl, caption: req.caption });
 
-  await ws.markPosted(listing.id, req.destination === "instagram" ? post.postId : null);
+  // nothing reached Facebook or Instagram, so the listing isn't Posted and isn't counted
+  const test = conn.settings.test || !live;
+  if (!test) await ws.markPosted(listing.id, req.destination === "instagram" ? post.postId : null);
   return {
     destination: req.destination,
     lang: req.lang,
     reelMediaId: reel.data.mediaId,
     postId: post.postId,
     permalink: post.permalink,
-    test: conn.settings.test,
+    test,
   };
 }

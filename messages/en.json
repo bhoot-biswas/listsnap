@@ -806,6 +806,7 @@
         "confirmHint": "Posts are public. You can delete them later on Facebook or Instagram.",
         "posting": "Posting to {where}…",
         "posted": "Posted to {where}",
+        "testPosted": "Test post to {where}",
         "view": "View",
         "test": "Test connection: nothing is really posted, and the links are examples.",
         "failed": "Posting didn't work. Try again.",

@@ -35,7 +35,10 @@ export interface NextInput {
 
 export const JOB_ORDER: JobStepName[] = ["plan", "segment", "group"];
 
-export const renderTarget = (listingId: string, scene: string) => `${listingId}:${scene}`;
+/** The job step that must be done before this one may run; null for the first. */
+export const stepBefore = (step: JobStepName): JobStepName | null => JOB_ORDER[JOB_ORDER.indexOf(step) - 1] ?? null;
+
+export const renderTarget =(listingId: string, scene: string) => `${listingId}:${scene}`;
 
 export function nextCalls(input: NextInput): NextCall[] {
   const max = input.maxAttempts ?? MAX_ATTEMPTS;

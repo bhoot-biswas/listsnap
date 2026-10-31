@@ -292,8 +292,9 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     expect(await post("facebook")).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: false } } });
     expect(await post("instagram")).toMatchObject({ ok: true, value: { outcome: { state: "done", fresh: true } } });
 
+    // a test post reaches no one, so the listing keeps its status and isn't counted
     const listing = (await A.getListing(listingId))!;
-    expect(listing.status).toBe("posted");
+    expect(listing.status).toBe("in_store");
     const step = (await A.steps(job)).find((s) => s.step === "post" && s.target === `${listingId}:en:instagram`);
     expect(step?.result_json).toMatchObject({ destination: "instagram", lang: "en", test: true });
     const calls = await select<{ provider: string; summary: string }>(
@@ -304,7 +305,8 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     // the log keeps the caption's length, never its words or the token
     expect(calls.some((c) => c.summary.includes("Message us") || c.summary.includes("token"))).toBe(false);
 
-    // saving to the store afterwards keeps it "Posted"
+    // after a real post, saving to the store again keeps it "Posted"
+    await A.markPosted(listingId, null);
     await ops.saveDraftToStore.call(a.workspace, { listingId, update: true }, { via: "ui", confirmed: true });
     expect((await A.getListing(listingId))!.status).toBe("posted");
   });

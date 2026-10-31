@@ -133,6 +133,8 @@ export async function segmentStep(ctx: JobStepContext): Promise<SegmentResult> {
  */
 export async function groupStep(ctx: JobStepContext): Promise<GroupResult> {
   const plan = await requireResult<PlanResult>(ctx, "plan");
+  // the items are segment's work; without it there would be nothing to group
+  await requireResult<SegmentResult>(ctx, "segment");
   const items = await ctx.ws.items(ctx.jobId);
   const ids = items.map((i) => i.id);
 
