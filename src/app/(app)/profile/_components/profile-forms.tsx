@@ -11,7 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { setUiLanguage } from "@/server/actions/preferences";
-import { saveProfile, saveTheme, type ProfileState } from "@/server/actions/profile";
+import {
+  deleteAccount,
+  saveProfile,
+  saveTheme,
+  type DeleteAccountState,
+  type ProfileState,
+} from "@/server/actions/profile";
+import { ConfirmButton } from "@/components/app/form-buttons";
 import { submitKeepingValues } from "@/lib/forms";
 import { cn } from "@/lib/utils";
 
@@ -196,5 +203,31 @@ export function LinkGoogleButton() {
     >
       {t("linkGoogle")}
     </Button>
+  );
+}
+
+/**
+ * Deletes the account and its shop. The confirm step names what goes; a session signed in
+ * more than a day ago is asked to sign in again, which the message links to.
+ */
+export function DeleteAccount() {
+  const t = useTranslations("profile.delete");
+  const [state, action] = useActionState<DeleteAccountState>(deleteAccount, null);
+  return (
+    <form action={action} className="space-y-2">
+      <ConfirmButton
+        question={t("confirm")}
+        confirmLabel={t("yes")}
+        cancelLabel={t("keep")}
+        className="h-11 text-destructive md:h-9"
+      >
+        {t("button")}
+      </ConfirmButton>
+      {state && (
+        <p role="alert" className="text-sm text-destructive">
+          {state.error === "signInAgain" ? t("signInAgain") : t("failed")}
+        </p>
+      )}
+    </form>
   );
 }

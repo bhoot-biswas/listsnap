@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { requireWorkspace } from "@/server/auth/session";
+import { forWorkspace } from "@/server/db/scope";
 import { loadJobState } from "@/server/pipeline/job-state";
 import { JobView } from "./_components/job-view";
 import { requestLocale } from "@/server/step-text";
@@ -17,7 +18,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function JobPage({ params }: PageProps<"/job/[id]">) {
   const viewer = await requireWorkspace();
   const { id } = await params;
-  const state = await loadJobState(viewer.workspace, id, await requestLocale());
-  if (!state) notFound();
-  return <JobView initial={state} />;
+  const [state, job] = await Promise.all([
+    loadJobState(viewer.workspace, id, await requestLocale()),
+    forWorkspace(viewer.workspace.id).getJob(id),
+  ]);
+  if (!state || !job) notFound();
+  return <JobView initial={state} archived={!!job.archived_at} />;
 }

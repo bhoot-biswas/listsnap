@@ -24,6 +24,8 @@ export interface ListingRow {
   sent_at: Date | null;
   /** The seller's last change to what goes to the store; later than sent_at means the draft is behind. */
   edited_at: Date | null;
+  /** Hidden from the lists until restored. */
+  archived_at: Date | null;
   updated_at: Date;
 }
 
@@ -47,7 +49,7 @@ export interface RecentListingRow {
 }
 
 export const LISTING_COLUMNS =
-  "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, price_bdt, wc_product_id, sent_at, edited_at, updated_at";
+  "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, price_bdt, wc_product_id, sent_at, edited_at, archived_at, updated_at";
 
 export function listingQueries(ws: string) {
   return {
@@ -124,6 +126,16 @@ export function listingQueries(ws: string) {
 
     async setListingStatus(id: string, status: ListingStatus) {
       await execute("UPDATE listings SET status = ? WHERE id = ? AND workspace_id = ?", [status, id, ws]);
+    },
+
+    /** Archives a listing on its own, or brings it back; false when it already was. */
+    async setListingArchived(id: string, archived: boolean): Promise<boolean> {
+      const r = await execute(
+        `UPDATE listings SET archived_at = ${archived ? "UTC_TIMESTAMP(3)" : "NULL"}
+          WHERE id = ? AND workspace_id = ? AND archived_at IS ${archived ? "" : "NOT "}NULL`,
+        [id, ws],
+      );
+      return r.affectedRows === 1;
     },
 
     /**
@@ -255,7 +267,7 @@ export function listingQueries(ws: string) {
                 JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.bn.title')) AS title_bn,
                 (SELECT i.cutout_media_id FROM items i
                   WHERE i.id = JSON_UNQUOTE(JSON_EXTRACT(l.item_ids_json, '$[0]')) AND i.workspace_id = l.workspace_id) AS cutout_media_id
-           FROM listings l WHERE l.workspace_id = ? ORDER BY l.created_at DESC, l.sort LIMIT ?`,
+           FROM listings l WHERE l.workspace_id = ? AND l.archived_at IS NULL ORDER BY l.created_at DESC, l.sort LIMIT ?`,
         [ws, limit],
       ),
   };

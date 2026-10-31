@@ -8,7 +8,7 @@ import { Pager } from "@/components/app/pager";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { LISTING_PAGE_SIZE } from "@/server/db/overview";
-import { LISTING_STATUSES, ListingFilters, listingsHref } from "./_components/listing-filters";
+import { LISTING_VIEWS, ListingFilters, listingsHref } from "./_components/listing-filters";
 import { ListingTable } from "./_components/listing-table";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 // a bad or hand-edited query string falls back to the first page of everything
 const Query = z.object({
-  status: z.enum(LISTING_STATUSES).optional().catch(undefined),
+  status: z.enum(LISTING_VIEWS).optional().catch(undefined),
   q: z.string().trim().max(100).optional().catch(undefined),
   page: z.coerce.number().int().min(1).max(1000).optional().catch(undefined),
 });
@@ -30,8 +30,14 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
   const query = Query.parse(await searchParams);
   const filter = { status: query.status ?? null, q: query.q ?? "", page: query.page ?? 1 };
   const ws = forWorkspace(viewer.workspace.id);
-  const [{ rows, total }, counts] = await Promise.all([ws.listingPage(filter), ws.statusCounts()]);
-  const all = Object.values(counts).reduce((a, b) => a + b, 0);
+  const archived = filter.status === "archived";
+  const status = filter.status === "archived" ? null : filter.status;
+  const [{ rows, total }, counts] = await Promise.all([
+    ws.listingPage({ ...filter, status, archived }),
+    ws.statusCounts(),
+  ]);
+  // "All" means every listing still in use; archived ones have their own chip
+  const all = Object.entries(counts).reduce((n, [k, v]) => (k === "archived" ? n : n + v), 0);
 
   return (
     <>
@@ -45,7 +51,7 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
         }
       />
       <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-6 md:px-6">
-        {all === 0 ? (
+        {all === 0 && !counts.archived ? (
           <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed bg-card px-6 py-16 text-center">
             <Camera className="size-10 text-primary" aria-hidden="true" />
             <p className="max-w-sm text-muted-foreground">{t("empty")}</p>

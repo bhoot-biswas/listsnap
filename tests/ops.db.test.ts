@@ -17,6 +17,7 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
   const b = await createTestWorkspace();
   const A = forWorkspace(a.workspace.id);
   let listingId = "";
+  let jobId = "";
   let brandPhotoId = "";
   let sentPhotoId = "";
 
@@ -26,6 +27,8 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     saveListingEdit: { listingId, edit: validEdit() },
     editListingFields: { listingId, title: "Fixture title" },
     undoLast: { listingId },
+    archiveListing: { listingId, archived: false },
+    archiveJob: { jobId, archived: false },
     renderScene: { listingId, scene: "studio" },
     renderLook: { listingId, look: "eid" },
     makeReel: { listingId, lang: "en" },
@@ -53,7 +56,7 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
   const title = async () => ((await A.getListing(listingId))!.fields_json?.en as { title: string }).title;
 
   beforeAll(async () => {
-    const jobId = await createTestJob(a.workspace.id, await samplePhoto("saree.jpg"));
+    jobId = await createTestJob(a.workspace.id, await samplePhoto("saree.jpg"));
     listingId = (await runJob(a.workspace, jobId)).listings[0]!.id;
     const { saveMedia } = await import("@/server/media/store");
     const photo = await samplePhoto("kurti.jpg");

@@ -74,8 +74,9 @@ const likeTerm = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 export function overviewQueries(ws: string) {
   return {
-    async listingPage(opts: { status: ListingStatus | null; q: string; page: number }) {
-      const where = ["l.workspace_id = ?"];
+    /** One page of listings; `archived` shows the archived ones instead of the rest. */
+    async listingPage(opts: { status: ListingStatus | null; q: string; page: number; archived?: boolean }) {
+      const where = ["l.workspace_id = ?", `l.archived_at IS ${opts.archived ? "NOT " : ""}NULL`];
       const params: (string | number)[] = [ws];
       if (opts.status) {
         where.push("l.status = ?");
@@ -107,10 +108,10 @@ export function overviewQueries(ws: string) {
       return { rows, total: Number(total?.n ?? 0) };
     },
 
-    /** Listings per status, for the filter chips' counts. */
-    async statusCounts(): Promise<Partial<Record<ListingStatus, number>>> {
-      const rows = await select<{ status: ListingStatus; n: number }>(
-        "SELECT status, COUNT(*) AS n FROM listings WHERE workspace_id = ? GROUP BY status",
+    /** Listings per status, for the filter chips' counts; archived ones count only as archived. */
+    async statusCounts(): Promise<Partial<Record<ListingStatus | "archived", number>>> {
+      const rows = await select<{ status: ListingStatus | "archived"; n: number }>(
+        "SELECT IF(archived_at IS NULL, status, 'archived') AS status, COUNT(*) AS n FROM listings WHERE workspace_id = ? GROUP BY 1",
         [ws],
       );
       return Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
@@ -121,7 +122,7 @@ export function overviewQueries(ws: string) {
         selectOne<Record<string, number | null>>(
           `SELECT SUM(created_at >= UTC_DATE()) AS today,
                   SUM(created_at >= UTC_DATE() - INTERVAL 1 DAY AND created_at < UTC_DATE()) AS yesterday,
-                  SUM(status = 'needs_review') AS waiting,
+                  SUM(status = 'needs_review' AND archived_at IS NULL) AS waiting,
                   SUM(sent_at >= UTC_TIMESTAMP() - INTERVAL 7 DAY) AS in_store_week
              FROM listings WHERE workspace_id = ?`,
           [ws],
@@ -175,18 +176,18 @@ export function overviewQueries(ws: string) {
     attention: (limit = 5) =>
       select<AttentionRow>(
         `(SELECT 'review' AS kind, l.job_id, l.id AS listing_id, ${TITLE} AS title, ${TITLE_BN} AS title_bn, l.created_at
-            FROM listings l WHERE l.workspace_id = ? AND l.status = 'needs_review')
+            FROM listings l WHERE l.workspace_id = ? AND l.status = 'needs_review' AND l.archived_at IS NULL)
          UNION ALL
          (SELECT 'failed', j.id, l.id, ${TITLE}, ${TITLE_BN}, j.created_at
-            FROM jobs j LEFT JOIN listings l ON l.job_id = j.id AND l.status = 'failed'
-           WHERE j.workspace_id = ? AND (j.status = 'failed' OR l.id IS NOT NULL))
+            FROM jobs j LEFT JOIN listings l ON l.job_id = j.id AND l.status = 'failed' AND l.archived_at IS NULL
+           WHERE j.workspace_id = ? AND j.archived_at IS NULL AND (j.status = 'failed' OR l.id IS NOT NULL))
          UNION ALL
          (SELECT IF(j.status = 'awaiting_choice', 'choose', 'unfinished'), j.id, NULL,
                  (SELECT ${TITLE} FROM listings l WHERE l.job_id = j.id ORDER BY l.created_at LIMIT 1),
                  (SELECT ${TITLE_BN} FROM listings l WHERE l.job_id = j.id ORDER BY l.created_at LIMIT 1),
                  j.created_at
             FROM jobs j
-           WHERE j.workspace_id = ? AND j.batch_id IS NULL
+           WHERE j.workspace_id = ? AND j.batch_id IS NULL AND j.archived_at IS NULL
              AND j.status IN ('processing', 'awaiting_choice')
              AND j.created_at < NOW(3) - INTERVAL 2 MINUTE
              AND NOT EXISTS (SELECT 1 FROM listings l WHERE l.job_id = j.id AND l.status = 'failed'))

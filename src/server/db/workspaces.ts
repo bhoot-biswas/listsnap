@@ -116,3 +116,23 @@ export async function renameWorkspace(workspaceId: string, name: string): Promis
 export async function saveWorkspaceSettings(workspaceId: string, name: string, settings: WorkspaceSettings) {
   await execute("UPDATE workspaces SET name = ?, settings_json = ? WHERE id = ?", [name, json(settings), workspaceId]);
 }
+
+/**
+ * Deletes the shops this user is the only member of, for account deletion. Every row of
+ * a shop goes with it (the foreign keys cascade); the ids come back so the media folders
+ * can be removed too. A shop someone else also belongs to is left alone.
+ */
+export async function deleteSoleWorkspaces(userId: string): Promise<string[]> {
+  return transaction(async (conn) => {
+    const [rows] = await conn.query(
+      `SELECT m.workspace_id AS id FROM memberships m
+        WHERE m.user_id = ?
+          AND NOT EXISTS (SELECT 1 FROM memberships o WHERE o.workspace_id = m.workspace_id AND o.user_id <> m.user_id)
+        FOR UPDATE`,
+      [userId],
+    );
+    const ids = (rows as { id: string }[]).map((r) => r.id);
+    if (ids.length) await conn.query(`DELETE FROM workspaces WHERE id IN (${ids.map(() => "?").join(",")})`, ids);
+    return ids;
+  });
+}

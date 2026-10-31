@@ -105,6 +105,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
         checkNotes={listing.check_notes ?? []}
         status={listing.status}
         inStore={listing.status === "in_store" || listing.status === "posted"}
+        archived={!!listing.archived_at}
         storeBehind={!!listing.sent_at && !!listing.edited_at && listing.edited_at > listing.sent_at}
         looks={{
           made: media.map((m) => lookOf(m.kind)).filter((l): l is Look => l !== null),

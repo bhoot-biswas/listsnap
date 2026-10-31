@@ -190,7 +190,8 @@
     "status": "Status",
     "confidence": "AI confidence",
     "created": "Made",
-    "open": "Open"
+    "open": "Open",
+    "archived": "Archived"
   },
   "usage": {
     "title": "Usage",
@@ -376,6 +377,16 @@
       "title": "You're in a demo shop",
       "body": "Demo shops have no account and end after 24 hours. Sign in to keep your own shop, store and listings.",
       "signIn": "Sign in"
+    },
+    "delete": {
+      "title": "Delete account",
+      "intro": "Deletes your account and your shop for good: listings, photos, reels, chats and settings. Drafts already saved to your WooCommerce store stay there. This can't be undone.",
+      "button": "Delete my account",
+      "confirm": "Delete your account and everything in your shop? This can't be undone.",
+      "yes": "Yes, delete everything",
+      "keep": "Keep my account",
+      "signInAgain": "For your safety, sign out and sign in again, then delete your account within a day.",
+      "failed": "Your account wasn't deleted. Try again."
     }
   },
   "media": {
@@ -1011,5 +1022,17 @@
       "foundRetried": "{count, plural, one {# item} other {# items}} for \"{phrase}\" (after trying \"{first}\") · fills {fill, number}% of the frame",
       "quoted": "\"{title}\""
     }
+  },
+  "archive": {
+    "listing": "Archive",
+    "job": "Archive job",
+    "restore": "Restore",
+    "listingDone": "Listing archived.",
+    "jobDone": "Job archived.",
+    "undo": "Undo",
+    "restored": "Restored.",
+    "failed": "That didn't work. Try again.",
+    "listingNotice": "This listing is archived. It's hidden from Listings, the dashboard and the media library until you restore it.",
+    "jobNotice": "This job is archived, with its listings. They're hidden from the lists until you restore them."
   }
 }

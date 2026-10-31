@@ -5,7 +5,8 @@ import { APIError } from "better-auth/api";
 import { anonymous, magicLink } from "better-auth/plugins";
 import { env } from "@/server/env";
 import { getPool } from "@/server/db/pool";
-import { createWorkspaceForUser } from "@/server/db/workspaces";
+import { createWorkspaceForUser, deleteSoleWorkspaces } from "@/server/db/workspaces";
+import { removeWorkspaceMedia } from "@/server/media/store";
 import { seedDemoWorkspace } from "@/server/demo/seed";
 import { sendMagicLinkMail } from "./mail";
 import { checkUserWrite } from "./profile-fields";
@@ -22,6 +23,9 @@ import { checkUserWrite } from "./profile-fields";
  *   idle, and an in-memory counter would hand out a fresh allowance each time.
  * - **Account linking keeps its safe default**: Google joins an existing account only
  *   when that email is verified, which magic-link sign-in always is.
+ * - **Deleting an account** deletes the shop with it, rows and photos. It needs a session
+ *   signed in within the last day; an older one is asked to sign in again first. A demo
+ *   has nothing to delete: it expires, and its drafts are in our shared test store.
  */
 export const COOKIE_PREFIX = "listsnap";
 const HOUR = 60 * 60;
@@ -71,6 +75,13 @@ function build() {
         uiLang: { type: "string", required: false, input: true },
         theme: { type: "string", required: false, input: true },
         phone: { type: "string", required: false, input: true },
+      },
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (user) => {
+          if ((user as { isAnonymous?: boolean }).isAnonymous) throw new APIError("BAD_REQUEST");
+          for (const id of await deleteSoleWorkspaces(user.id)) await removeWorkspaceMedia(id);
+        },
       },
     },
 
