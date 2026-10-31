@@ -394,7 +394,12 @@
       "cutout": "কাটআউট",
       "studio": "স্টুডিও",
       "lifestyle": "লাইফস্টাইল",
-      "banner": "ব্যানার"
+      "banner": "ব্যানার",
+      "look_eid": "ঈদ লুক",
+      "look_boishakh": "পহেলা বৈশাখ লুক",
+      "look_minimal": "সাদামাটা সাদা লুক",
+      "look_outdoor": "বাইরের লুক",
+      "look_wedding": "বিয়ের লুক"
     },
     "search": "লিস্টিংয়ের শিরোনামে খুঁজুন",
     "searchGo": "খুঁজুন",

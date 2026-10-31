@@ -394,7 +394,12 @@
       "cutout": "Cutout",
       "studio": "Studio",
       "lifestyle": "Lifestyle",
-      "banner": "Banner"
+      "banner": "Banner",
+      "look_eid": "Eid look",
+      "look_boishakh": "Pohela Boishakh look",
+      "look_minimal": "Minimal white look",
+      "look_outdoor": "Outdoor look",
+      "look_wedding": "Wedding look"
     },
     "search": "Search by listing title",
     "searchGo": "Search",
