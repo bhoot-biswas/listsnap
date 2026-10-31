@@ -1,7 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { WooChecks } from "@/components/app/woo-checks";
 import { WooConnectForm } from "@/components/app/woo-connect-form";
-import { DemoStoreButton } from "@/components/app/demo-store-button";
 import { ConfirmButton, PendingButton } from "@/components/app/form-buttons";
 import { keyHint } from "@/server/stores/woo-store";
 import { disconnectWoo, recheckWoo } from "@/server/actions/woo-connection";
@@ -12,7 +11,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { DetailHeader, DetailSection } from "./detail-header";
 import { SaveDraftsToggle } from "./save-drafts-toggle";
 
-/** WooCommerce's page: its checks, settings and keys, or the form to connect one. */
+/** WooCommerce's page: its checks, settings and keys. */
 export async function WooDetail({
   s,
   row,
@@ -41,15 +40,7 @@ export async function WooDetail({
     <div className="space-y-6">
       <DetailHeader s={s} action={testNow} />
 
-      {s.status === "none" ? (
-        <DetailSection id="woo-connect" title={t("connectTitle")}>
-          <p className="text-sm text-muted-foreground">{t("notConnected")}</p>
-          <WooConnectForm next="connections" />
-          <div className="border-t pt-3">
-            <DemoStoreButton next="connections" />
-          </div>
-        </DetailSection>
-      ) : !own ? (
+      {!own ? (
         <DetailSection id="woo-status" title={t("statusTitle")}>
           {/* a demo shop has no store of its own to connect */}
           <p className="text-sm text-muted-foreground">{row ? t("usingDemoBody") : t("demoShopBody")}</p>

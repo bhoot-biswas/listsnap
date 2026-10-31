@@ -20,7 +20,9 @@ export async function GET(request: Request) {
   const saved = readStateCookie(jar.get(STATE_COOKIE)?.value);
   jar.delete({ name: STATE_COOKIE, path: "/api/shopify" });
   const back = (code: string) =>
-    saved?.next === "onboarding" ? `/onboarding?step=store&shopify=${code}` : `/connections/shopify?shopify=${code}`;
+    saved?.next === "onboarding"
+      ? `/onboarding?step=store&shopify=${code}`
+      : `/connections/add/shopify?shopify=${code}`;
 
   const query = new URL(request.url).searchParams;
   const shop = query.get("shop") ?? "";

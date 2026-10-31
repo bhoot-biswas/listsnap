@@ -6,17 +6,26 @@ import type { ServiceOverview } from "@/server/connections/overview";
 import { StatusPill } from "./status-pill";
 
 /** Back to the list, then the service with its status and its one main action. */
-export async function DetailHeader({ s, action }: { s: ServiceOverview; action?: React.ReactNode }) {
+export async function DetailHeader({
+  s,
+  action,
+  back = "connected",
+}: {
+  s: ServiceOverview;
+  action?: React.ReactNode;
+  /** Which tab the back link returns to. */
+  back?: "connected" | "add";
+}) {
   const t = await getTranslations("connections");
   const address = s.address;
   return (
     <div className="space-y-4">
       <Link
-        href="/connections"
+        href={back === "add" ? "/connections/add" : "/connections"}
         className="-ml-1 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-9"
       >
         <ChevronLeft className="size-4" aria-hidden="true" />
-        {t("back")}
+        {back === "add" ? t("tabs.add") : t("back")}
       </Link>
       <div className="flex flex-wrap items-center gap-4">
         <ServiceLogo service={s.service} className="size-12" />

@@ -792,7 +792,21 @@
     "back": "Connections",
     "statusTitle": "Status",
     "settingsTitle": "Settings",
-    "connectTitle": "Connect"
+    "connectTitle": "Connect",
+    "tabs": {
+      "label": "Connections",
+      "connected": "Connected",
+      "add": "Add"
+    },
+    "addIntro": "Connect a store to save drafts to it, or Facebook to post reels.",
+    "emptyIntro": "Nothing is connected yet. Connect a store so ListSnap can save your listings to it as drafts.",
+    "allConnected": "Everything ListSnap works with is connected.",
+    "connect": "Connect",
+    "connectService": "Connect {name}",
+    "demoTitle": "No store yet?",
+    "demoBody": "Try ListSnap with our test store, and connect your own any time.",
+    "demoWoo": "Use the WooCommerce test store",
+    "demoShopify": "Use the Shopify test store"
   },
   "review": {
     "title": "Review listing",

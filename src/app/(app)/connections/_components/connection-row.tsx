@@ -9,8 +9,6 @@ import { StatusPill } from "./status-pill";
 /** One service on Connections; the whole row opens its detail page. */
 export function ConnectionRow({ s, severalStores }: { s: ServiceOverview; severalStores: boolean }) {
   const t = useTranslations("connections");
-  // a demo store's pill already says so; a service not yet connected says what it's for
-  const address = s.status === "none" ? t(`desc.${s.service}`) : s.address;
   return (
     <li>
       <Link
@@ -21,7 +19,7 @@ export function ConnectionRow({ s, severalStores }: { s: ServiceOverview; severa
         <div className="min-w-0 flex-1 md:grid md:grid-cols-[minmax(0,1fr)_8rem_9rem] md:items-center md:gap-4">
           <div className="min-w-0">
             <p className="font-medium">{t(`names.${s.service}`)}</p>
-            {address && <p className="truncate text-sm text-muted-foreground">{address}</p>}
+            {s.address && <p className="truncate text-sm text-muted-foreground">{s.address}</p>}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 md:mt-0 md:contents">
             <StatusPill status={s.status} className="md:justify-self-start" />

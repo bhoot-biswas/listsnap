@@ -1,18 +1,16 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { ShopifyChecks } from "@/components/app/shopify-checks";
 import { ShopifyConnectForm } from "@/components/app/shopify-connect-form";
-import { ShopifyDemoButton } from "@/components/app/shopify-demo-button";
 import { ConfirmButton, PendingButton } from "@/components/app/form-buttons";
 import { chooseShopifyLocation, disconnectShopify, recheckShopify } from "@/server/actions/shopify-connection";
 import type { ConnectionRow } from "@/server/db/connections";
 import type { ServiceOverview } from "@/server/connections/overview";
-import { env } from "@/server/env";
 import { ShopifySettings, type ShopifyCheck } from "@/lib/shopify-connection";
 import { relativeTime } from "@/lib/relative-time";
 import { DetailHeader, DetailSection } from "./detail-header";
 import { SaveDraftsToggle } from "./save-drafts-toggle";
 
-/** Shopify's page: the store's checks and where stock is counted, or "Connect Shopify". */
+/** Shopify's page: the store's checks and where stock is counted. */
 export async function ShopifyDetail({
   s,
   row,
@@ -28,7 +26,6 @@ export async function ShopifyDetail({
   const settings = ShopifySettings.parse(row?.settings_json ?? {});
   const checks = (Array.isArray(row?.checks_json) ? row.checks_json : []) as ShopifyCheck[];
   const own = s.status === "connected" || s.status === "broken";
-  const demoOffered = env().providers.shopify === "mock" || !!env().demoShopify;
 
   const testNow = own && (
     <form action={recheckShopify}>
@@ -42,17 +39,7 @@ export async function ShopifyDetail({
     <div className="space-y-6">
       <DetailHeader s={s} action={testNow} />
 
-      {s.status === "none" ? (
-        <DetailSection id="shopify-connect" title={t("connectTitle")}>
-          <p className="text-sm text-muted-foreground">{tc("body")}</p>
-          <ShopifyConnectForm next="connections" />
-          {demoOffered && (
-            <div className="border-t pt-3">
-              <ShopifyDemoButton next="connections" />
-            </div>
-          )}
-        </DetailSection>
-      ) : !own ? (
+      {!own ? (
         <DetailSection id="shopify-status" title={t("statusTitle")}>
           <p className="text-sm text-muted-foreground">{tc("usingDemoBody")}</p>
           {severalStores && <SaveDraftsToggle kind="shopify" on={settings.saveDrafts} />}

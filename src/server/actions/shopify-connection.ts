@@ -74,5 +74,6 @@ export async function disconnectShopify(): Promise<void> {
   const ws = forWorkspace(viewer.workspace.id);
   await ws.disconnect("shopify");
   await ws.setConnectionSettings("shopify", { ...settings, demo: false });
-  refresh();
+  // its page is gone once it is disconnected
+  redirect("/connections");
 }

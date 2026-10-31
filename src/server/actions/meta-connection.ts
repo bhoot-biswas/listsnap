@@ -1,7 +1,7 @@
 "use server";
 
 import { randomInt } from "node:crypto";
-import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/server/auth/session";
 import { encryptSecret } from "@/server/crypto";
 import { forWorkspace } from "@/server/db/scope";
@@ -31,12 +31,13 @@ export async function connectTestMeta(): Promise<void> {
     checks: null,
     settings,
   });
-  refresh();
+  redirect("/connections/meta");
 }
 
 /** Forgets the Page token. Posts already made stay on Facebook and Instagram. */
 export async function disconnectMeta(): Promise<void> {
   const viewer = await requireWorkspace();
   await forWorkspace(viewer.workspace.id).disconnect("meta");
-  refresh();
+  // its page is gone once it is disconnected
+  redirect("/connections");
 }

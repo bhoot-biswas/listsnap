@@ -124,5 +124,6 @@ export async function disconnectWoo(): Promise<void> {
   const ws = forWorkspace(viewer.workspace.id);
   await ws.disconnect("woo");
   await ws.setConnectionSettings("woo", { ...settings, demo: false });
-  refresh();
+  // its page is gone once it is disconnected
+  redirect("/connections");
 }

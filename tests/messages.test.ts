@@ -76,6 +76,7 @@ describe("connections labels", () => {
     const want = [
       ...SERVICES.flatMap((s) => [`names.${s}`, `desc.${s}`, `groups.${SERVICE_GROUP[s]}`]),
       ...["connected", "broken", "demo", "test", "none"].map((s) => `status.${s}`),
+      ...["connected", "add"].map((tab) => `tabs.${tab}`),
     ];
     for (const lang of ["en", "bn"])
       expect(

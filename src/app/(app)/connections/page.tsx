@@ -7,6 +7,8 @@ import { requireWorkspace } from "@/server/auth/session";
 import { connectionsOverview } from "@/server/connections/overview";
 import { serviceHref, type ServiceGroup } from "@/lib/connectors";
 import { ConnectionRow } from "./_components/connection-row";
+import { ConnectionsTabs } from "./_components/connections-tabs";
+import { Catalogue } from "./_components/catalogue";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("connections") };
@@ -15,21 +17,24 @@ export async function generateMetadata(): Promise<Metadata> {
 const GROUPS: ServiceGroup[] = ["store", "social"];
 
 /**
- * S13 Connections: every service on one list, stores then social, each row opening its
- * own page. What needs the seller comes first, above the list.
+ * S13 Connections: what the shop is connected to, stores then social, each row opening its
+ * own page. What needs the seller comes first. With nothing connected yet, the Add cards
+ * show right here, so a new seller isn't sent to another tab to start.
  */
 export default async function ConnectionsPage() {
   const viewer = await requireWorkspace();
   const t = await getTranslations("connections");
   const tNav = await getTranslations("nav");
   const { services, severalStores } = await connectionsOverview(viewer.workspace);
+  const connected = services.filter((s) => s.status !== "none");
   const broken = services.filter((s) => s.status === "broken");
 
   return (
     <>
       <TopBar title={tNav("connections")} />
-      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
-        <p className="text-muted-foreground">{t("intro")}</p>
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 pt-4 pb-24 md:px-6 md:pb-6">
+        <ConnectionsTabs current="connected" />
+        <p className="text-muted-foreground">{connected.length ? t("intro") : t("emptyIntro")}</p>
 
         {broken.map((s) => (
           <div
@@ -45,8 +50,10 @@ export default async function ConnectionsPage() {
           </div>
         ))}
 
+        {!connected.length && <Catalogue services={services} />}
+
         {GROUPS.map((group) => {
-          const rows = services.filter((s) => s.group === group);
+          const rows = connected.filter((s) => s.group === group);
           if (!rows.length) return null;
           return (
             <section key={group} aria-labelledby={`group-${group}`} className="space-y-2">
