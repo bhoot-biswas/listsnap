@@ -8,6 +8,7 @@ import { forWorkspace } from "@/server/db/scope";
 import { chatItems } from "@/server/chat/view";
 import { AssistantActions } from "../_components/assistant-actions";
 import { AssistantChat } from "../_components/assistant-chat";
+import { ChatPageMenu } from "../_components/chat-manage";
 
 /** Read once per request, for both the page and its title. */
 const shopChat = cache(async (id: string) => {
@@ -30,7 +31,15 @@ export default async function AssistantChatPage({ params }: PageProps<"/assistan
   const t = await getTranslations("chat");
   return (
     <>
-      <TopBar title={chat.title || t("pageTitle")} actions={<AssistantActions newChat />} />
+      <TopBar
+        title={chat.title || t("pageTitle")}
+        actions={
+          <>
+            <AssistantActions newChat />
+            <ChatPageMenu id={id} title={chat.title ?? ""} />
+          </>
+        }
+      />
       <AssistantChat key={id} chatId={id} initial={chatItems(await chat.ws.chatMessages(id))} />
     </>
   );

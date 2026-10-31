@@ -9,7 +9,7 @@ import { createTestJob, createTestWorkspace, dbEnv, runJob, samplePhoto } from "
 const enabled = dbEnv();
 
 describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
-  const { getPool, select } = await import("@/server/db/pool");
+  const { execute, getPool, select } = await import("@/server/db/pool");
   const { forWorkspace } = await import("@/server/db/scope");
   const { runChat } = await import("@/server/chat/run-chat");
   const { encryptSecret } = await import("@/server/crypto");
@@ -218,5 +218,43 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     } finally {
       await c.remove();
     }
+  });
+
+  it("renames, deletes and pages the shop's conversations, never a listing's", async () => {
+    const shopChats: string[] = [];
+    for (let i = 0; i < 32; i++) shopChats.push(await A.startChat(null, `Shop question ${i}`));
+    // spread the times out, newest last and after any other test's, so the order is certain
+    for (const [i, id] of shopChats.entries())
+      await execute("UPDATE chats SET updated_at = ? WHERE id = ?", [new Date(Date.UTC(2030, 0, 1, 0, i)), id]);
+    await A.addChatMessage(shopChats[0]!, { role: "user", content: "Hello" });
+    await execute("UPDATE chats SET updated_at = ? WHERE id = ?", [
+      new Date(Date.UTC(2030, 0, 1, 0, 0)),
+      shopChats[0]!,
+    ]);
+
+    const first = await A.shopChatPage();
+    expect(first.rows).toHaveLength(30);
+    expect(first.more).toBe(true);
+    expect(first.rows[0]!.id).toBe(shopChats[31]);
+    const rest = await A.shopChatPage(new Date(first.rows.at(-1)!.updated_at));
+    expect(rest.rows.slice(0, 2).map((r) => r.id)).toEqual([shopChats[1], shopChats[0]]);
+
+    // a new name keeps the conversation where it was in the list
+    expect(await A.renameChat(shopChats[0]!, "Greetings")).toBe(true);
+    expect(await A.chatTitle(shopChats[0]!)).toBe("Greetings");
+    expect((await A.shopChatPage(new Date(first.rows.at(-1)!.updated_at))).rows[1]!.id).toBe(shopChats[0]);
+
+    expect(await A.deleteChat(shopChats[0]!)).toBe(true);
+    expect(await A.chatInScope(shopChats[0]!, null)).toBeNull();
+    const left = await select<{ n: number }>("SELECT COUNT(*) AS n FROM chat_messages WHERE chat_id = ?", [
+      shopChats[0]!,
+    ]);
+    expect(Number(left[0]!.n)).toBe(0);
+
+    // a listing's conversation is managed on its Review page, not here
+    const listingChat = (await A.listingChat(listingId))!;
+    expect(await A.renameChat(listingChat, "Nope")).toBe(false);
+    expect(await A.deleteChat(listingChat)).toBe(false);
+    expect(await A.chatInScope(listingChat, listingId)).toBe(listingChat);
   });
 });
