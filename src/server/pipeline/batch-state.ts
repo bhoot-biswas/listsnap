@@ -4,13 +4,14 @@ import type { Workspace } from "@/server/db/workspaces";
 import type { BatchRow, BatchState } from "@/lib/batch-state";
 import { ListingText } from "@/lib/schemas/pipeline";
 import { suggestedPrice } from "@/lib/schemas/review";
-import { loadJobState } from "./job-state";
+import { buildJobState } from "./job-state";
 import type { Locale } from "@/i18n/request";
 
 /**
  * A batch as the bulk page sees it. Each row comes from the job's own saved state, so
  * the batch runner calls exactly what the single-job page would, and a refresh or a
- * second tab picks up where the batch stopped.
+ * second tab picks up where the batch stopped. The rows of every job are read together,
+ * one query per table, since the page asks again every couple of seconds.
  */
 export async function loadBatchState(
   workspace: Workspace,
@@ -20,11 +21,27 @@ export async function loadBatchState(
   const ws = forWorkspace(workspace.id);
   const batch = await ws.getBatch(batchId);
   if (!batch) return null;
-  const ids = await ws.batchJobIds(batchId);
+  const data = await ws.batchJobData(batchId);
+  const media = await ws.listingMedia(data.listings.map((l) => l.id));
+  const of = <T extends { job_id: string }>(rows: T[], id: string) => rows.filter((r) => r.job_id === id);
   const rows: BatchRow[] = [];
-  for (const id of ids) {
-    const [state, listings] = await Promise.all([loadJobState(workspace, id, locale), ws.listings(id)]);
-    if (!state) continue;
+  for (const job of data.jobs) {
+    const id = job.id;
+    const listings = of(data.listings, id);
+    const ids = new Set(listings.map((l) => l.id));
+    const state = buildJobState(
+      workspace,
+      {
+        job,
+        photos: of(data.photos, id),
+        steps: of(data.steps, id),
+        items: of(data.items, id),
+        listings,
+        media: media.filter((m) => ids.has(m.listing_id)),
+        calls: [],
+      },
+      locale,
+    );
     const view = state.listings[0];
     const row = listings[0];
     const en = ListingText.safeParse(row?.fields_json?.en);

@@ -1,5 +1,14 @@
 import "server-only";
-import { forWorkspace } from "@/server/db/scope";
+import {
+  forWorkspace,
+  type ApiCallRow,
+  type ItemRow,
+  type JobRow,
+  type PhotoRow,
+  type StepRowView,
+  type WorkspaceScope,
+} from "@/server/db/scope";
+import type { ListingRow } from "@/server/db/listings";
 import type { Workspace } from "@/server/db/workspaces";
 import { mediaUrl } from "@/server/media/store";
 import type { JobState, StepView } from "@/lib/job-state";
@@ -37,6 +46,17 @@ function detail(step: string, result: unknown, locale: Locale): string | null {
   return scene ? text(locale, `job.scenes.${scene}`) : null;
 }
 
+/** Everything a job's state is built from, read once per job or once per batch. */
+export interface JobData {
+  job: JobRow;
+  photos: PhotoRow[];
+  steps: StepRowView[];
+  items: ItemRow[];
+  listings: ListingRow[];
+  media: Awaited<ReturnType<WorkspaceScope["listingMedia"]>>;
+  calls: ApiCallRow[];
+}
+
 /** `locale` is the seller's UI language, for the step errors and details. */
 export async function loadJobState(
   workspace: Workspace,
@@ -54,6 +74,13 @@ export async function loadJobState(
     ws.apiCalls(jobId),
   ]);
   const media = await ws.listingMedia(listings.map((l) => l.id));
+  return buildJobState(workspace, { job, photos, steps, items, listings, media, calls }, locale);
+}
+
+/** The job state from rows already read: no queries, so a batch can build many from one read. */
+export function buildJobState(workspace: Workspace, d: JobData, locale: Locale = "en"): JobState {
+  const { job, photos, steps, items, listings, media, calls } = d;
+  const jobId = job.id;
   const scenes = autoScenes(workspace, job.group_mode);
   const translate = workspace.settings.listingLanguages.includes("bn");
   const next = nextCalls({ jobStatus: job.status, steps, listingIds: listings.map((l) => l.id), scenes, translate });
