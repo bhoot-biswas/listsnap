@@ -1,0 +1,25 @@
+# Shopify app configuration for ListSnap. Copy to shopify.app.toml, fill in client_id,
+# then `shopify app deploy`. The scopes must match SHOPIFY_SCOPES in
+# src/server/providers/shopify/oauth.ts.
+
+client_id = ""
+name = "ListSnap"
+application_url = "https://getlistsnap.com/api/shopify/install"
+embedded = false
+
+[access_scopes]
+scopes = "write_products,read_locations,write_inventory"
+
+[auth]
+redirect_urls = ["https://getlistsnap.com/api/shopify/callback"]
+
+[webhooks]
+api_version = "2026-10"
+
+  [[webhooks.subscriptions]]
+  topics = ["app/uninstalled"]
+  uri = "https://getlistsnap.com/api/shopify/webhooks"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "https://getlistsnap.com/api/shopify/webhooks"

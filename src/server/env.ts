@@ -27,6 +27,7 @@ export interface Env {
   providers: {
     meta: ProviderMode;
     woo: ProviderMode;
+    shopify: ProviderMode;
     instagram: ProviderMode;
     facebook: ProviderMode;
     video: ProviderMode;
@@ -37,6 +38,10 @@ export interface Env {
   mockDelayMs: number;
   /** The store every demo shop saves to. Null until configured. */
   demoWoo: { url: string; key: string; secret: string } | null;
+  /** Our public Shopify app. Empty values until it is registered; the mock needs none. */
+  shopify: { clientId: string; clientSecret: string; apiVersion: string };
+  /** Our Shopify demo store, reached with its own app's keys. Null until configured. */
+  demoShopify: { shop: string; clientId: string; clientSecret: string } | null;
   /** Where a store downloads product images from: the site URL, unless the store can't reach it (local Docker). */
   mediaFetchBaseUrl: string;
 }
@@ -79,6 +84,7 @@ export function env(): Env {
     providers: {
       meta: mode("PROVIDER_MODE_META"),
       woo: mode("PROVIDER_MODE_WOO"),
+      shopify: mode("PROVIDER_MODE_SHOPIFY"),
       instagram: mode("PROVIDER_MODE_INSTAGRAM"),
       facebook: mode("PROVIDER_MODE_FACEBOOK"),
       video: mode("PROVIDER_MODE_VIDEO"),
@@ -89,6 +95,21 @@ export function env(): Env {
     demoWoo:
       read("DEMO_WOO_URL") && read("DEMO_WOO_KEY") && read("DEMO_WOO_SECRET")
         ? { url: read("DEMO_WOO_URL").replace(/\/+$/, ""), key: read("DEMO_WOO_KEY"), secret: read("DEMO_WOO_SECRET") }
+        : null,
+    // our public Shopify app (OAuth); the mock provider needs neither value
+    shopify: {
+      clientId: read("SHOPIFY_CLIENT_ID"),
+      clientSecret: read("SHOPIFY_CLIENT_SECRET"),
+      apiVersion: read("SHOPIFY_API_VERSION") || "2026-10",
+    },
+    // a dev store in our own Shopify organisation, reached with its app's keys (client credentials)
+    demoShopify:
+      read("DEMO_SHOPIFY_SHOP") && read("DEMO_SHOPIFY_CLIENT_ID") && read("DEMO_SHOPIFY_CLIENT_SECRET")
+        ? {
+            shop: read("DEMO_SHOPIFY_SHOP"),
+            clientId: read("DEMO_SHOPIFY_CLIENT_ID"),
+            clientSecret: read("DEMO_SHOPIFY_CLIENT_SECRET"),
+          }
         : null,
     mediaFetchBaseUrl: (read("MEDIA_FETCH_BASE_URL") || siteUrl).replace(/\/+$/, ""),
   };

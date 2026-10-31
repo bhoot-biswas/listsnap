@@ -97,15 +97,17 @@
   },
   "onboarding": {
     "title": "আপনার দোকান সাজিয়ে নিন",
-    "body": "দুটি ছোট ধাপ: দোকানের নাম দিন, তারপর আপনার WooCommerce স্টোর যুক্ত করুন।",
+    "body": "দুটি ছোট ধাপ: দোকানের নাম দিন, তারপর আপনার অনলাইন স্টোর যুক্ত করুন।",
     "shopName": "দোকানের নাম",
     "shopNamePlaceholder": "রূপকথা ক্রাফটস",
     "continue": "এগিয়ে যান",
     "errorName": "দোকানের একটি নাম দিন (২–৮০ অক্ষর)।",
     "step": "ধাপ {n, number}/২",
-    "storeTitle": "আপনার WooCommerce স্টোর যুক্ত করুন",
+    "storeTitle": "আপনার অনলাইন স্টোর যুক্ত করুন",
     "storeBody": "ListSnap প্রতিটি লিস্টিং আপনার স্টোরে ড্রাফট হিসেবে সেভ করে। আপনি না চাইলে কিছুই প্রকাশ হয় না।",
-    "back": "পেছনে"
+    "back": "পেছনে",
+    "woo": "WooCommerce",
+    "shopify": "Shopify"
   },
   "dashboard": {
     "title": "ড্যাশবোর্ড",
@@ -167,8 +169,8 @@
     "activity": {
       "title": "সাম্প্রতিক কাজ",
       "sent_to_store": "“{title}” ড্রাফট স্টোরে রাখা হয়েছে",
-      "saved": "{kind, select, instagram {Instagram যুক্ত হয়েছে} other {স্টোর যুক্ত হয়েছে}}",
-      "removed": "{kind, select, instagram {Instagram সরানো হয়েছে} other {স্টোর সরানো হয়েছে}}",
+      "saved": "{kind, select, instagram {Instagram যুক্ত হয়েছে} shopify {Shopify যুক্ত হয়েছে} woo {WooCommerce যুক্ত হয়েছে} other {স্টোর যুক্ত হয়েছে}}",
+      "removed": "{kind, select, instagram {Instagram সরানো হয়েছে} shopify {Shopify সরানো হয়েছে} woo {WooCommerce সরানো হয়েছে} other {স্টোর সরানো হয়েছে}}",
       "untitled": "নামহীন লিস্টিং"
     }
   },
@@ -601,12 +603,12 @@
     "heading": "{count, plural, one {ড্রাফট সেভ হয়েছে} other {#টি ড্রাফট সেভ হয়েছে}}",
     "body": "“{title}” আপনার স্টোরে ড্রাফট হিসেবে আছে।",
     "open": "খুলুন",
-    "openInStore": "WooCommerce-এ খুলুন",
     "snapAnother": "আরেকটা ছবি তুলুন",
     "toDashboard": "ড্যাশবোর্ডে ফিরুন",
     "stats": "সময় লেগেছে {seconds, number} সেকেন্ড · AI খরচ ${cost}",
     "reelOrPost": "রিল বানান বা পোস্ট করুন",
-    "reelOrPostMany": "কোনো পণ্যে ট্যাপ করে তার রিল বানান বা ফেসবুক ও ইনস্টাগ্রামে পোস্ট করুন।"
+    "reelOrPostMany": "কোনো পণ্যে ট্যাপ করে তার রিল বানান বা ফেসবুক ও ইনস্টাগ্রামে পোস্ট করুন।",
+    "openIn": "{store}-এ খুলুন"
   },
   "connect": {
     "url": "স্টোরের ঠিকানা",
@@ -701,7 +703,64 @@
     },
     "disconnectConfirm": "স্টোরের সংযোগ বিচ্ছিন্ন করবেন? আবার সংযুক্ত না করা পর্যন্ত ListSnap সেখানে ড্রাফট সেভ করতে পারবে না।",
     "disconnectYes": "হ্যাঁ, বিচ্ছিন্ন করুন",
-    "keepConnected": "সংযুক্ত রাখুন"
+    "keepConnected": "সংযুক্ত রাখুন",
+    "shopify": "Shopify",
+    "savingHere": "নতুন ড্রাফট এখানে সেভ হয়",
+    "notSavingHere": "নতুন ড্রাফট এখানে সেভ হয় না",
+    "stopSaving": "এখানে নতুন ড্রাফট সেভ বন্ধ করুন",
+    "startSaving": "নতুন ড্রাফট এখানে সেভ করুন",
+    "shopifyCard": {
+      "body": "আপনার Shopify স্টোরে ড্রাফট সেভ করুন। ListSnap-কে অনুমতি দেবেন Shopify-তেই, তাই কোনো key কপি করতে হবে না।",
+      "shop": "স্টোরের ঠিকানা",
+      "shopPlaceholder": "myshop.myshopify.com",
+      "shopHint": "আপনার স্টোরের myshopify.com ঠিকানা। Shopify-তে Settings → Domains-এ পাবেন।",
+      "connect": "Shopify যুক্ত করুন",
+      "demo": "এখনো Shopify স্টোর নেই? আপাতত ডেমো স্টোর ব্যবহার করুন",
+      "usingDemoBody": "আপাতত আপনার ড্রাফট আমাদের Shopify টেস্ট স্টোরে সেভ হচ্ছে। যেকোনো সময় নিজের স্টোর যুক্ত করুন।",
+      "location": "স্টক গোনা হয় {name}-এ",
+      "noLocation": "স্টকের জন্য এখনো কোনো লোকেশন নেই",
+      "chooseLocation": "স্টক গুনুন",
+      "saveLocation": "সেভ করুন",
+      "reconnect": "আবার যুক্ত করুন",
+      "connected": "Shopify যুক্ত হয়েছে।",
+      "disconnectHint": "যে ড্রাফট আগেই Shopify-তে আছে সেগুলো থেকে যাবে। ListSnap পুরোপুরি সরাতে Shopify → Settings → Apps থেকে অ্যাপটিও মুছে দিন।",
+      "disconnectConfirm": "Shopify-এর সংযোগ বিচ্ছিন্ন করবেন? আবার সংযুক্ত না করা পর্যন্ত ListSnap সেখানে ড্রাফট সেভ করতে পারবে না।",
+      "errors": {
+        "shop": "আপনার স্টোরের myshopify.com ঠিকানা দিন, যেমন myshop.myshopify.com।",
+        "demo": "ডেমো দোকান সবসময় আমাদের WooCommerce টেস্ট স্টোর ব্যবহার করে।",
+        "denied": "Shopify যুক্ত হয়নি: অনুমতি দেওয়া বাতিল করা হয়েছে।",
+        "expired": "ওই Shopify লিংকের মেয়াদ শেষ বা মেলেনি। আবার যুক্ত করে দেখুন।",
+        "scopes": "Shopify ListSnap-কে দরকারি সব অনুমতি দেয়নি। আবার যুক্ত করে সব অনুমতি দিন।",
+        "taken": "অন্য একটি ListSnap দোকান এই Shopify স্টোরে আগেই যুক্ত আছে।",
+        "failed": "এই মুহূর্তে Shopify যুক্ত করা গেল না। একটু পরে আবার চেষ্টা করুন।"
+      },
+      "checks": {
+        "reach": {
+          "pass": "স্টোরে পৌঁছানো গেছে",
+          "fail": "ListSnap আপনার Shopify স্টোরে পৌঁছাতে পারেনি।"
+        },
+        "scopes": {
+          "pass": "ড্রাফট পণ্য আর স্টক সেভ করা যায়",
+          "fail": "ListSnap-এর দরকারি সব অনুমতি নেই।"
+        },
+        "location": {
+          "pass": "স্টকের জন্য লোকেশন পাওয়া গেছে",
+          "fail": "আপনার স্টোরে স্টক গোনার মতো চালু কোনো লোকেশন নেই।"
+        },
+        "currency": {
+          "pass": "দাম টাকায় (BDT)",
+          "warn": "আপনার স্টোরের মুদ্রা BDT নয়। ListSnap দাম টাকার অঙ্কে পাঠায়।"
+        }
+      },
+      "reasons": {
+        "unreachable": "আপনার স্টোর চালু আছে কিনা দেখে নিন।",
+        "auth": "ListSnap-কে অনুমতি দিতে Shopify আবার যুক্ত করুন।",
+        "scopes": "আবার যুক্ত করে সব অনুমতি দিন।",
+        "no_location": "Shopify → Settings → Locations-এ একটি লোকেশন যোগ করুন।",
+        "currency": "Shopify → Settings → Store details-এ বদলান, বা প্রকাশের আগে দাম দেখে নিন।",
+        "server": "Shopify-তে একটা সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।"
+      }
+    }
   },
   "review": {
     "title": "লিস্টিং দেখে নিন",
@@ -1010,7 +1069,7 @@
       "testConnection": "এই দোকানে একটি টেস্ট কানেকশন আছে। পোস্ট করতে আপনার আসল ফেসবুক পেজ সংযুক্ত করুন।",
       "noInstagram": "আপনার ফেসবুক পেজের সাথে কোনো ইনস্টাগ্রাম বিজনেস অ্যাকাউন্ট যুক্ত নেই, তাই ইনস্টাগ্রামে পোস্ট করার জায়গা নেই।",
       "demoStoreMissing": "ডেমো স্টোর এখনো তৈরি হয়নি। পরে আবার চেষ্টা করুন।",
-      "connectStore": "আগে কানেকশনস পেজে আপনার WooCommerce স্টোর সংযুক্ত করুন।",
+      "connectStore": "আগে কানেকশনস পেজে একটি স্টোর সংযুক্ত করুন।",
       "storePhotoFor": "\"{name}\"-এর ছবি স্টোর ডাউনলোড করতে পারেনি। আবার চেষ্টা করুন।",
       "storeColor": "স্টোর \"{name}\" রংটি নেয়নি। নামটি দেখে আবার চেষ্টা করুন।",
       "storeKeys": "আপনার স্টোর ListSnap-এর কী গ্রহণ করেনি। কানেকশনস পেজে সেগুলো দেখুন (read/write অনুমতি)।",
@@ -1021,7 +1080,18 @@
       "storeError": "স্টোর error {status}",
       "storeHttps": "আপনার স্টোরের ঠিকানা https:// দিয়ে শুরু হতে হবে।",
       "storePrivate": "এই স্টোরের ঠিকানা ইন্টারনেট থেকে পৌঁছানো যায় না।",
-      "storeNoAnswer": "আপনার স্টোর সাড়া দেয়নি। আপনার লিস্টিং এখানে নিরাপদ আছে; একটু পরে আবার চেষ্টা করুন।"
+      "storeNoAnswer": "আপনার স্টোর সাড়া দেয়নি। আপনার লিস্টিং এখানে নিরাপদ আছে; একটু পরে আবার চেষ্টা করুন।",
+      "noSaveStore": "আপনার কোনো স্টোরেই নতুন ড্রাফট সেভ করা চালু নেই। কানেকশনস পেজে একটি চালু করুন।",
+      "storeFailedIn": "{store}: {message}",
+      "shopifyAuth": "Shopify ListSnap-এর অনুমতি গ্রহণ করেনি। কানেকশনস পেজে স্টোরটি আবার সংযুক্ত করুন।",
+      "shopifyReconnect": "আপনার Shopify সংযোগের মেয়াদ শেষ হয়েছে। কানেকশনস পেজে আবার সংযুক্ত করুন।",
+      "shopifyUnavailable": "আপনার Shopify স্টোর এখন খোলা নেই (হয়তো বন্ধ রাখা বা বিল বাকি)। Shopify-তে দেখে নিন।",
+      "shopifyGone": "ListSnap ওই Shopify স্টোর খুঁজে পায়নি। কানেকশনস পেজে দেখে নিন।",
+      "shopifyBusy": "Shopify এখন ব্যস্ত। আপনার লিস্টিং এখানে নিরাপদ আছে; একটু পরে আবার চেষ্টা করুন।",
+      "shopifyProblem": "Shopify-তে একটি সমস্যা হয়েছে (error {status})। আপনার লিস্টিং এখানে নিরাপদ আছে।",
+      "shopifyNoAnswer": "Shopify সাড়া দেয়নি। আপনার লিস্টিং এখানে নিরাপদ আছে; একটু পরে আবার চেষ্টা করুন।",
+      "shopifySaid": "Shopify বলেছে: {message}",
+      "shopifyOptions": "এই পণ্যের অপশন Shopify-তে বদলানো হয়েছে, তাই ListSnap এর রংগুলো আপডেট করতে পারছে না। রং Shopify-তেই বদলান।"
     },
     "details": {
       "lookingFor": "খোঁজা হচ্ছে: \"{phrase}\"",

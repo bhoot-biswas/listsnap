@@ -4,17 +4,29 @@ import { mockMeta } from "./meta/mock";
 import { liveMeta } from "./meta/live";
 import { mockWoo } from "./woo/mock";
 import { liveWoo } from "./woo/live";
+import { mockShopify } from "./shopify/mock";
+import { liveShopify } from "./shopify/live";
 import { mockInstagram } from "./ig/mock";
 import { mockFacebook } from "./fb/mock";
 import { mockVideo } from "./video/mock";
 import { liveVideo } from "./video/live";
-import type { FacebookProvider, InstagramProvider, MetaProvider, VideoProvider, WooProvider } from "./types";
+import type {
+  FacebookProvider,
+  InstagramProvider,
+  MetaProvider,
+  ShopifyProvider,
+  VideoProvider,
+  WooProvider,
+} from "./types";
 
 export type {
   CallContext,
   FacebookProvider,
   InstagramProvider,
   MetaProvider,
+  SavedDraft,
+  ShopifyProvider,
+  ShopifyStore,
   SocialAccount,
   VideoProvider,
   WooProvider,
@@ -40,6 +52,10 @@ export function meta(): MetaProvider {
 
 export function woo(): WooProvider {
   return env().providers.woo === "live" ? liveWoo : mockWoo;
+}
+
+export function shopify(): ShopifyProvider {
+  return env().providers.shopify === "live" ? liveShopify : mockShopify;
 }
 
 /** Reels: live renders with the HyperFrames CLI on this server; mock returns a placeholder clip. */

@@ -40,7 +40,11 @@ export async function requestLocale(): Promise<Locale> {
 export function storedError(key: StepErrorKey, params?: TextParams): string {
   // last_error is VARCHAR(500); a value quoted from a model or a store is the only long part
   const short = Object.fromEntries(
-    Object.entries(params ?? {}).map(([k, v]) => [k, typeof v === "string" ? v.slice(0, 200) : v]),
+    Object.entries(params ?? {}).map(([k, v]) => [
+      k,
+      // another stored error inside (one store's failure among several) is already short
+      typeof v === "string" && !parseStoredError(v) ? v.slice(0, 200) : v,
+    ]),
   );
   return JSON.stringify(params ? { key, params: short } : { key });
 }
@@ -60,8 +64,18 @@ export function parseStoredError(stored: string): { key: StepErrorKey; params?: 
 
 /** A StepError's words in the seller's language, for errors that are answered at once rather than stored. */
 export function errorWords(err: { key: StepErrorKey; params?: TextParams }, locale: Locale): string {
-  return text(locale, `stepText.errors.${err.key}`, err.params);
+  const params =
+    err.params &&
+    Object.fromEntries(
+      Object.entries(err.params).map(([k, v]) => [k, typeof v === "string" ? nestedText(v, locale) : v]),
+    );
+  return text(locale, `stepText.errors.${err.key}`, params);
 }
+
+const nestedText = (v: string, locale: Locale) => {
+  const inner = parseStoredError(v);
+  return inner ? errorWords(inner, locale) : v;
+};
 
 /** A stored step error in the seller's language; old plain-word errors are shown as they are. */
 export function errorText(stored: string, locale: Locale): string {

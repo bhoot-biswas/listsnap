@@ -17,6 +17,7 @@ export function dbEnv(): boolean {
   process.env.MEDIA_DIR = mkdtempSync(path.join(tmpdir(), "listsnap-media-"));
   process.env.PROVIDER_MODE_META = "mock";
   process.env.PROVIDER_MODE_WOO = "mock";
+  process.env.PROVIDER_MODE_SHOPIFY = "mock";
   process.env.PROVIDER_MODE_INSTAGRAM = "mock";
   process.env.PROVIDER_MODE_FACEBOOK = "mock";
   process.env.PROVIDER_MODE_VIDEO = "mock";

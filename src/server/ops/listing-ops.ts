@@ -10,13 +10,17 @@ export const ListingId = z.string().min(1).max(64);
 export const getListingSummary = defineOp({
   name: "getListingSummary",
   description:
-    "Read one listing's current state: status, English and Bangla titles, category, price, stock, the AI's confidence and review notes, and its photos. Use it before changing a listing.",
+    "Read one listing's current state: status, English and Bangla titles, category, price, stock, the AI's confidence and review notes, its photos, and which online stores it is saved to. Use it before changing a listing.",
   input: z.object({ listingId: ListingId }),
   effect: "read",
   async run({ workspace, ws }, { listingId }) {
     const listing = await ws.getListing(listingId);
     if (!listing) return { ok: false, error: "not_found" };
-    const [items, media] = await Promise.all([ws.items(listing.job_id), ws.listingMedia([listingId])]);
+    const [items, media, refs] = await Promise.all([
+      ws.items(listing.job_id),
+      ws.listingMedia([listingId]),
+      ws.storeProducts([listingId]),
+    ]);
     const en = listing.fields_json?.en as
       { title?: string; category?: string; price_hint_bdt?: { low: number; high: number } } | undefined;
     const bn = listing.fields_json?.bn as { title?: string } | undefined;
@@ -38,7 +42,8 @@ export const getListingSummary = defineOp({
         stockQty: listing.stock_qty,
         confidence: listing.confidence,
         checkNotes: listing.check_notes ?? [],
-        inStore: listing.wc_product_id !== null,
+        inStore: refs.has(listingId),
+        inStores: Object.keys(refs.get(listingId) ?? {}),
         photos: [
           ...(main ? [{ id: main, kind: "main", selected: true }] : []),
           ...media.map((m) => ({ id: m.id, kind: m.kind, selected: !!m.selected })),

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * Colour variants: one listing for the same design in several colours, sold as a
- * WooCommerce variable product. Each SAM item is one colour. The seller's edits live in
+ * variable product (WooCommerce) or a product with a Color option (Shopify). Each SAM item is one colour. The seller's edits live in
  * the listing's fields (`fields_json.variants`); until then they come from Spark's
  * colour names on the items.
  */

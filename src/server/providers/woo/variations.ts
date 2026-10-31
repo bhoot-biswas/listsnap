@@ -1,6 +1,6 @@
 import "server-only";
 import { StepError } from "@/server/pipeline/run-step";
-import type { WooVariantInput } from "../types";
+import type { StoreVariantInput } from "../types";
 import type { WooApi } from "./http";
 
 /**
@@ -76,7 +76,7 @@ async function colorTerm(api: WooApi, attributeId: number, color: string): Promi
 export async function syncVariations(
   api: WooApi,
   productId: number,
-  variants: WooVariantInput[],
+  variants: StoreVariantInput[],
   attribute: ColorAttribute,
   images: { ids: Map<string, number>; src(mediaId: string): Promise<string | null> },
 ): Promise<void> {
@@ -86,7 +86,7 @@ export async function syncVariations(
     const item = v.meta_data.find((m) => m.key === ITEM_META_KEY)?.value;
     if (typeof item === "string") ours.set(item, v.id);
   }
-  const body = async (v: WooVariantInput, isNew: boolean) => {
+  const body = async (v: StoreVariantInput, isNew: boolean) => {
     const id = v.mediaId ? images.ids.get(v.mediaId) : undefined;
     const src = !id && isNew && v.mediaId ? await images.src(v.mediaId) : null;
     return {

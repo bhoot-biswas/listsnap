@@ -2,7 +2,7 @@ import "server-only";
 
 // Prompts tuned during the Phase 0a spike runs; see the field descriptions in the schemas too.
 export const SELLER_CONTEXT =
-  "You help small social-commerce sellers in Bangladesh list products on their WooCommerce store. " +
+  "You help small social-commerce sellers in Bangladesh list products on their online store (WooCommerce or Shopify). " +
   "Be accurate: describe only what the photo shows or what is very likely, and never invent brand names, " +
   "measurements or materials you cannot see.";
 

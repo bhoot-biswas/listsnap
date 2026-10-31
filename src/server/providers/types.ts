@@ -9,6 +9,7 @@ import type {
   SceneBrief,
 } from "@/lib/schemas/pipeline";
 import type { WooCheckResult } from "@/lib/woo-connection";
+import type { ShopifyCheckResult } from "@/lib/shopify-connection";
 import type { AssistRequest } from "@/lib/schemas/assist";
 import type { ReelTemplate, ReelVariables } from "@/lib/schemas/reels";
 import type { ChatMessage } from "@/lib/schemas/chat";
@@ -121,34 +122,46 @@ export interface BrandVoice {
   note: string | null;
 }
 
-export interface WooDraftInput {
+/** What every store gets for a draft, whichever store it is. */
+export interface StoreDraftInput {
   listingId: string;
-  productId: number | null;
+  /** The store's id for the product saved before (WooCommerce's number, Shopify's GID); null for none. */
+  productRef: string | null;
   title: string;
+  /** Plain text from the model; each store client turns it into its own HTML. */
   description: string;
   shortDescription: string;
   category: string;
-  /** Used when the store has no category by that name; null lets the client create one. */
-  fallbackCategoryId: number | null;
   regularPrice: number | null;
   /** Null leaves stock unmanaged in the store. */
   stockQty: number | null;
   tags: string[];
   attributes: { name: string; value: string }[];
-  /** Workspace media, main image first. The live client uploads the files, since /media is private. */
+  /** Workspace media, main image first. Stores fetch them from signed links, since /media is private. */
   images: { mediaId: string; alt: string }[];
-  /** Colours sold as variations of one variable product; null makes a simple product. */
-  variants: WooVariantInput[] | null;
+  /** Colours sold as variants of one product; null makes a product with no options. */
+  variants: StoreVariantInput[] | null;
 }
 
-export interface WooVariantInput {
-  /** Matches a variation to its item on later saves. */
+export interface StoreVariantInput {
+  /** Matches a variant to its item on later saves. */
   itemId: string;
   color: string;
   regularPrice: number | null;
   stockQty: number | null;
   /** This colour's main image, also sent in `images` so the gallery shows every colour. */
   mediaId: string | null;
+}
+
+/** A draft as the store saved it: its id there, and where the seller edits it. */
+export interface SavedDraft {
+  productRef: string;
+  editUrl: string;
+}
+
+export interface WooDraftInput extends StoreDraftInput {
+  /** Used when the store has no category by that name; null lets the client create one. */
+  fallbackCategoryId: number | null;
 }
 
 /** A shop's WooCommerce store: its address and REST keys (decrypted only for the call). */
@@ -161,13 +174,44 @@ export interface WooStore {
 export interface WooProvider {
   readonly mode: "mock" | "live";
   /** Creates or updates a draft product; never publishes. */
-  saveDraft(
-    ctx: CallContext,
-    store: WooStore | null,
-    input: WooDraftInput,
-  ): Promise<{ productId: number; editUrl: string }>;
+  saveDraft(ctx: CallContext, store: WooStore | null, input: WooDraftInput): Promise<SavedDraft>;
   /** Tests an address and keys before they're saved (onboarding, Connections). */
   check(ctx: CallContext, store: WooStore): Promise<WooCheckResult>;
+}
+
+export interface ShopifyDraftInput extends StoreDraftInput {
+  /** Where stock is counted; null leaves every variant untracked. */
+  locationId: string | null;
+}
+
+/** A Shopify store and an access token for it, already fresh (stores/shopify-token.ts). */
+export interface ShopifyStore {
+  /** "name.myshopify.com" */
+  shop: string;
+  accessToken: string;
+}
+
+/** What Shopify's token endpoint answered. Expiry times are absolute (ms since epoch). */
+export interface ShopifyToken {
+  accessToken: string;
+  scope: string;
+  expiresAt: number | null;
+  refreshToken: string | null;
+  refreshExpiresAt: number | null;
+}
+
+export interface ShopifyProvider {
+  readonly mode: "mock" | "live";
+  /** Creates or updates a draft product; never publishes. */
+  saveDraft(ctx: CallContext, store: ShopifyStore | null, input: ShopifyDraftInput): Promise<SavedDraft>;
+  /** Tests a fresh connection: scopes, a location for stock, the shop's currency. */
+  check(ctx: CallContext, store: ShopifyStore): Promise<ShopifyCheckResult>;
+  /** OAuth: the code from the callback for an expiring offline token. */
+  exchangeCode(ctx: CallContext, shop: string, code: string): Promise<ShopifyToken>;
+  /** Spends a refresh token for a new pair; the old refresh token is used up. */
+  refresh(ctx: CallContext, shop: string, refreshToken: string): Promise<ShopifyToken>;
+  /** A 24-hour token for a store in our own organisation (the demo store), with the app's own keys. */
+  appToken(ctx: CallContext, shop: string, app: { clientId: string; clientSecret: string }): Promise<ShopifyToken>;
 }
 
 /** A Page or Instagram account the seller connected, with its decrypted token. Never logged. */
