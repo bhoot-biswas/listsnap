@@ -9,6 +9,7 @@ import { DemoStoreButton } from "@/components/app/demo-store-button";
 import { ShopifyConnectForm } from "@/components/app/shopify-connect-form";
 import { ShopifyDemoButton } from "@/components/app/shopify-demo-button";
 import { env } from "@/server/env";
+import { shopifyOffered } from "@/server/stores/shopify-connect";
 import { cn } from "@/lib/utils";
 import { requireWorkspace } from "@/server/auth/session";
 import { OnboardingForm } from "./_components/onboarding-form";
@@ -27,7 +28,9 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
   const query = await searchParams;
   const store = query.step === "store";
   const shopifyError = SHOPIFY_ERRORS.find((e) => e === query.shopify);
-  const platform = query.store === "shopify" || shopifyError ? "shopify" : "woo";
+  // where Shopify can't really connect yet, onboarding offers WooCommerce alone
+  const offered = shopifyOffered();
+  const platform = offered && (query.store === "shopify" || shopifyError) ? "shopify" : "woo";
   const t = await getTranslations("onboarding");
   const tShopify = await getTranslations("connections.shopifyCard");
   const shopifyDemo = env().providers.shopify === "mock" || !!env().demoShopify;
@@ -44,19 +47,21 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
       </div>
       {store ? (
         <div className="space-y-6">
-          <nav aria-label={t("storeTitle")} className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
-            {(["woo", "shopify"] as const).map((p) => (
-              <ButtonLink
-                key={p}
-                href={`/onboarding?step=store&store=${p}`}
-                variant="ghost"
-                aria-current={platform === p ? "page" : undefined}
-                className={cn("h-11", platform === p && "bg-background shadow-sm")}
-              >
-                {t(p)}
-              </ButtonLink>
-            ))}
-          </nav>
+          {offered && (
+            <nav aria-label={t("storeTitle")} className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
+              {(["woo", "shopify"] as const).map((p) => (
+                <ButtonLink
+                  key={p}
+                  href={`/onboarding?step=store&store=${p}`}
+                  variant="ghost"
+                  aria-current={platform === p ? "page" : undefined}
+                  className={cn("h-11", platform === p && "bg-background shadow-sm")}
+                >
+                  {t(p)}
+                </ButtonLink>
+              ))}
+            </nav>
+          )}
           {platform === "woo" ? (
             <WooConnectForm next="onboarding" />
           ) : (

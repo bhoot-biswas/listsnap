@@ -2,6 +2,7 @@ import "server-only";
 import { forWorkspace } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
 import { metaConnection } from "@/server/social/connection";
+import { shopifyOffered } from "@/server/stores/shopify-connect";
 import { SERVICES, SERVICE_GROUP, type Service, type ServiceGroup, type ServiceStatus } from "@/lib/connectors";
 import { ShopifySettings } from "@/lib/shopify-connection";
 import { WooSettings } from "@/lib/woo-connection";
@@ -54,6 +55,7 @@ export async function connectionsOverview(workspace: Workspace): Promise<Connect
       return [{ service, group, status: "demo", address: null, saveDrafts: true, checkedAt: null }];
     }
     const row = stores.find((r) => r.kind === service);
+    if (!row && service === "shopify" && !shopifyOffered()) return [];
     if (!row) return [{ service, group, status: "none", address: null, saveDrafts: null, checkedAt: null }];
     const settings = (service === "woo" ? WooSettings : ShopifySettings).parse(row.settings_json ?? {});
     return [
