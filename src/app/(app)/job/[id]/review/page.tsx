@@ -103,6 +103,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
         hint={{ low: price_hint_bdt.low, high: price_hint_bdt.high }}
         confidence={listing.confidence}
         checkNotes={listing.check_notes ?? []}
+        status={listing.status}
         inStore={listing.status === "in_store" || listing.status === "posted"}
         looks={{
           made: media.map((m) => lookOf(m.kind)).filter((l): l is Look => l !== null),

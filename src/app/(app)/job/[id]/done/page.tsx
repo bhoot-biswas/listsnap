@@ -94,7 +94,7 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
             )}
             {saved.length === 1 && (
               <ButtonLink
-                href={`/job/${id}/review?l=${saved[0]!.listing.id}`}
+                href={`/job/${id}/review?l=${saved[0]!.listing.id}#extras`}
                 variant="outline"
                 size="lg"
                 className="w-full"
