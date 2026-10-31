@@ -83,7 +83,8 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     expect(items(yes)[0]).toMatchObject({ kind: "approval", id: card.id, state: "approved" });
     expect(items(yes)[0]).toHaveProperty("link");
     expect(await posts()).toBe(1);
-    expect((await A.getListing(listingId))!.status).toBe("posted");
+    // the mock post is a test post, so the listing isn't marked Posted
+    expect((await A.getListing(listingId))!.status).toBe("needs_review");
 
     expect(await chat({ approve: { toolCallId: card.id, yes: true } })).toContainEqual({
       type: "error",

@@ -83,7 +83,7 @@ export function ReelPost({ listingId, lang, social }: { listingId: string; lang:
     <div className="space-y-2">
       {done.map((d) => (
         <p key={d} className="flex flex-wrap items-center gap-x-2 text-xs">
-          <span className="font-medium text-success">{t("posted", { where: t(d) })}</span>
+          <span className="font-medium text-success">{t(posted[d]!.test ? "testPosted" : "posted", { where: t(d) })}</span>
           <a
             href={posted[d]!.permalink}
             target="_blank"
