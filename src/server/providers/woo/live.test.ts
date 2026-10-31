@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { toHtml } from "./live";
-import { oauthQuery } from "./http";
+import { describe, expect, it, vi } from "vitest";
+import { findProduct, LISTING_META_KEY, listingSku, toHtml } from "./live";
+import { oauthQuery, type WooApi } from "./http";
+import type { WooDraftInput } from "../types";
 
 describe("toHtml", () => {
   it("turns blank lines into paragraphs and keeps single line breaks", () => {
@@ -27,5 +28,37 @@ describe("oauthQuery", () => {
     const a = new URLSearchParams(oauthQuery("GET", store.url, {}, store)).get("oauth_nonce");
     const b = new URLSearchParams(oauthQuery("GET", store.url, {}, store)).get("oauth_nonce");
     expect(a).not.toBe(b);
+  });
+});
+
+describe("findProduct after a lost answer", () => {
+  const input = { listingId: "L1", productId: null, title: "Edited title" } as WooDraftInput;
+  const draft = (id: number, listingId: string, status = "draft") => ({
+    id,
+    status,
+    images: [],
+    meta_data: [{ key: LISTING_META_KEY, value: listingId }],
+  });
+  /** A store holding these products, answering the two lookups findProduct makes. */
+  const store = (bySku: unknown[], byTitle: unknown[]) => {
+    const get = vi.fn(async (_path: string, query: Record<string, unknown> = {}) => (query.sku ? bySku : byTitle));
+    return { api: { get } as unknown as WooApi, get };
+  };
+
+  it("finds the draft by SKU, even when the seller changed the title", async () => {
+    const { api, get } = store([draft(7, "L1")], []);
+    expect(await findProduct(api, input)).toMatchObject({ id: 7 });
+    expect(get).toHaveBeenCalledWith("products", { sku: listingSku("L1") });
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to the title for drafts made before SKUs", async () => {
+    const { api } = store([], [draft(3, "other"), draft(5, "L1")]);
+    expect(await findProduct(api, input)).toMatchObject({ id: 5 });
+  });
+
+  it("skips a trashed product holding the SKU", async () => {
+    const { api } = store([draft(7, "L1", "trash")], []);
+    expect(await findProduct(api, input)).toBeNull();
   });
 });
