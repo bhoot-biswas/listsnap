@@ -13,7 +13,8 @@ import { ShopifySettings } from "@/lib/shopify-connection";
 
 /**
  * The Shopify card's actions. Connecting itself happens over OAuth (/api/shopify/install
- * and /callback); these use the demo store, re-check, pick where stock is counted, and disconnect.
+ * and /callback); these use the demo store, re-check and disconnect. Settings save on change
+ * through store-settings.ts.
  */
 
 /** "No Shopify store yet? Use our demo store for now." */
@@ -32,7 +33,7 @@ export async function connectShopifyDemo(form: FormData): Promise<void> {
     await markOnboarded(viewer.workspace.id);
     redirect("/snap");
   }
-  redirect("/connections");
+  redirect("/connections/shopify");
 }
 
 /** "Test now": checks the saved connection, refreshing its token if it's due, and records the result. */
@@ -52,20 +53,6 @@ export async function recheckShopify(): Promise<void> {
   refresh();
 }
 
-/** Where stock is counted: one of the locations from the last check, nothing else. */
-export async function chooseShopifyLocation(form: FormData): Promise<void> {
-  const viewer = await requireWorkspace();
-  const settings = await shopifySettings(viewer.workspace);
-  const chosen = settings.locations.find((l) => l.id === form.get("locationId"));
-  if (chosen)
-    await forWorkspace(viewer.workspace.id).setConnectionSettings("shopify", {
-      ...settings,
-      locationId: chosen.id,
-      locationName: chosen.name,
-    });
-  refresh();
-}
-
 /** Forgets the token; drafts already in Shopify stay there. Removing the app is done in Shopify. */
 export async function disconnectShopify(): Promise<void> {
   const viewer = await requireWorkspace();
@@ -74,5 +61,6 @@ export async function disconnectShopify(): Promise<void> {
   const ws = forWorkspace(viewer.workspace.id);
   await ws.disconnect("shopify");
   await ws.setConnectionSettings("shopify", { ...settings, demo: false });
-  refresh();
+  // its page is gone once it is disconnected
+  redirect("/connections");
 }

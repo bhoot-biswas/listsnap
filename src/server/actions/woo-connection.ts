@@ -39,7 +39,7 @@ async function finish(workspaceId: string, next: "onboarding" | "connections"): 
     await markOnboarded(workspaceId);
     redirect("/snap");
   }
-  redirect("/connections");
+  redirect("/connections/woo");
 }
 
 export async function connectWoo(_prev: ConnectState, form: FormData): Promise<ConnectState> {
@@ -76,6 +76,7 @@ export async function connectWoo(_prev: ConnectState, form: FormData): Promise<C
     defaultCategoryName: category?.name ?? null,
     demo: false,
     saveDrafts: previous.saveDrafts,
+    categories: result.categories,
   };
   await forWorkspace(viewer.workspace.id).saveConnection("woo", {
     baseUrl: url,
@@ -106,9 +107,11 @@ export async function recheckWoo(): Promise<void> {
   const viewer = await requireWorkspace();
   const ws = forWorkspace(viewer.workspace.id);
   try {
-    const { store } = await resolveWooStore(viewer.workspace);
+    const { store, settings } = await resolveWooStore(viewer.workspace);
     const result = await woo().check(ctx(viewer.workspace.id), store);
     await ws.setConnectionChecks("woo", result.ok ? "connected" : "broken", result.checks);
+    // a failed check may not have read the categories; keep the ones we had
+    if (result.categories.length) await ws.setConnectionSettings("woo", { ...settings, categories: result.categories });
   } catch (err) {
     console.error("[connect] re-check failed:", err);
     await ws.setConnectionChecks("woo", "broken", [{ id: "reach", status: "fail", reason: "server" }]);
@@ -124,5 +127,6 @@ export async function disconnectWoo(): Promise<void> {
   const ws = forWorkspace(viewer.workspace.id);
   await ws.disconnect("woo");
   await ws.setConnectionSettings("woo", { ...settings, demo: false });
-  refresh();
+  // its page is gone once it is disconnected
+  redirect("/connections");
 }

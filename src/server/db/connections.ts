@@ -1,6 +1,6 @@
 import "server-only";
 import { execute, json, select, selectOne, transaction } from "./pool";
-import type { StoreKind } from "@/lib/stores";
+import { storeStep, type StoreKind } from "@/lib/stores";
 
 /**
  * Store and social connections, bound to one workspace. Spread into forWorkspace().
@@ -18,6 +18,26 @@ export interface ConnectionRow {
   checks_json: unknown;
   settings_json: unknown;
   last_checked_at: Date | null;
+}
+
+export interface StoreSaveRow {
+  listing_id: string;
+  product_ref: string;
+  saved_at: Date;
+  job_id: string;
+  status: string;
+  title: string | null;
+  title_bn: string | null;
+}
+
+export interface StoreFailureRow {
+  job_id: string;
+  listing_id: string;
+  last_error: string | null;
+  finished_at: Date | null;
+  status: string;
+  title: string | null;
+  title_bn: string | null;
 }
 
 export function connectionQueries(ws: string) {
@@ -63,6 +83,32 @@ export function connectionQueries(ws: string) {
       select<ConnectionRow & { kind: StoreKind }>(
         "SELECT kind, base_url, credentials_enc, status, checks_json, settings_json, last_checked_at FROM store_connections WHERE workspace_id = ? AND kind IN ('woo', 'shopify') AND status <> 'disconnected' ORDER BY kind = 'shopify'",
         [ws],
+      ),
+
+    /** The drafts most recently saved to one store, newest first, for its Connections page. */
+    recentStoreSaves: (kind: StoreKind, limit = 5) =>
+      select<StoreSaveRow>(
+        `SELECT p.listing_id, p.product_ref, p.saved_at, l.job_id, l.status,
+                JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.en.title')) AS title,
+                JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.bn.title')) AS title_bn
+           FROM listing_store_products p
+           JOIN listings l ON l.id = p.listing_id AND l.workspace_id = p.workspace_id
+          WHERE p.workspace_id = ? AND p.kind = ?
+          ORDER BY p.saved_at DESC LIMIT ?`,
+        [ws, kind, limit],
+      ),
+
+    /** The last save to one store that failed, with the listing it was for. */
+    lastStoreFailure: (kind: StoreKind) =>
+      selectOne<StoreFailureRow>(
+        `SELECT s.job_id, s.target AS listing_id, s.last_error, s.finished_at, l.status,
+                JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.en.title')) AS title,
+                JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.bn.title')) AS title_bn
+           FROM job_steps s
+           JOIN listings l ON l.id = s.target AND l.workspace_id = s.workspace_id
+          WHERE s.workspace_id = ? AND s.step = ? AND s.status = 'failed'
+          ORDER BY s.finished_at DESC LIMIT 1`,
+        [ws, storeStep(kind)],
       ),
 
     /**

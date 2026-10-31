@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   if (!viewer) redirect("/sign-in");
   const query = new URL(request.url).searchParams;
   const next = query.get("next") === "onboarding" ? "onboarding" : "connections";
-  const back = next === "onboarding" ? "/onboarding?step=store&" : "/connections?";
+  const back = next === "onboarding" ? "/onboarding?step=store&" : "/connections/add/shopify?";
   if (viewer.workspace.isDemo) redirect(`${back}shopify=demo` as Route);
   let shop: string;
   try {

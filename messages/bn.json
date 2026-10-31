@@ -707,8 +707,6 @@
     "shopify": "Shopify",
     "savingHere": "নতুন ড্রাফট এখানে সেভ হয়",
     "notSavingHere": "নতুন ড্রাফট এখানে সেভ হয় না",
-    "stopSaving": "এখানে নতুন ড্রাফট সেভ বন্ধ করুন",
-    "startSaving": "নতুন ড্রাফট এখানে সেভ করুন",
     "shopifyCard": {
       "body": "আপনার Shopify স্টোরে ড্রাফট সেভ করুন। ListSnap-কে অনুমতি দেবেন Shopify-তেই, তাই কোনো key কপি করতে হবে না।",
       "shop": "স্টোরের ঠিকানা",
@@ -720,7 +718,6 @@
       "location": "স্টক গোনা হয় {name}-এ",
       "noLocation": "স্টকের জন্য এখনো কোনো লোকেশন নেই",
       "chooseLocation": "স্টক গুনুন",
-      "saveLocation": "সেভ করুন",
       "reconnect": "আবার যুক্ত করুন",
       "connected": "Shopify যুক্ত হয়েছে।",
       "disconnectHint": "যে ড্রাফট আগেই Shopify-তে আছে সেগুলো থেকে যাবে। ListSnap পুরোপুরি সরাতে Shopify → Settings → Apps থেকে অ্যাপটিও মুছে দিন।",
@@ -760,6 +757,66 @@
         "currency": "Shopify → Settings → Store details-এ বদলান, বা প্রকাশের আগে দাম দেখে নিন।",
         "server": "Shopify-তে একটা সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।"
       }
+    },
+    "intro": "যেসব স্টোরে ListSnap ড্রাফট সেভ করে, আর যেখানে রিল পোস্ট হয়।",
+    "groups": {
+      "store": "স্টোর",
+      "social": "সোশ্যাল"
+    },
+    "names": {
+      "woo": "WooCommerce",
+      "shopify": "Shopify",
+      "meta": "ফেসবুক ও ইনস্টাগ্রাম"
+    },
+    "desc": {
+      "woo": "আপনার WordPress শপে ড্রাফট সেভ করুন",
+      "shopify": "আপনার Shopify স্টোরে ড্রাফট সেভ করুন",
+      "meta": "আপনার পেজ ও ইনস্টাগ্রামে রিল পোস্ট করুন"
+    },
+    "status": {
+      "connected": "যুক্ত আছে",
+      "broken": "দেখা দরকার",
+      "demo": "ডেমো স্টোর",
+      "test": "টেস্ট",
+      "none": "যুক্ত নেই"
+    },
+    "drafts": {
+      "on": "নতুন ড্রাফট: চালু",
+      "off": "নতুন ড্রাফট: বন্ধ"
+    },
+    "attention": "{name} দেখা দরকার।",
+    "fix": "ঠিক করুন",
+    "back": "সংযোগ",
+    "statusTitle": "অবস্থা",
+    "settingsTitle": "সেটিংস",
+    "connectTitle": "যুক্ত করুন",
+    "tabs": {
+      "label": "সংযোগ",
+      "connected": "যুক্ত",
+      "add": "যোগ করুন"
+    },
+    "addIntro": "ড্রাফট সেভ করতে একটি স্টোর, অথবা রিল পোস্ট করতে ফেসবুক যুক্ত করুন।",
+    "emptyIntro": "এখনো কিছু যুক্ত নেই। স্টোর যুক্ত করুন, যাতে ListSnap আপনার লিস্টিং সেখানে ড্রাফট হিসেবে সেভ করতে পারে।",
+    "allConnected": "ListSnap যা দিয়ে কাজ করে, সব যুক্ত আছে।",
+    "connect": "যুক্ত করুন",
+    "connectService": "{name} যুক্ত করুন",
+    "demoTitle": "এখনো স্টোর নেই?",
+    "demoBody": "আমাদের টেস্ট স্টোর দিয়ে ListSnap চালিয়ে দেখুন, নিজের স্টোর যেকোনো সময় যুক্ত করুন।",
+    "demoWoo": "WooCommerce টেস্ট স্টোর ব্যবহার করুন",
+    "demoShopify": "Shopify টেস্ট স্টোর ব্যবহার করুন",
+    "saved": "সেভ হয়েছে",
+    "notSaved": "সেভ করা গেল না। আবার চেষ্টা করুন।",
+    "saveDraftsHere": "নতুন ড্রাফট এখানে সেভ করুন",
+    "defaultCategoryLabel": "ডিফল্ট ক্যাটাগরি",
+    "categoriesHint": "স্টোরের ক্যাটাগরি আনতে “এখন পরীক্ষা করুন” চাপুন, তারপর একটি বেছে নিন।",
+    "activity": {
+      "title": "সাম্প্রতিক কাজ",
+      "empty": "এখনো এখানে কোনো ড্রাফট সেভ হয়নি।",
+      "saved": "সেভ হয়েছে {time}",
+      "failed": "শেষ সেভ ব্যর্থ হয়েছে {time}",
+      "openInStore": "স্টোরে খুলুন",
+      "newTab": "(নতুন ট্যাবে খোলে)",
+      "untitled": "নামহীন লিস্টিং"
     }
   },
   "review": {

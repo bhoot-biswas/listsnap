@@ -33,7 +33,7 @@ export async function UsageToday({
 }
 
 const STEPS = [
-  { key: "store", href: "/connections" },
+  { key: "store", href: "/connections/add" },
   { key: "listing", href: "/snap" },
   { key: "bulk", href: "/bulk" },
   { key: "colors", href: "/snap" },

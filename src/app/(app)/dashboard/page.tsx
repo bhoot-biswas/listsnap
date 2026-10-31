@@ -8,6 +8,7 @@ import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { connectedStores } from "@/server/stores/targets";
+import { serviceHref } from "@/lib/connectors";
 import { Activity } from "./_components/activity";
 import { NeedsAttention } from "./_components/needs-attention";
 import { GetStarted, UsageToday, WeekBars } from "./_components/side-panels";
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
   const done = { ...checklist, store: checklist.store || isDemo };
   const name = viewer.user.isDemo ? tNav("demoSeller") : viewer.user.name.split(" ")[0];
   const brandNew = recent.length === 0;
+  const brokenStore = stores.find((s) => s.broken);
   const allDone = Object.values(done).every(Boolean);
 
   return (
@@ -60,14 +62,14 @@ export default async function DashboardPage() {
           </p>
         </section>
 
-        {stores.some((s) => s.broken) && (
+        {brokenStore && (
           <div
             role="alert"
             className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4"
           >
             <CircleAlert className="size-5 shrink-0 text-destructive" aria-hidden="true" />
             <p className="min-w-0 flex-1 text-sm">{t("storeBroken")}</p>
-            <ButtonLink href="/connections" variant="outline" className="h-11 md:h-9">
+            <ButtonLink href={serviceHref(brokenStore.kind)} variant="outline" className="h-11 md:h-9">
               {t("fixConnection")}
             </ButtonLink>
           </div>

@@ -62,6 +62,26 @@ describe("media library labels", () => {
     const { MEDIA_GROUPS } = await import("@/server/db/media-library");
     const kinds = Object.values(MEDIA_GROUPS).flat();
     for (const lang of ["en", "bn"])
-      expect(kinds.filter((k) => !has(load(lang), `media.kinds.${k}`)), lang).toEqual([]);
+      expect(
+        kinds.filter((k) => !has(load(lang), `media.kinds.${k}`)),
+        lang,
+      ).toEqual([]);
+  });
+});
+
+describe("connections labels", () => {
+  it("names and describes every service, and every status, in both languages", async () => {
+    // Connections builds these at runtime (t(`names.${service}`)), which the check above can't see
+    const { SERVICES, SERVICE_GROUP } = await import("@/lib/connectors");
+    const want = [
+      ...SERVICES.flatMap((s) => [`names.${s}`, `desc.${s}`, `groups.${SERVICE_GROUP[s]}`]),
+      ...["connected", "broken", "demo", "test", "none"].map((s) => `status.${s}`),
+      ...["connected", "add"].map((tab) => `tabs.${tab}`),
+    ];
+    for (const lang of ["en", "bn"])
+      expect(
+        want.filter((k) => !has(load(lang), `connections.${k}`)),
+        lang,
+      ).toEqual([]);
   });
 });
