@@ -32,6 +32,40 @@ export function chatQueries(ws: string) {
       );
     },
 
+    /**
+     * One page of the shop's conversations, the one used last first; `before` continues
+     * from the last one of the previous page.
+     */
+    async shopChatPage(
+      before?: Date,
+    ): Promise<{ rows: { id: string; title: string; updated_at: Date }[]; more: boolean }> {
+      const rows = await select<{ id: string; title: string; updated_at: Date }>(
+        `SELECT id, title, updated_at FROM chats WHERE workspace_id = ? AND listing_id IS NULL${before ? " AND updated_at < ?" : ""}
+          ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT ?`,
+        before ? [ws, before, CHAT_LIST + 1] : [ws, CHAT_LIST + 1],
+      );
+      return { rows: rows.slice(0, CHAT_LIST), more: rows.length > CHAT_LIST };
+    },
+
+    /** Renames one of the shop's conversations, keeping its place in the list; false when it isn't one. */
+    async renameChat(chatId: string, title: string): Promise<boolean> {
+      // updated_at = updated_at stops ON UPDATE from moving it to the top
+      const r = await execute(
+        "UPDATE chats SET title = ?, updated_at = updated_at WHERE id = ? AND workspace_id = ? AND listing_id IS NULL",
+        [title.slice(0, TITLE_MAX), chatId, ws],
+      );
+      return r.affectedRows > 0;
+    },
+
+    /** Deletes one of the shop's conversations; its messages go with it. False when it isn't one. */
+    async deleteChat(chatId: string): Promise<boolean> {
+      const r = await execute("DELETE FROM chats WHERE id = ? AND workspace_id = ? AND listing_id IS NULL", [
+        chatId,
+        ws,
+      ]);
+      return r.affectedRows > 0;
+    },
+
     /** The chat when it is this shop's and about this listing (or the shop, with null). */
     async chatInScope(chatId: string, listingId: string | null): Promise<string | null> {
       const row = await selectOne<{ id: string }>(

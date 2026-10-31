@@ -105,6 +105,14 @@ describe.skipIf(!enabled)("workspace isolation (MariaDB)", async () => {
     expect(await snap()).toBe(snapshot);
   });
 
+  it("can't rename or delete A's conversations", async () => {
+    const chatId = await A.startChat(null, "A's question");
+    expect(await B.renameChat(chatId, "Hacked")).toBe(false);
+    expect(await B.deleteChat(chatId)).toBe(false);
+    expect((await B.shopChatPage()).rows).toEqual([]);
+    expect(await A.chatTitle(chatId)).toBe("A's question");
+  });
+
   it("can't attach listings or items to A's job and photo", async () => {
     expect(await B.createListings(waitingJobId, [{ itemIds: [itemId] }])).toEqual([]);
     expect(
