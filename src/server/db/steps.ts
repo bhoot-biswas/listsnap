@@ -91,19 +91,26 @@ export function sqlStepStore(workspaceId: string): StepStore {
 
 /**
  * Writes steps that finished elsewhere straight in as done, with their results: how
- * demo shops get sample jobs that look exactly like ones the pipeline ran.
+ * demo shops get sample jobs that look exactly like ones the pipeline ran. Each step
+ * takes its `seconds`, one after another up to now, so the Dashboard's time per listing
+ * shows what a real run takes instead of 0 s.
  */
 export async function recordDoneSteps(
   workspaceId: string,
   jobId: string,
-  steps: { step: string; target: string; result: unknown }[],
+  steps: { step: string; target: string; result: unknown; seconds: number }[],
 ): Promise<void> {
+  let ago = steps.reduce((sum, s) => sum + s.seconds, 0);
   for (const s of steps) {
+    const startedAgo = Math.round(ago * 1e6);
+    ago -= s.seconds;
+    const finishedAgo = Math.round(ago * 1e6);
     await execute(
       `INSERT INTO job_steps (job_id, step, target, workspace_id, status, attempts, result_json, started_at, finished_at)
-       VALUES (?, ?, ?, ?, 'done', 1, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
-       ON DUPLICATE KEY UPDATE status = 'done', attempts = 1, result_json = VALUES(result_json), finished_at = UTC_TIMESTAMP(3)`,
-      [jobId, s.step, s.target, workspaceId, json(s.result)],
+       VALUES (?, ?, ?, ?, 'done', 1, ?, UTC_TIMESTAMP(3) - INTERVAL ? MICROSECOND, UTC_TIMESTAMP(3) - INTERVAL ? MICROSECOND)
+       ON DUPLICATE KEY UPDATE status = 'done', attempts = 1, result_json = VALUES(result_json),
+         started_at = VALUES(started_at), finished_at = VALUES(finished_at)`,
+      [jobId, s.step, s.target, workspaceId, json(s.result), startedAgo, finishedAgo],
     );
   }
 }
