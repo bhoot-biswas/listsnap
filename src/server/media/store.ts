@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { access, constants, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, constants, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { env } from "@/server/env";
@@ -162,4 +162,12 @@ export async function mediaDirWritable(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Removes a deleted shop's media folder. The id must look like one of ours, so a bad one can't reach another path. */
+export async function removeWorkspaceMedia(workspaceId: string): Promise<void> {
+  if (!UUID.test(workspaceId)) throw new Error(`Not a workspace id: ${workspaceId}`);
+  await rm(path.join(/*turbopackIgnore: true*/ env().mediaDir, workspaceId), { recursive: true, force: true });
 }

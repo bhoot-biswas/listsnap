@@ -12,7 +12,7 @@ import { getSession, requireWorkspace } from "@/server/auth/session";
 import { signInOptions } from "@/server/env";
 import { signOutDevice, signOutOtherDevices } from "@/server/actions/profile";
 import { describeUserAgent } from "@/lib/user-agent";
-import { LinkGoogleButton, Preferences, ProfileForm, SignOutButton } from "./_components/profile-forms";
+import { DeleteAccount, LinkGoogleButton, Preferences, ProfileForm, SignOutButton } from "./_components/profile-forms";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("profile") };
@@ -126,6 +126,10 @@ export default async function ProfilePage() {
             )}
             <SignOutButton />
           </div>
+        </FormSection>
+
+        <FormSection id="delete" title={t("delete.title")} intro={t("delete.intro")}>
+          <DeleteAccount />
         </FormSection>
       </div>
     </>

@@ -377,6 +377,16 @@
       "title": "You're in a demo shop",
       "body": "Demo shops have no account and end after 24 hours. Sign in to keep your own shop, store and listings.",
       "signIn": "Sign in"
+    },
+    "delete": {
+      "title": "Delete account",
+      "intro": "Deletes your account and your shop for good: listings, photos, reels, chats and settings. Drafts already saved to your WooCommerce store stay there. This can't be undone.",
+      "button": "Delete my account",
+      "confirm": "Delete your account and everything in your shop? This can't be undone.",
+      "yes": "Yes, delete everything",
+      "keep": "Keep my account",
+      "signInAgain": "For your safety, sign out and sign in again, then delete your account within a day.",
+      "failed": "Your account wasn't deleted. Try again."
     }
   },
   "media": {

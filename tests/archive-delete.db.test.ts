@@ -1,13 +1,19 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestJob, createTestWorkspace, dbEnv, runJob, samplePhoto } from "./db-helpers";
 
-/** Archiving hides a listing or job from the lists and brings it back. */
+/** Archiving hides and restores; deleting an account takes its shop's rows and photos with it. */
 const enabled = dbEnv();
 
 describe.skipIf(!enabled)("archive and account deletion (MariaDB)", async () => {
-  const { getPool } = await import("@/server/db/pool");
+  const { execute, getPool, selectOne } = await import("@/server/db/pool");
   const { forWorkspace } = await import("@/server/db/scope");
   const { ops } = await import("@/server/ops");
+  const { deleteSoleWorkspaces } = await import("@/server/db/workspaces");
+  const { removeWorkspaceMedia } = await import("@/server/media/store");
+  const { env } = await import("@/server/env");
 
   const a = await createTestWorkspace();
   const A = forWorkspace(a.workspace.id);
@@ -54,4 +60,38 @@ describe.skipIf(!enabled)("archive and account deletion (MariaDB)", async () => 
     expect(await listed()).not.toContain(own!.id);
   });
 
+  it("deletes a user's own shop, its rows and its photos, and leaves a shared shop", async () => {
+    const userId = randomUUID();
+    await execute(
+      "INSERT INTO `user` (id, name, email, emailVerified, createdAt, updatedAt) VALUES (?, 'Leaving', ?, 1, NOW(3), NOW(3))",
+      [userId, `${userId}@example.test`],
+    );
+    const own = await createTestWorkspace();
+    const shared = await createTestWorkspace();
+    const other = randomUUID();
+    await execute(
+      "INSERT INTO `user` (id, name, email, emailVerified, createdAt, updatedAt) VALUES (?, 'Staying', ?, 1, NOW(3), NOW(3))",
+      [other, `${other}@example.test`],
+    );
+    for (const [u, w] of [
+      [userId, own.workspace.id],
+      [userId, shared.workspace.id],
+      [other, shared.workspace.id],
+    ])
+      await execute("INSERT INTO memberships (user_id, workspace_id, role) VALUES (?, ?, 'owner')", [u, w]);
+    const job = await createTestJob(own.workspace.id, await samplePhoto("saree.jpg"));
+    const folder = path.join(env().mediaDir, own.workspace.id);
+    expect(existsSync(folder)).toBe(true);
+
+    const ids = await deleteSoleWorkspaces(userId);
+    for (const id of ids) await removeWorkspaceMedia(id);
+
+    expect(ids).toEqual([own.workspace.id]);
+    expect(await selectOne("SELECT id FROM jobs WHERE id = ?", [job])).toBeNull();
+    expect(existsSync(folder)).toBe(false);
+    expect(await selectOne("SELECT id FROM workspaces WHERE id = ?", [shared.workspace.id])).not.toBeNull();
+
+    await execute("DELETE FROM `user` WHERE id IN (?, ?)", [userId, other]);
+    await shared.remove();
+  });
 });
