@@ -39,6 +39,7 @@ export function ReviewForm({
   checkNotes,
   status,
   inStore,
+  storeBehind,
   others,
   looks,
   reels,
@@ -58,6 +59,8 @@ export function ReviewForm({
   checkNotes: string[];
   status: ListingStatus;
   inStore: boolean;
+  /** Edited since the store draft was saved. */
+  storeBehind: boolean;
   others: { id: string; n: number; status: ListingStatus; current: boolean }[];
 }) {
   const t = useTranslations("review");
@@ -87,10 +90,12 @@ export function ReviewForm({
 
   // the latest edit, for AI answers that arrive after the seller kept typing
   const latest = useRef(edit);
+  const [behind, setBehind] = useState(storeBehind);
   const change = (next: ListingEdit) => {
     latest.current = next;
     setEdit(next);
     saver.change(next);
+    setBehind(true);
   };
 
   // the chat changed the listing on the server: take the server's copy, which already holds
@@ -299,27 +304,35 @@ export function ReviewForm({
       </div>
 
       {/* on every width, so saving never means scrolling back up a long listing */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
-        <p role="status" aria-live="polite" className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          {state === "saving" && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-          {state === "saved" && <Check className="size-4 text-success" aria-hidden="true" />}
-          {state === "offline" && <CloudOff className="size-4" aria-hidden="true" />}
-          {state === "saved"
-            ? t("saved")
-            : state === "saving"
-              ? t("saving")
-              : state === "offline"
-                ? t("offline")
-                : t("saveError")}
-        </p>
-        <SaveToStore
-          jobId={jobId}
-          listingIds={[listingId]}
-          label={inStore ? t("updateStore") : t("saveToStore")}
-          update={inStore}
-          beforeSave={saver.flush}
-          className="w-auto max-sm:flex-1"
-        />
+      <div className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
+        {/* the autosave keeps ListSnap's copy; the store's draft changes only on Update */}
+        {inStore && behind && (
+          <p role="status" className="text-sm font-medium text-warning">
+            {t("storeBehind")}
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-3">
+          <p role="status" aria-live="polite" className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            {state === "saving" && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+            {state === "saved" && <Check className="size-4 text-success" aria-hidden="true" />}
+            {state === "offline" && <CloudOff className="size-4" aria-hidden="true" />}
+            {state === "saved"
+              ? t("saved")
+              : state === "saving"
+                ? t("saving")
+                : state === "offline"
+                  ? t("offline")
+                  : t("saveError")}
+          </p>
+          <SaveToStore
+            jobId={jobId}
+            listingIds={[listingId]}
+            label={inStore ? t("updateStore") : t("saveToStore")}
+            update={inStore}
+            beforeSave={saver.flush}
+            className="w-auto max-sm:flex-1"
+          />
+        </div>
       </div>
     </div>
   );

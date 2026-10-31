@@ -7,12 +7,14 @@ import type { WooDraftInput, WooProvider, WooStore } from "../types";
 import { WooHttpError, wooApi, type WooApi } from "./http";
 import { checkWooStore } from "./check";
 import { colorAttribute, syncVariations } from "./variations";
+import { imageName, imagePlan, type StoreImage } from "./images";
 
 /**
  * The real WooCommerce client. Products are created as drafts and never published;
  * an update leaves the status alone, so a draft the seller published by hand stays
  * published. Images are sideloaded by the store from signed links, and only once:
- * resending them on every update would pile up copies in the media library. A listing
+ * resending them on every update would pile up copies in the media library, so an update
+ * adds and removes only the photos that changed (images.ts). A listing
  * with colours becomes a variable product, one variation per colour.
  */
 
@@ -29,7 +31,7 @@ interface Term {
 interface Product {
   id: number;
   status: string;
-  images: { id: number }[];
+  images: StoreImage[];
   meta_data: { key: string; value: unknown }[];
 }
 
@@ -76,8 +78,25 @@ export const liveWoo: WooProvider = {
       ],
       meta_data: [{ key: LISTING_META_KEY, value: input.listingId }],
     };
-    const sent = existing?.images.length ? [] : await imageRefs(ctx.workspaceId, input);
-    if (sent.length) body.images = sent.map(({ src, alt, position }) => ({ src, alt, position }));
+    const plan = imagePlan(
+      existing?.images ?? [],
+      input.images.map((i) => i.mediaId),
+    );
+    // the media id behind each image sent, in order; null for the seller's own
+    const sent: (string | null)[] = [];
+    if (plan) {
+      const refs = new Map((await imageRefs(ctx.workspaceId, input)).map((r) => [r.mediaId, r]));
+      const images: Record<string, unknown>[] = [];
+      for (const step of plan) {
+        if (step.kind === "upload") {
+          const ref = refs.get(step.mediaId);
+          if (!ref) continue;
+          images.push({ src: ref.src, alt: ref.alt, name: imageName(step.mediaId) });
+        } else images.push({ id: step.id });
+        sent.push(step.kind === "theirs" ? null : step.mediaId);
+      }
+      body.images = images.map((img, position) => ({ ...img, position }));
+    }
 
     const saved = existing
       ? await api.put<Product>(`products/${existing.id}`, body, { timeoutMs: IMAGE_TIMEOUT_MS })
@@ -89,10 +108,11 @@ export const liveWoo: WooProvider = {
         );
     if (variants && color) {
       // the store answers with the images in the order they were sent
-      const ids = new Map(sent.flatMap((r, i) => (saved.images[i] ? [[r.mediaId, saved.images[i].id]] : [])));
-      // images went with an earlier save: the main image is still first
-      if (!sent.length && existing?.images[0] && input.images[0])
-        ids.set(input.images[0].mediaId, existing.images[0].id);
+      const ids = new Map(
+        sent.flatMap((mediaId, i) => (mediaId && saved.images[i] ? [[mediaId, saved.images[i].id]] : [])),
+      );
+      // a draft from before image names: its main image is still first
+      if (!plan && existing?.images[0] && input.images[0]) ids.set(input.images[0].mediaId, existing.images[0].id);
       await syncVariations(api, saved.id, variants, color, {
         ids,
         src: async (mediaId) => {
@@ -161,15 +181,10 @@ async function findOrCreateTerm(
 
 async function imageRefs(workspaceId: string, input: WooDraftInput) {
   const refs = [];
-  for (const [i, img] of input.images.entries()) {
+  for (const img of input.images) {
     const file = await readMedia(workspaceId, img.mediaId);
     if (!file) continue;
-    refs.push({
-      mediaId: img.mediaId,
-      src: signedMediaUrl(workspaceId, img.mediaId, file.mime),
-      alt: img.alt,
-      position: i,
-    });
+    refs.push({ mediaId: img.mediaId, src: signedMediaUrl(workspaceId, img.mediaId, file.mime), alt: img.alt });
   }
   return refs;
 }
