@@ -32,7 +32,7 @@ export async function connectShopifyDemo(form: FormData): Promise<void> {
     await markOnboarded(viewer.workspace.id);
     redirect("/snap");
   }
-  redirect("/connections");
+  redirect("/connections/shopify");
 }
 
 /** "Test now": checks the saved connection, refreshing its token if it's due, and records the result. */

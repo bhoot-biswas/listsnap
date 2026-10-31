@@ -1,115 +1,66 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { Camera } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import { TopBar } from "@/components/app/top-bar";
-import { ConfirmButton, PendingButton } from "@/components/app/form-buttons";
+import { ButtonLink } from "@/components/app/button-link";
 import { requireWorkspace } from "@/server/auth/session";
-import { forWorkspace } from "@/server/db/scope";
-import { connectTestMeta, disconnectMeta } from "@/server/actions/meta-connection";
-import { metaConnection } from "@/server/social/connection";
-import { env } from "@/server/env";
-import { cn } from "@/lib/utils";
-import { WooCard } from "./_components/woo-card";
-import { ShopifyCard } from "./_components/shopify-card";
+import { connectionsOverview } from "@/server/connections/overview";
+import { serviceHref, type ServiceGroup } from "@/lib/connectors";
+import { ConnectionRow } from "./_components/connection-row";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("connections") };
 }
 
-// what /api/shopify/callback reports back with ?shopify=
-const NOTICES = ["connected", "shop", "demo", "denied", "expired", "scopes", "taken", "failed"] as const;
-type Notice = (typeof NOTICES)[number];
+const GROUPS: ServiceGroup[] = ["store", "social"];
 
 /**
- * S13 Connections: the store cards (WooCommerce and Shopify, either or both), each with
- * its checks and actions, and Facebook and Instagram for posting reels.
+ * S13 Connections: every service on one list, stores then social, each row opening its
+ * own page. What needs the seller comes first, above the list.
  */
-export default async function ConnectionsPage({ searchParams }: PageProps<"/connections">) {
+export default async function ConnectionsPage() {
   const viewer = await requireWorkspace();
   const t = await getTranslations("connections");
-  const tShopify = await getTranslations("connections.shopifyCard");
   const tNav = await getTranslations("nav");
-  const ws = forWorkspace(viewer.workspace.id);
-  const [wooRow, shopifyRow, metaRow] = await Promise.all([
-    viewer.workspace.isDemo ? null : ws.storeConnection("woo"),
-    viewer.workspace.isDemo ? null : ws.storeConnection("shopify"),
-    metaConnection(ws),
-  ]);
-  const live = (r: typeof wooRow) => !!r && r.status !== "disconnected";
-  const several = live(wooRow) && live(shopifyRow);
-  const raw = (await searchParams).shopify;
-  const notice = NOTICES.find((n) => n === raw) as Notice | undefined;
-  const meta = metaRow?.settings ?? null;
-  // a test Page is only offered while posting goes to the mock providers
-  const testAllowed = env().providers.facebook === "mock" && env().providers.instagram === "mock";
+  const { services, severalStores } = await connectionsOverview(viewer.workspace);
+  const broken = services.filter((s) => s.status === "broken");
 
   return (
     <>
       <TopBar title={tNav("connections")} />
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 px-4 py-6 md:px-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-6">
-          {notice && (
-            <p
-              role="status"
-              className={cn(
-                "rounded-xl border p-4 text-sm",
-                notice === "connected" ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5",
-              )}
-            >
-              {notice === "connected" ? tShopify("connected") : tShopify(`errors.${notice}`)}
-            </p>
-          )}
-          <WooCard row={wooRow} isDemo={viewer.workspace.isDemo} several={several} />
-          {!viewer.workspace.isDemo && <ShopifyCard row={shopifyRow} several={several} />}
-        </div>
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
+        <p className="text-muted-foreground">{t("intro")}</p>
 
-        <section aria-labelledby="meta-title" className="h-fit space-y-4 rounded-xl border bg-card p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Camera className={cn("size-6", meta ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
-              <h2 id="meta-title" className="font-semibold">
-                {t("meta.title")}
-              </h2>
-            </div>
-            {meta && (
-              <span className="inline-flex h-6 items-center rounded-full bg-success/15 px-2.5 text-xs font-medium text-success">
-                {meta.test ? t("meta.test") : t("connected")}
-              </span>
-            )}
+        {broken.map((s) => (
+          <div
+            key={s.service}
+            role="alert"
+            className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4"
+          >
+            <CircleAlert className="size-5 shrink-0 text-destructive" aria-hidden="true" />
+            <p className="min-w-0 flex-1 text-sm">{t("attention", { name: t(`names.${s.service}`) })}</p>
+            <ButtonLink href={serviceHref(s.service)} variant="outline" className="h-11 md:h-9">
+              {t("fix")}
+            </ButtonLink>
           </div>
-          <p className="text-sm text-muted-foreground">{t("meta.body")}</p>
-          {meta ? (
-            <>
-              <dl className="grid gap-1 text-sm">
-                <dd>{t("meta.page", { name: meta.pageName })}</dd>
-                <dd>{meta.igUsername ? t("meta.instagram", { name: meta.igUsername }) : t("meta.noInstagram")}</dd>
-              </dl>
-              <form action={disconnectMeta} className="space-y-1 border-t pt-3">
-                <ConfirmButton
-                  question={t("meta.disconnectConfirm")}
-                  confirmLabel={t("disconnectYes")}
-                  cancelLabel={t("keepConnected")}
-                  className="h-11 text-destructive md:h-10"
-                >
-                  {t("meta.disconnect")}
-                </ConfirmButton>
-                <p className="text-xs text-muted-foreground">{t("meta.disconnectHint")}</p>
-              </form>
-            </>
-          ) : (
-            <>
-              {testAllowed && (
-                <form action={connectTestMeta} className="space-y-2">
-                  <PendingButton variant="outline" size="lg">
-                    {t("meta.connectTest")}
-                  </PendingButton>
-                  <p className="text-xs text-muted-foreground">{t("meta.testHint")}</p>
-                </form>
-              )}
-              <p className="text-xs text-muted-foreground">{t("meta.realSoon")}</p>
-            </>
-          )}
-        </section>
+        ))}
+
+        {GROUPS.map((group) => {
+          const rows = services.filter((s) => s.group === group);
+          if (!rows.length) return null;
+          return (
+            <section key={group} aria-labelledby={`group-${group}`} className="space-y-2">
+              <h2 id={`group-${group}`} className="text-sm font-semibold text-muted-foreground">
+                {t(`groups.${group}`)}
+              </h2>
+              <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+                {rows.map((s) => (
+                  <ConnectionRow key={s.service} s={s} severalStores={severalStores} />
+                ))}
+              </ul>
+            </section>
+          );
+        })}
       </div>
     </>
   );

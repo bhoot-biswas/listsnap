@@ -760,7 +760,39 @@
         "currency": "Change it in Shopify → Settings → Store details, or check prices before you publish.",
         "server": "Shopify had a problem. Try again in a moment."
       }
-    }
+    },
+    "intro": "The stores ListSnap saves drafts to, and where reels are posted.",
+    "groups": {
+      "store": "Stores",
+      "social": "Social"
+    },
+    "names": {
+      "woo": "WooCommerce",
+      "shopify": "Shopify",
+      "meta": "Facebook and Instagram"
+    },
+    "desc": {
+      "woo": "Save drafts to your WordPress shop",
+      "shopify": "Save drafts to your Shopify store",
+      "meta": "Post reels to your Page and Instagram"
+    },
+    "status": {
+      "connected": "Connected",
+      "broken": "Needs attention",
+      "demo": "Demo store",
+      "test": "Test",
+      "none": "Not connected"
+    },
+    "drafts": {
+      "on": "New drafts: on",
+      "off": "New drafts: off"
+    },
+    "attention": "{name} needs attention.",
+    "fix": "Fix it",
+    "back": "Connections",
+    "statusTitle": "Status",
+    "settingsTitle": "Settings",
+    "connectTitle": "Connect"
   },
   "review": {
     "title": "Review listing",

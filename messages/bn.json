@@ -760,7 +760,39 @@
         "currency": "Shopify → Settings → Store details-এ বদলান, বা প্রকাশের আগে দাম দেখে নিন।",
         "server": "Shopify-তে একটা সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।"
       }
-    }
+    },
+    "intro": "যেসব স্টোরে ListSnap ড্রাফট সেভ করে, আর যেখানে রিল পোস্ট হয়।",
+    "groups": {
+      "store": "স্টোর",
+      "social": "সোশ্যাল"
+    },
+    "names": {
+      "woo": "WooCommerce",
+      "shopify": "Shopify",
+      "meta": "ফেসবুক ও ইনস্টাগ্রাম"
+    },
+    "desc": {
+      "woo": "আপনার WordPress শপে ড্রাফট সেভ করুন",
+      "shopify": "আপনার Shopify স্টোরে ড্রাফট সেভ করুন",
+      "meta": "আপনার পেজ ও ইনস্টাগ্রামে রিল পোস্ট করুন"
+    },
+    "status": {
+      "connected": "যুক্ত আছে",
+      "broken": "দেখা দরকার",
+      "demo": "ডেমো স্টোর",
+      "test": "টেস্ট",
+      "none": "যুক্ত নেই"
+    },
+    "drafts": {
+      "on": "নতুন ড্রাফট: চালু",
+      "off": "নতুন ড্রাফট: বন্ধ"
+    },
+    "attention": "{name} দেখা দরকার।",
+    "fix": "ঠিক করুন",
+    "back": "সংযোগ",
+    "statusTitle": "অবস্থা",
+    "settingsTitle": "সেটিংস",
+    "connectTitle": "যুক্ত করুন"
   },
   "review": {
     "title": "লিস্টিং দেখে নিন",

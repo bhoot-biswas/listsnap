@@ -39,7 +39,7 @@ async function finish(workspaceId: string, next: "onboarding" | "connections"): 
     await markOnboarded(workspaceId);
     redirect("/snap");
   }
-  redirect("/connections");
+  redirect("/connections/woo");
 }
 
 export async function connectWoo(_prev: ConnectState, form: FormData): Promise<ConnectState> {

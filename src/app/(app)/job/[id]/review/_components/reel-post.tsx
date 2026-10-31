@@ -100,7 +100,7 @@ export function ReelPost({ listingId, lang, social }: { listingId: string; lang:
         done.length === 0 && (
           <p className="text-xs text-muted-foreground">
             {t("connect")}{" "}
-            <Link href="/connections" className="font-medium text-primary underline-offset-4 hover:underline">
+            <Link href="/connections/meta" className="font-medium text-primary underline-offset-4 hover:underline">
               {t("connectLink")}
             </Link>
           </p>
