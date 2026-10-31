@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Check, CloudOff, Loader2 } from "lucide-react";
+import { Check, ChevronDown, CloudOff, Loader2 } from "lucide-react";
 import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import { parseAmount } from "@/lib/amount";
 import { cn } from "@/lib/utils";
 import { SaveToStore } from "@/components/app/save-to-store";
 import { Autosaver, type SaveState } from "./autosave";
-import { ConfidencePanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
+import { CheckPanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
 import { LooksPanel } from "./looks-panel";
 import { ReelPanel, type ReelsState } from "./reel-panel";
 import type { Look } from "@/lib/schemas/looks";
@@ -37,6 +37,7 @@ export function ReviewForm({
   hint,
   confidence,
   checkNotes,
+  status,
   inStore,
   others,
   looks,
@@ -55,6 +56,7 @@ export function ReviewForm({
   hint: { low: number; high: number };
   confidence: number | null;
   checkNotes: string[];
+  status: ListingStatus;
   inStore: boolean;
   others: { id: string; n: number; status: ListingStatus; current: boolean }[];
 }) {
@@ -118,23 +120,72 @@ export function ReviewForm({
     else if (cur.bn) change({ ...cur, bn: { ...cur.bn, [field]: text } });
   };
 
+  // extras start folded, unless something was made there or a link (Done's "Make a reel") points at them
+  const [extrasOpen, setExtrasOpen] = useState(
+    looks.made.length > 0 || Object.values(reels.made).some(Boolean),
+  );
+  const extras = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    // opening the element fires onToggle, which keeps the state in step
+    if (window.location.hash === "#extras" && extras.current) {
+      extras.current.open = true;
+      extras.current.scrollIntoView();
+    }
+  }, []);
+
   const selected = new Set(edit.selectedMediaIds);
   const outside = edit.priceBdt !== null && (edit.priceBdt < hint.low || edit.priceBdt > hint.high);
   const text: TextValue | null = lang === "en" ? edit.en : edit.bn;
 
-  const saveButton = (className?: string) => (
-    <SaveToStore
-      jobId={jobId}
-      listingIds={[listingId]}
-      label={inStore ? t("updateStore") : t("saveToStore")}
-      update={inStore}
-      beforeSave={saver.flush}
-      className={className}
-    />
+  const priceAndColors = (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="price">{t("priceField")}</Label>
+          <Input
+            id="price"
+            inputMode="numeric"
+            value={edit.priceBdt ?? ""}
+            onChange={(e) => change({ ...edit, priceBdt: parseAmount(e.target.value) })}
+            aria-describedby="price-hint"
+            className={cn("h-11", outside && "border-warning")}
+          />
+          <p id="price-hint" className={cn("text-xs", outside ? "font-medium text-warning" : "text-muted-foreground")}>
+            {outside ? t("priceOutside", hint) : t("priceHint", hint)}
+          </p>
+        </div>
+        {edit.variants ? (
+          <p className="self-center text-sm text-muted-foreground">{t("stockPerColor")}</p>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="stock">{t("stockField")}</Label>
+            <Input
+              id="stock"
+              inputMode="numeric"
+              value={edit.stockQty ?? ""}
+              onChange={(e) => change({ ...edit, stockQty: parseAmount(e.target.value) })}
+              aria-describedby="stock-hint"
+              className="h-11"
+            />
+            <p id="stock-hint" className="text-xs text-muted-foreground">
+              {t("stockHint")}
+            </p>
+          </div>
+        )}
+      </div>
+      {edit.variants && (
+        <VariantFields
+          variants={edit.variants}
+          photos={colorPhotos}
+          basePrice={edit.priceBdt}
+          onChange={(variants) => change({ ...edit, variants })}
+        />
+      )}
+    </div>
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:px-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pt-6 md:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {others.length > 1 ? (
           <nav aria-label={t("title")} className="flex flex-wrap gap-2">
@@ -158,26 +209,15 @@ export function ReviewForm({
             ← {t("back")}
           </Link>
         )}
-        <div className="flex items-center gap-4">
-          <p role="status" aria-live="polite" className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            {state === "saving" && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-            {state === "saved" && <Check className="size-4 text-success" aria-hidden="true" />}
-            {state === "offline" && <CloudOff className="size-4" aria-hidden="true" />}
-            {state === "saved"
-              ? t("saved")
-              : state === "saving"
-                ? t("saving")
-                : state === "offline"
-                  ? t("offline")
-                  : t("saveError")}
-          </p>
-          <ListingChat listingId={listingId} initial={chat.items} beforeSend={saver.flush} />
-          {saveButton("max-lg:hidden")}
-        </div>
+        <ListingChat listingId={listingId} initial={chat.items} beforeSend={saver.flush} />
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-        <div className="space-y-6">
+      {/*
+        Phone: photo, the checks, then the fields, with the extras last. Desktop: photo,
+        checks and extras on the left, the fields beside them.
+      */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:grid-rows-[auto_auto_1fr] lg:gap-x-8">
+        <div className="lg:col-start-1 lg:row-start-1">
           <ReviewPhotos
             photos={photos}
             title={edit.en.title}
@@ -191,59 +231,13 @@ export function ReviewForm({
               })
             }
           />
-          <LooksPanel listingId={listingId} made={looks.made} imagesLeft={looks.imagesLeft} />
-          <ReelPanel listingId={listingId} reels={reels} priceSet={edit.priceBdt !== null} beforeMake={saver.flush} />
-          <ConfidencePanel confidence={confidence} notes={checkNotes} />
         </div>
 
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="price">{t("priceField")}</Label>
-              <Input
-                id="price"
-                inputMode="numeric"
-                value={edit.priceBdt ?? ""}
-                onChange={(e) => change({ ...edit, priceBdt: parseAmount(e.target.value) })}
-                aria-describedby="price-hint"
-                className={cn("h-11", outside && "border-warning")}
-              />
-              <p
-                id="price-hint"
-                className={cn("text-xs", outside ? "font-medium text-warning" : "text-muted-foreground")}
-              >
-                {outside ? t("priceOutside", hint) : t("priceHint", hint)}
-              </p>
-            </div>
-            {edit.variants ? (
-              <p className="self-center text-sm text-muted-foreground">{t("stockPerColor")}</p>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="stock">{t("stockField")}</Label>
-                <Input
-                  id="stock"
-                  inputMode="numeric"
-                  value={edit.stockQty ?? ""}
-                  onChange={(e) => change({ ...edit, stockQty: parseAmount(e.target.value) })}
-                  aria-describedby="stock-hint"
-                  className="h-11"
-                />
-                <p id="stock-hint" className="text-xs text-muted-foreground">
-                  {t("stockHint")}
-                </p>
-              </div>
-            )}
-          </div>
+        <div className="lg:col-start-1 lg:row-start-2">
+          <CheckPanel listingId={listingId} confidence={confidence} notes={checkNotes} status={status} />
+        </div>
 
-          {edit.variants && (
-            <VariantFields
-              variants={edit.variants}
-              photos={colorPhotos}
-              basePrice={edit.priceBdt}
-              onChange={(variants) => change({ ...edit, variants })}
-            />
-          )}
-
+        <div className="space-y-6 lg:col-start-2 lg:row-span-3 lg:row-start-1">
           <div role="tablist" aria-label={t("title")} className="inline-flex rounded-lg border p-1">
             {(["en", "bn"] as const).map((l) => (
               <button
@@ -273,15 +267,59 @@ export function ReviewForm({
               onChange={(v) =>
                 change(lang === "en" ? { ...edit, en: { ...edit.en, ...v } } : { ...edit, bn: { ...edit.bn!, ...v } })
               }
+              afterTitle={priceAndColors}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">{t("banglaMissing")}</p>
+            <>
+              <p className="text-sm text-muted-foreground">{t("banglaMissing")}</p>
+              {priceAndColors}
+            </>
           )}
         </div>
+
+        <details
+          ref={extras}
+          id="extras"
+          open={extrasOpen}
+          onToggle={(e) => setExtrasOpen(e.currentTarget.open)}
+          className="group space-y-4 lg:col-start-1 lg:row-start-3 lg:self-start"
+        >
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border bg-card p-4 hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
+            <span className="space-y-0.5">
+              <span className="block text-base font-semibold">{t("extras")}</span>
+              <span className="block text-xs text-muted-foreground">{t("extrasHint")}</span>
+            </span>
+            <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="mt-4 space-y-6">
+            <LooksPanel listingId={listingId} made={looks.made} imagesLeft={looks.imagesLeft} />
+            <ReelPanel listingId={listingId} reels={reels} priceSet={edit.priceBdt !== null} beforeMake={saver.flush} />
+          </div>
+        </details>
       </div>
 
-      <div className="sticky bottom-0 -mx-4 border-t bg-background/95 p-4 backdrop-blur lg:hidden">
-        {saveButton("w-full")}
+      {/* on every width, so saving never means scrolling back up a long listing */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
+        <p role="status" aria-live="polite" className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          {state === "saving" && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+          {state === "saved" && <Check className="size-4 text-success" aria-hidden="true" />}
+          {state === "offline" && <CloudOff className="size-4" aria-hidden="true" />}
+          {state === "saved"
+            ? t("saved")
+            : state === "saving"
+              ? t("saving")
+              : state === "offline"
+                ? t("offline")
+                : t("saveError")}
+        </p>
+        <SaveToStore
+          jobId={jobId}
+          listingIds={[listingId]}
+          label={inStore ? t("updateStore") : t("saveToStore")}
+          update={inStore}
+          beforeSave={saver.flush}
+          className="w-auto max-sm:flex-1"
+        />
       </div>
     </div>
   );

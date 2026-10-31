@@ -124,6 +124,21 @@ export function listingQueries(ws: string) {
       await execute("UPDATE listings SET status = ? WHERE id = ? AND workspace_id = ?", [status, id, ws]);
     },
 
+    /**
+     * The seller ticked off (or reopened) Review's checklist. Only Needs review and Ready
+     * move; a listing already in the store or posted keeps its status.
+     */
+    async setChecked(id: string, checked: boolean): Promise<boolean> {
+      const [from, to] = checked ? ["needs_review", "ready"] : ["ready", "needs_review"];
+      const r = await execute("UPDATE listings SET status = ? WHERE id = ? AND workspace_id = ? AND status = ?", [
+        to,
+        id,
+        ws,
+        from,
+      ]);
+      return r.affectedRows === 1;
+    },
+
     /** A listing's photos. Reels are videos for social posts, never a store photo, so they're left out. */
     listingMedia: (listingIds: string[]) =>
       listingIds.length

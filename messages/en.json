@@ -729,7 +729,12 @@
       "great": "Very good"
     },
     "toCheck": "Check before saving",
-    "nothingToCheck": "Nothing flagged. Still read it once.",
+    "readItThrough": "Nothing flagged. I've read the listing through once.",
+    "checkHint": "Tick each one once you've checked it. When all are ticked, the listing is Ready.",
+    "allChecked": "All checked.",
+    "checkFailed": "That tick wasn't saved. Try again.",
+    "extras": "Extras: looks and reel",
+    "extrasHint": "Optional. Campaign photos, and a short video for social posts.",
     "saving": "Saving…",
     "saved": "Saved",
     "saveError": "Couldn’t save. Retrying…",

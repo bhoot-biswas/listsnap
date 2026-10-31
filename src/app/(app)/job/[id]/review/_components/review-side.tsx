@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Check } from "lucide-react";
 import { ConfidenceDots } from "@/components/app/confidence-dots";
+import type { ListingStatus } from "@/components/app/status-badge";
+import { setListingChecked } from "@/server/actions/review";
 import { cn } from "@/lib/utils";
 import { lookOf } from "@/lib/schemas/looks";
 import { sized } from "@/lib/media-size";
@@ -52,7 +56,8 @@ export function ReviewPhotos({
         {t("photos")}
       </h2>
       {main && (
-        <div className="relative aspect-square overflow-hidden rounded-xl border bg-white">
+        // smaller on a phone, so the checks below it start on the first screen
+        <div className="relative mx-auto aspect-square w-full max-w-60 overflow-hidden rounded-xl border bg-white sm:max-w-none">
           <Image
             src={main.url}
             alt={title}
@@ -107,29 +112,88 @@ export function ReviewPhotos({
   );
 }
 
-/** Confidence as five dots and a word, plus what Spark said to check; never a raw percentage. */
-export function ConfidencePanel({ confidence, notes }: { confidence: number | null; notes: string[] }) {
+/**
+ * What Spark said to check, as tick boxes, with its confidence as dots and a word (never a
+ * raw percentage). With nothing flagged there is one item: read it through. Ticking every
+ * item is the seller's review, so the listing moves from Needs review to Ready; unticking
+ * one moves it back. Ticks aren't stored: a listing past Needs review opens with all ticked.
+ */
+export function CheckPanel({
+  listingId,
+  confidence,
+  notes,
+  status,
+}: {
+  listingId: string;
+  confidence: number | null;
+  notes: string[];
+  status: ListingStatus;
+}) {
   const t = useTranslations("review");
+  const router = useRouter();
+  const items = notes.length ? notes : [t("readItThrough")];
+  const [ticked, setTicked] = useState(() => new Set(status === "needs_review" ? [] : items.map((_, i) => i)));
+  const [failed, setFailed] = useState(false);
+  const all = ticked.size === items.length;
+
+  const toggle = async (i: number) => {
+    const next = new Set(ticked);
+    if (!next.delete(i)) next.add(i);
+    setTicked(next);
+    const nowAll = next.size === items.length;
+    // the status changes only when the last box is ticked, or the first one unticked
+    if (nowAll === all) return;
+    const r = await setListingChecked(listingId, nowAll).catch(() => ({ ok: false }));
+    setFailed(!r.ok);
+    if (r.ok) router.refresh();
+  };
+
   return (
-    <section aria-labelledby="confidence-title" className="space-y-3 rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="confidence-title" className="text-sm font-semibold">
-          {t("confidence")}
+    <section aria-labelledby="check-title" className="space-y-3 rounded-xl border bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <h2 id="check-title" className="text-base font-semibold">
+          {t("toCheck")}
         </h2>
-        <ConfidenceDots confidence={confidence} />
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {t("confidence")}
+          <ConfidenceDots confidence={confidence} className="text-xs" />
+        </span>
       </div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium">{t("toCheck")}</p>
-        {notes.length ? (
-          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            {notes.map((n) => (
-              <li key={n}>{n}</li>
-            ))}
-          </ul>
+      <p className="text-xs text-muted-foreground">{t("checkHint")}</p>
+      <ul className="space-y-1">
+        {items.map((n, i) => {
+          const on = ticked.has(i);
+          return (
+            <li key={i}>
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={on}
+                onClick={() => void toggle(i)}
+                className="flex min-h-11 w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left text-sm hover:bg-muted/60"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border-2",
+                    on ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background",
+                  )}
+                >
+                  {on && <Check className="size-3.5" />}
+                </span>
+                <span className={cn(on && "text-muted-foreground line-through")}>{n}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p role="status" aria-live="polite" className="text-sm">
+        {failed ? (
+          <span className="text-destructive">{t("checkFailed")}</span>
         ) : (
-          <p className="text-sm text-muted-foreground">{t("nothingToCheck")}</p>
+          all && <span className="font-medium text-success">{t("allChecked")}</span>
         )}
-      </div>
+      </p>
     </section>
   );
 }
