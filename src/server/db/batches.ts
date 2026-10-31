@@ -87,7 +87,7 @@ export function batchQueries(ws: string) {
       const params = [ws, batchId, ws];
       const [jobs, photos, steps, items, listings] = await Promise.all([
         select<JobRow>(
-          "SELECT id, status, group_mode, camera_angle, created_at, archived_at FROM jobs WHERE batch_id = ? AND workspace_id = ? ORDER BY created_at, id",
+          "SELECT id, status, group_mode, camera_angle, created_at FROM jobs WHERE batch_id = ? AND workspace_id = ? ORDER BY created_at, id",
           [batchId, ws],
         ),
         select<PhotoRow & { job_id: string }>(
