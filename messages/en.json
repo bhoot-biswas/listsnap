@@ -951,7 +951,7 @@
       "declined": "Not sent",
       "failed": "It didn't work",
       "view": "View post",
-      "saveDraftsToStore": "Save {n, plural, one {this listing} other {these # listings}} to your store as drafts?"
+      "saveDraftsToStore": "{n, plural, one {Save this listing to your store as a draft?} other {Save these # listings to your store as drafts?}}"
     },
     "error": {
       "limit": "You've used today's assistant. It comes back at midnight.",
