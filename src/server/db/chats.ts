@@ -41,6 +41,15 @@ export function chatQueries(ws: string) {
       return row?.id ?? null;
     },
 
+    /** A chat's title: the seller's first message, cut short. */
+    async chatTitle(chatId: string): Promise<string | null> {
+      const row = await selectOne<{ title: string | null }>(
+        "SELECT title FROM chats WHERE id = ? AND workspace_id = ?",
+        [chatId, ws],
+      );
+      return row?.title ?? null;
+    },
+
     /** Which listing a chat is about (null for the shop chat), or undefined when it isn't this shop's. */
     async chatListing(chatId: string): Promise<string | null | undefined> {
       const row = await selectOne<{ listing_id: string | null }>(

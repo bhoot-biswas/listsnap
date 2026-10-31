@@ -172,6 +172,13 @@
       "saved": "{kind, select, instagram {Instagram connected} shopify {Shopify connected} woo {WooCommerce connected} other {Store connected}}",
       "removed": "{kind, select, instagram {Instagram disconnected} shopify {Shopify disconnected} woo {WooCommerce disconnected} other {Store disconnected}}",
       "untitled": "Untitled listing"
+    },
+    "ask": {
+      "label": "Ask ListSnap",
+      "placeholder": "Ask ListSnap about your shop…",
+      "placeholderReview": "{n, plural, one {Ask why # listing needs review…} other {Ask why # listings need review…}}",
+      "photo": "Add a photo in the Assistant",
+      "send": "Ask"
     }
   },
   "listings": {
@@ -1075,12 +1082,12 @@
       "answered": "That was already answered.",
       "generic": "Something went wrong. Nothing else changed; try again."
     },
-    "shopIntro": "Ask about your whole shop in English or Bangla: which listings need review, photos and reels for several at once, saving everything that's ready to your store. Send a product photo to start a new listing. I always ask before anything goes to your store or your pages.",
     "shopSuggestions": {
       "review": "Which listings need review?",
       "ready": "Save everything that's Ready to my store",
       "eid": "Make Eid photos for my red sarees",
-      "left": "How many AI photos are left today?"
+      "left": "How many AI photos are left today?",
+      "reviewCount": "{n, plural, one {# listing needs review: what's wrong?} other {# listings need review: what's wrong?}}"
     },
     "pageTitle": "Assistant",
     "shopPlaceholder": "Ask about your shop…",
@@ -1097,6 +1104,22 @@
       "empty": "No conversations yet.",
       "failed": "Couldn’t load your conversations. Try again.",
       "current": "On screen"
+    },
+    "replyPlaceholder": "Reply…",
+    "conversations": "Conversations",
+    "stepsDone": "{n, plural, one {# step done} other {# steps done}}",
+    "start": {
+      "heading": "{shop}: what shall we work on?",
+      "recent": "Recent",
+      "seeAll": "See all"
+    },
+    "list": {
+      "empty": "No conversations yet.",
+      "startOne": "Start one",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "week": "Earlier this week",
+      "older": "Older"
     }
   },
   "stepText": {

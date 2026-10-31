@@ -10,6 +10,7 @@ import { forWorkspace } from "@/server/db/scope";
 import { connectedStores } from "@/server/stores/targets";
 import { serviceHref } from "@/lib/connectors";
 import { Activity } from "./_components/activity";
+import { AskBox } from "./_components/ask-box";
 import { NeedsAttention } from "./_components/needs-attention";
 import { GetStarted, UsageToday, WeekBars } from "./_components/side-panels";
 import { StatTiles } from "./_components/stat-tiles";
@@ -61,6 +62,8 @@ export default async function DashboardPage() {
             {isDemo ? t("storeDemo") : stores.some((s) => !s.broken) ? t("storeConnected") : t("storeMissing")}
           </p>
         </section>
+
+        <AskBox needsReview={stats.waiting} />
 
         {brokenStore && (
           <div
