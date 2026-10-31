@@ -41,3 +41,15 @@ export function suggestedPrice(hint: { low: number; high: number }, rounding: nu
   const step = rounding > 0 ? rounding : 1;
   return Math.round((hint.low + hint.high) / 2 / step) * step;
 }
+
+/**
+ * The price a listing goes out with, to the store and in reels: the seller's own, or
+ * else the suggestion Review shows in the price box, so what the seller sees is what is used.
+ */
+export function listingPrice(
+  saved: number | null,
+  hint: { low: number; high: number } | undefined,
+  rounding: number,
+): number | null {
+  return saved ?? (hint ? suggestedPrice(hint, rounding) : null);
+}

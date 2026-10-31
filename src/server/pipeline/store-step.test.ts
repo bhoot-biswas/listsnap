@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { listingPrice } from "@/lib/schemas/review";
 import { suggestedPrice } from "./store-step";
 
 describe("suggestedPrice", () => {
@@ -11,5 +12,17 @@ describe("suggestedPrice", () => {
   it("gives no price for a range that makes no sense", () => {
     expect(suggestedPrice({ low: 0, high: 0 }, 10)).toBeNull();
     expect(suggestedPrice({ low: 900, high: 400 }, 10)).toBeNull();
+  });
+});
+
+describe("listingPrice", () => {
+  it("uses the seller's price when there is one, else the suggestion Review shows", () => {
+    expect(listingPrice(1750, { low: 1200, high: 2200 }, 50)).toBe(1750);
+    expect(listingPrice(null, { low: 1200, high: 2200 }, 50)).toBe(1700);
+  });
+
+  it("has no price without a sensible range", () => {
+    expect(listingPrice(null, undefined, 50)).toBeNull();
+    expect(listingPrice(null, { low: 0, high: 0 }, 50)).toBeNull();
   });
 });
