@@ -9,7 +9,7 @@ const PRODUCT_FIELDS = `
   variants(first: 250) {
     nodes { id price selectedOptions { name value } itemId: metafield(namespace: "listsnap", key: "item_id") { value } }
   }
-  media(first: 250) { nodes { id } }
+  media(first: 250) { nodes { id status } }
   listingId: metafield(namespace: "listsnap", key: "listing_id") { value }
   mediaMap: metafield(namespace: "listsnap", key: "media") { value }
 `;
@@ -24,6 +24,8 @@ export const PRODUCT_SET = `mutation ProductSet($input: ProductSetInput!, $ident
     userErrors { field message code }
   }
 }`;
+
+export const MEDIA_STATUS = `query MediaStatus($id: ID!) { product(id: $id) { media(first: 250) { nodes { id status } } } }`;
 
 export const METAFIELDS_SET = `mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
   metafieldsSet(metafields: $metafields) { userErrors { field message code } }
@@ -47,7 +49,7 @@ export interface RawProduct {
       itemId: { value: string } | null;
     }[];
   };
-  media: { nodes: { id: string }[] };
+  media: { nodes: { id: string; status: string }[] };
   listingId: { value: string } | null;
   mediaMap: { value: string } | null;
 }

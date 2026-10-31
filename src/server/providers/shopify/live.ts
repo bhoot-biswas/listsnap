@@ -11,6 +11,7 @@ import { NS, editUrl, listingSku, mediaMapAfter, productSetInput, type ExistingP
 import {
   CHECK,
   FIND_PRODUCTS,
+  MEDIA_STATUS,
   METAFIELDS_SET,
   PRODUCT,
   PRODUCT_SET,
@@ -21,9 +22,14 @@ import {
 /**
  * The real Shopify client. A product is created as a draft and never published; an
  * update leaves its status alone. One productSet call saves the product, its colours,
- * prices, stock and photos. Shopify downloads the photos from signed links in the
- * background, so a draft can show them a few seconds after it is saved.
+ * prices, stock and photos. Shopify downloads the photos from signed links after it
+ * answers, and a photo it can't download only shows as FAILED on the product, so the
+ * save waits a few seconds for the new photos and reports one that failed.
  */
+
+// Shopify had a dev store's photos ready in about five seconds (measured 2026-11-01)
+const PHOTO_CHECKS = 6;
+const PHOTO_WAIT_MS = 2_000;
 
 export const liveShopify: ShopifyProvider = {
   mode: "live",
@@ -39,7 +45,6 @@ export const liveShopify: ShopifyProvider = {
       "productSet",
       PRODUCT_SET,
       { input: plan.input, identifier: existing ? { id: existing.id } : null },
-      // Shopify fetches every new photo before it answers a synchronous productSet
       { timeoutMs: 60_000 },
     );
     if (productSet.userErrors.length || !productSet.product) throw userErrorsToStepError(productSet.userErrors);
@@ -60,6 +65,11 @@ export const liveShopify: ShopifyProvider = {
     } catch (err) {
       console.warn("[shopify] media map not saved:", err instanceof Error ? err.message : err);
     }
+    const sent = plan.input.files as FileSet[];
+    const fresh = plan.sentMedia.flatMap((mediaId, i) =>
+      mediaId && "originalSource" in sent[i]! && map[mediaId] ? [map[mediaId]!] : [],
+    );
+    await photosArrived(api, product.id, fresh);
     return { productRef: product.id, editUrl: editUrl(store.shop, product.id) };
   },
 
@@ -84,6 +94,29 @@ function app() {
   return { client_id: clientId, client_secret: clientSecret };
 }
 
+/**
+ * Waits for the photos just sent until Shopify has them or gives up on one. The draft is
+ * saved either way; a failed photo fails the step, so the seller sees it and saving again
+ * sends that photo again (a FAILED photo counts as missing, see toExisting).
+ */
+async function photosArrived(api: ShopifyApi, productId: string, ids: string[], sleep = wait) {
+  if (!ids.length) return;
+  for (let i = 0; i < PHOTO_CHECKS; i++) {
+    const { product } = await api.gql<{ product: { media: { nodes: { id: string; status: string }[] } } | null }>(
+      "media status",
+      MEDIA_STATUS,
+      { id: productId },
+    );
+    const ours = product?.media.nodes.filter((m) => ids.includes(m.id)) ?? [];
+    if (ours.some((m) => m.status === "FAILED")) throw new ShopifyHttpError(200, "media_failed", "storePhotos");
+    if (ours.every((m) => m.status === "READY")) return;
+    if (i + 1 < PHOTO_CHECKS) await sleep(PHOTO_WAIT_MS);
+  }
+  // still processing: Shopify finishes in the background, and the draft is already saved
+}
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 function toExisting(p: RawProduct): ExistingProduct {
   let mediaMap: Record<string, string> = {};
   try {
@@ -99,7 +132,8 @@ function toExisting(p: RawProduct): ExistingProduct {
       selectedOptions: v.selectedOptions,
       itemId: v.itemId?.value ?? null,
     })),
-    media: p.media.nodes.map((m) => m.id),
+    // a photo Shopify couldn't download is left off, so the next save sends it again
+    media: p.media.nodes.filter((m) => m.status !== "FAILED").map((m) => m.id),
     mediaMap,
   };
 }

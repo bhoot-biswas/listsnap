@@ -67,6 +67,7 @@ describe("saveDraft", () => {
           },
         }),
       () => json({ data: { metafieldsSet: { userErrors: [] } } }),
+      () => json({ data: { product: { media: { nodes: [{ id: "M-9", status: "READY" }] } } } }),
     ];
     const saved = await liveShopify.saveDraft(ctx, store, input);
     expect(saved).toEqual({
@@ -74,7 +75,7 @@ describe("saveDraft", () => {
       editUrl: "https://admin.shopify.com/store/rupkotha/products/42",
     });
     expect(calls.map((c) => c.url)).toEqual(
-      Array(4).fill("https://rupkotha.myshopify.com/admin/api/2026-10/graphql.json"),
+      Array(5).fill("https://rupkotha.myshopify.com/admin/api/2026-10/graphql.json"),
     );
     const [bySku, byTitle, set, meta] = calls.map(
       (c) => c.body as { query: string; variables: Record<string, unknown> },
@@ -107,7 +108,7 @@ describe("saveDraft", () => {
                   },
                 ],
               },
-              media: { nodes: [{ id: "M-9" }] },
+              media: { nodes: [{ id: "M-9", status: "READY" }] },
               listingId: { value: "L1" },
               mediaMap: { value: '{"m1":"M-9"}' },
             },
@@ -129,6 +130,50 @@ describe("saveDraft", () => {
     expect(set.variables.identifier).toEqual({ id: "gid://shopify/Product/42" });
     expect(set.variables.input).not.toHaveProperty("status");
     expect(set.variables.input.files).toEqual([{ id: "M-9" }]);
+  });
+
+  const created = (mediaStatus: string) => [
+    () => json({ data: { products: { nodes: [] } } }),
+    () => json({ data: { products: { nodes: [] } } }),
+    () =>
+      json({
+        data: {
+          productSet: {
+            product: { id: "gid://shopify/Product/42", media: { nodes: [{ id: "M-9" }] } },
+            userErrors: [],
+          },
+        },
+      }),
+    () => json({ data: { metafieldsSet: { userErrors: [] } } }),
+    () => json({ data: { product: { media: { nodes: [{ id: "M-9", status: mediaStatus }] } } } }),
+  ];
+
+  it("fails the save when Shopify couldn't download a new photo", async () => {
+    answers = created("FAILED");
+    await expect(liveShopify.saveDraft(ctx, store, input)).rejects.toMatchObject({ key: "storePhotos" });
+  });
+
+  it("sends a photo again that Shopify couldn't download last time", async () => {
+    answers = [
+      () =>
+        json({
+          data: {
+            product: {
+              id: "gid://shopify/Product/42",
+              status: "DRAFT",
+              options: [{ name: "Title", optionValues: [{ name: "Default Title" }] }],
+              variants: { nodes: [] },
+              media: { nodes: [{ id: "M-9", status: "FAILED" }] },
+              listingId: { value: "L1" },
+              mediaMap: { value: '{"m1":"M-9"}' },
+            },
+          },
+        }),
+      ...created("READY").slice(2),
+    ];
+    await liveShopify.saveDraft(ctx, store, { ...input, productRef: "gid://shopify/Product/42" });
+    const set = calls[1]!.body as { variables: { input: { files: unknown[] } } };
+    expect(set.variables.input.files).toEqual([expect.objectContaining({ filename: "listsnap-m1.jpg" })]);
   });
 
   it("waits and tries again when Shopify is throttling", async () => {
