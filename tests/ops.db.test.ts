@@ -263,6 +263,19 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     expect((await A.getListing(listingId))!.status).toBe("in_store");
   });
 
+  it("knows when the store draft is behind the seller's edits", async () => {
+    const behind = async () => {
+      const l = (await A.getListing(listingId))!;
+      return !!l.sent_at && !!l.edited_at && l.edited_at > l.sent_at;
+    };
+    await ops.saveDraftToStore.call(a.workspace, { listingId, update: true }, { via: "ui", confirmed: true });
+    expect(await behind()).toBe(false);
+    await ops.editListingFields.call(a.workspace, { listingId, priceBdt: 999 }, { via: "ui" });
+    expect(await behind()).toBe(true);
+    await ops.saveDraftToStore.call(a.workspace, { listingId, update: true }, { via: "ui", confirmed: true });
+    expect(await behind()).toBe(false);
+  });
+
   it("posts a reel only when confirmed and connected, and never twice", async () => {
     const post = (destination: "facebook" | "instagram", confirmed = true) =>
       ops.postReel.call(

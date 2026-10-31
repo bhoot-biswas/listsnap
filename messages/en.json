@@ -742,6 +742,7 @@
     "offline": "Offline, will save",
     "saveToStore": "Save draft to store",
     "updateStore": "Update store draft",
+    "storeBehind": "Store draft is out of date. Update it to send your changes.",
     "over": "{count} over",
     "assist": {
       "group": "AI help for {field}",

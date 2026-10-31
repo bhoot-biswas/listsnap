@@ -22,6 +22,8 @@ export interface ListingRow {
   price_bdt: number | null;
   wc_product_id: number | null;
   sent_at: Date | null;
+  /** The seller's last change to what goes to the store; later than sent_at means the draft is behind. */
+  edited_at: Date | null;
   updated_at: Date;
 }
 
@@ -45,7 +47,7 @@ export interface RecentListingRow {
 }
 
 const LISTING_COLUMNS =
-  "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, price_bdt, wc_product_id, sent_at, updated_at";
+  "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, price_bdt, wc_product_id, sent_at, edited_at, updated_at";
 
 export function listingQueries(ws: string) {
   return {
@@ -179,7 +181,7 @@ export function listingQueries(ws: string) {
           ...(edit.variants ? { variants: edit.variants } : {}),
         };
         await conn.query(
-          "UPDATE listings SET fields_json = ?, price_bdt = ?, stock_qty = ? WHERE id = ? AND workspace_id = ?",
+          "UPDATE listings SET fields_json = ?, price_bdt = ?, stock_qty = ?, edited_at = UTC_TIMESTAMP(3) WHERE id = ? AND workspace_id = ?",
           [json(next), edit.priceBdt, edit.stockQty, id, ws],
         );
         await conn.query(
@@ -217,7 +219,7 @@ export function listingQueries(ws: string) {
     async restoreListing(id: string, snap: ListingSnapshot) {
       await transaction(async (conn) => {
         await conn.query(
-          "UPDATE listings SET fields_json = ?, price_bdt = ?, stock_qty = ? WHERE id = ? AND workspace_id = ?",
+          "UPDATE listings SET fields_json = ?, price_bdt = ?, stock_qty = ?, edited_at = UTC_TIMESTAMP(3) WHERE id = ? AND workspace_id = ?",
           [json(snap.fields), snap.priceBdt, snap.stockQty, id, ws],
         );
         await conn.query(
