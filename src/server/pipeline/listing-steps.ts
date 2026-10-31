@@ -10,8 +10,8 @@ import type { ListingRow, WorkspaceScope } from "@/server/db/scope";
 import { brandVoice, type Workspace } from "@/server/db/workspaces";
 import {
   ListingText,
-  REVIEW_THRESHOLD,
   sceneBrief,
+  writtenStatus,
   type BanglaText,
   type PlanResult,
   type RenderResult,
@@ -76,7 +76,7 @@ export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
   await ctx.ws.saveListingText(ctx.listing.id, "en", text, {
     confidence: text.confidence,
     checkNotes: text.check_notes,
-    status: text.confidence < REVIEW_THRESHOLD ? "needs_review" : "ready",
+    status: writtenStatus(text),
   });
   return text;
 }

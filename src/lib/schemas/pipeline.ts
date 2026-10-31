@@ -171,3 +171,11 @@ export type ProductMatch = z.infer<typeof ProductMatch>;
 
 /** Below this, a written listing lands in Needs review instead of Ready. */
 export const REVIEW_THRESHOLD = 0.7;
+
+/**
+ * Spark often stays confident while still naming things to check, and ticking those on
+ * Review is the seller's review, so a listing with any starts in Needs review whatever
+ * its confidence.
+ */
+export const writtenStatus = (text: Pick<ListingText, "confidence" | "check_notes">) =>
+  text.confidence < REVIEW_THRESHOLD || text.check_notes.length > 0 ? "needs_review" : "ready";
