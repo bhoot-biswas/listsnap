@@ -15,6 +15,7 @@ import { metaConnection } from "@/server/social/connection";
 import { env } from "@/server/env";
 import { WooSettings, type WooCheck } from "@/lib/woo-connection";
 import { cn } from "@/lib/utils";
+import { relativeTime } from "@/lib/relative-time";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("connections") };
@@ -86,7 +87,7 @@ export default async function ConnectionsPage() {
           ) : connected ? (
             <>
               <dl className="grid gap-1 text-sm text-muted-foreground">
-                {row.last_checked_at && <dd>{t("checked", { time: format.relativeTime(row.last_checked_at) })}</dd>}
+                {row.last_checked_at && <dd>{t("checked", { time: relativeTime(format, row.last_checked_at) })}</dd>}
                 {keyHint(row.credentials_enc) && <dd>{t("keyHint", { hint: keyHint(row.credentials_enc)! })}</dd>}
                 <dd>
                   {settings.defaultCategoryName

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ChatSummary } from "@/lib/schemas/chat";
+import { relativeTime } from "@/lib/relative-time";
 
 const isBangla = (text: string) => /[ঀ-৿]/.test(text);
 
@@ -83,7 +84,7 @@ export function ChatHistory({
                     {c.title}
                   </span>
                   <span className="block text-xs text-muted-foreground">
-                    {format.relativeTime(new Date(c.updatedAt), loadedAt)}
+                    {relativeTime(format, new Date(c.updatedAt), loadedAt)}
                   </span>
                 </span>
                 {(current === undefined ? c.id === chats[0]!.id : c.id === current) && (

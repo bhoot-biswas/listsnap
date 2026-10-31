@@ -13,6 +13,7 @@ import { signInOptions } from "@/server/env";
 import { signOutDevice, signOutOtherDevices } from "@/server/actions/profile";
 import { describeUserAgent } from "@/lib/user-agent";
 import { DeleteAccount, LinkGoogleButton, Preferences, ProfileForm, SignOutButton } from "./_components/profile-forms";
+import { relativeTime } from "@/lib/relative-time";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("profile") };
@@ -100,7 +101,9 @@ export default async function ProfilePage() {
                       {[ua.browser, ua.os].filter(Boolean).join(" · ") || t("devices.unknown")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {current ? t("devices.now") : t("devices.lastActive", { when: format.relativeTime(s.updatedAt) })}
+                      {current
+                        ? t("devices.now")
+                        : t("devices.lastActive", { when: relativeTime(format, s.updatedAt) })}
                     </p>
                   </div>
                   {current ? (

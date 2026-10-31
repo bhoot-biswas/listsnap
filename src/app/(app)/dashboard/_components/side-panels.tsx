@@ -4,6 +4,7 @@ import { Check, Circle } from "lucide-react";
 import { UsageMeter, nextReset } from "@/components/app/usage-meter";
 import type { Checklist } from "@/server/db/scope";
 import { cn } from "@/lib/utils";
+import { relativeTime } from "@/lib/relative-time";
 
 /** Today's use against the daily limits, which reset at midnight UTC. */
 export async function UsageToday({
@@ -26,7 +27,7 @@ export async function UsageToday({
       </h2>
       <UsageMeter label={t("listings")} used={listings} limit={limits.listings} />
       <UsageMeter label={t("images")} used={images} limit={limits.images} />
-      <p className="text-xs text-muted-foreground">{t("resets", { when: format.relativeTime(reset, now) })}</p>
+      <p className="text-xs text-muted-foreground">{t("resets", { when: relativeTime(format, reset, now) })}</p>
     </section>
   );
 }

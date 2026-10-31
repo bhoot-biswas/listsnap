@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { PartyPopper } from "lucide-react";
 import { ButtonLink } from "./button-link";
 import { nextReset } from "./usage-meter";
+import { relativeTime } from "@/lib/relative-time";
 
 /**
  * Shown instead of the upload form once today's listings are used up. It celebrates
@@ -23,7 +24,7 @@ export async function LimitReached({ limit, isDemo }: { limit: number; isDemo: b
       <p className="text-muted-foreground">
         {t("body", {
           time: format.dateTime(reset, { hour: "numeric", minute: "2-digit" }),
-          when: format.relativeTime(reset, new Date()),
+          when: relativeTime(format, reset, new Date()),
         })}
       </p>
       {isDemo && <p className="text-sm text-muted-foreground">{t("demo")}</p>}

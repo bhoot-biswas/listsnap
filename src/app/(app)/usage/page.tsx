@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { CallLog } from "./_components/call-log";
 import { DayTable, MonthChart } from "./_components/month";
 import { StepCosts } from "./_components/step-costs";
+import { relativeTime } from "@/lib/relative-time";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("usage") };
@@ -77,7 +78,7 @@ export default async function UsagePage() {
             <p className="text-xs text-muted-foreground">
               {t("resets", {
                 time: format.dateTime(nextReset(), { hour: "numeric", minute: "2-digit" }),
-                when: format.relativeTime(nextReset(), new Date()),
+                when: relativeTime(format, nextReset(), new Date()),
               })}
             </p>
           </section>

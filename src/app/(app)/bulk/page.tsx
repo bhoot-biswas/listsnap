@@ -8,6 +8,7 @@ import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { MAX_BULK } from "@/lib/batch-state";
 import { BulkUploadButton } from "./_components/bulk-upload-button";
+import { relativeTime } from "@/lib/relative-time";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("bulk"))("title") };
@@ -55,7 +56,9 @@ export default async function BulkPage() {
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="font-medium">
                         {t("photos", { count: b.jobs })}{" "}
-                        <span className="font-normal text-muted-foreground">· {format.relativeTime(b.created_at)}</span>
+                        <span className="font-normal text-muted-foreground">
+                          · {relativeTime(format, b.created_at)}
+                        </span>
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {t("summary", { done, total: b.jobs })}
