@@ -5,6 +5,8 @@ import { getTranslations } from "next-intl/server";
 import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
 import { connectionsOverview } from "@/server/connections/overview";
+import { storeActivity } from "@/server/connections/activity";
+import { requestLocale } from "@/server/step-text";
 import { forWorkspace } from "@/server/db/scope";
 import { metaConnection } from "@/server/social/connection";
 import { Service } from "@/lib/connectors";
@@ -39,6 +41,7 @@ export default async function ServicePage({ params, searchParams }: PageProps<"/
 
   const ws = forWorkspace(viewer.workspace.id);
   const meta = service === "meta" ? (await metaConnection(ws))?.settings : null;
+  const activity = service === "meta" ? null : await storeActivity(viewer.workspace, service, await requestLocale());
 
   return (
     <>
@@ -53,9 +56,15 @@ export default async function ServicePage({ params, searchParams }: PageProps<"/
             s={s}
             row={viewer.workspace.isDemo ? null : await ws.storeConnection("woo")}
             severalStores={severalStores}
+            activity={activity!}
           />
         ) : (
-          <ShopifyDetail s={s} row={await ws.storeConnection("shopify")} severalStores={severalStores} />
+          <ShopifyDetail
+            s={s}
+            row={await ws.storeConnection("shopify")}
+            severalStores={severalStores}
+            activity={activity!}
+          />
         )}
       </div>
     </>

@@ -29,6 +29,8 @@ export const WooSettings = z.object({
   demo: z.boolean().default(false),
   /** New drafts go here; off keeps the store connected without saving to it. */
   saveDrafts: z.boolean().default(true),
+  /** The store's categories at its last check: the only ones the default can be set to. */
+  categories: z.array(z.object({ id: z.number().int().positive(), name: z.string() })).default([]),
 });
 export type WooSettings = z.infer<typeof WooSettings>;
 

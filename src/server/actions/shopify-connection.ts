@@ -13,7 +13,8 @@ import { ShopifySettings } from "@/lib/shopify-connection";
 
 /**
  * The Shopify card's actions. Connecting itself happens over OAuth (/api/shopify/install
- * and /callback); these use the demo store, re-check, pick where stock is counted, and disconnect.
+ * and /callback); these use the demo store, re-check and disconnect. Settings save on change
+ * through store-settings.ts.
  */
 
 /** "No Shopify store yet? Use our demo store for now." */
@@ -49,20 +50,6 @@ export async function recheckShopify(): Promise<void> {
     console.error("[connect] Shopify re-check failed:", err instanceof Error ? err.message : err);
     await ws.setConnectionChecks("shopify", "broken", [{ id: "reach", status: "fail", reason: "auth" }]);
   }
-  refresh();
-}
-
-/** Where stock is counted: one of the locations from the last check, nothing else. */
-export async function chooseShopifyLocation(form: FormData): Promise<void> {
-  const viewer = await requireWorkspace();
-  const settings = await shopifySettings(viewer.workspace);
-  const chosen = settings.locations.find((l) => l.id === form.get("locationId"));
-  if (chosen)
-    await forWorkspace(viewer.workspace.id).setConnectionSettings("shopify", {
-      ...settings,
-      locationId: chosen.id,
-      locationName: chosen.name,
-    });
   refresh();
 }
 

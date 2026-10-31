@@ -9,17 +9,21 @@ import type { ServiceOverview } from "@/server/connections/overview";
 import { WooSettings, type WooCheck } from "@/lib/woo-connection";
 import { relativeTime } from "@/lib/relative-time";
 import { DetailHeader, DetailSection } from "./detail-header";
-import { SaveDraftsToggle } from "./save-drafts-toggle";
+import type { StoreActivity } from "@/server/connections/activity";
+import { ActivitySection } from "./activity-section";
+import { AutoSaveSelect, SaveDraftsSwitch } from "./auto-save";
 
 /** WooCommerce's page: its checks, settings and keys. */
 export async function WooDetail({
   s,
   row,
   severalStores,
+  activity,
 }: {
   s: ServiceOverview;
   row: ConnectionRow | null;
   severalStores: boolean;
+  activity: StoreActivity;
 }) {
   const t = await getTranslations("connections");
   const format = await getFormatter();
@@ -41,21 +45,24 @@ export async function WooDetail({
       <DetailHeader s={s} action={testNow} />
 
       {!own ? (
-        <DetailSection id="woo-status" title={t("statusTitle")}>
-          {/* a demo shop has no store of its own to connect */}
-          <p className="text-sm text-muted-foreground">{row ? t("usingDemoBody") : t("demoShopBody")}</p>
-          {row && severalStores && <SaveDraftsToggle kind="woo" on={settings.saveDrafts} />}
-          {row && (
-            <details className="rounded-lg border px-3 py-2">
-              <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium md:min-h-10">
-                {t("connectOwn")}
-              </summary>
-              <div className="pt-3">
-                <WooConnectForm next="connections" />
-              </div>
-            </details>
-          )}
-        </DetailSection>
+        <>
+          <DetailSection id="woo-status" title={t("statusTitle")}>
+            {/* a demo shop has no store of its own to connect */}
+            <p className="text-sm text-muted-foreground">{row ? t("usingDemoBody") : t("demoShopBody")}</p>
+            {row && severalStores && <SaveDraftsSwitch kind="woo" on={settings.saveDrafts} />}
+            {row && (
+              <details className="rounded-lg border px-3 py-2">
+                <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium md:min-h-10">
+                  {t("connectOwn")}
+                </summary>
+                <div className="pt-3">
+                  <WooConnectForm next="connections" />
+                </div>
+              </details>
+            )}
+          </DetailSection>
+          <ActivitySection id="woo-activity" activity={activity} />
+        </>
       ) : (
         <>
           <DetailSection id="woo-status" title={t("statusTitle")}>
@@ -77,13 +84,31 @@ export async function WooDetail({
           </DetailSection>
 
           <DetailSection id="woo-settings" title={t("settingsTitle")}>
-            <p className="text-sm">
-              {settings.defaultCategoryName
-                ? t("defaultCategory", { name: settings.defaultCategoryName })
-                : t("noDefaultCategory")}
-            </p>
-            {severalStores && <SaveDraftsToggle kind="woo" on={settings.saveDrafts} />}
+            {settings.categories.length ? (
+              <AutoSaveSelect
+                id="woo-category"
+                label={t("defaultCategoryLabel")}
+                kind="woo"
+                field="category"
+                value={settings.defaultCategoryId ? String(settings.defaultCategoryId) : ""}
+                noneLabel={t("noDefaultCategory")}
+                options={settings.categories.map((c) => ({ value: String(c.id), label: c.name }))}
+              />
+            ) : (
+              // connected before categories were kept: the next check reads them
+              <div className="space-y-1">
+                <p className="text-sm">
+                  {settings.defaultCategoryName
+                    ? t("defaultCategory", { name: settings.defaultCategoryName })
+                    : t("noDefaultCategory")}
+                </p>
+                <p className="text-xs text-muted-foreground">{t("categoriesHint")}</p>
+              </div>
+            )}
+            {severalStores && <SaveDraftsSwitch kind="woo" on={settings.saveDrafts} />}
           </DetailSection>
+
+          <ActivitySection id="woo-activity" activity={activity} />
 
           <form action={disconnectWoo} className="space-y-1">
             <ConfirmButton

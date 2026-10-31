@@ -707,8 +707,6 @@
     "shopify": "Shopify",
     "savingHere": "New drafts are saved here",
     "notSavingHere": "New drafts aren't saved here",
-    "stopSaving": "Stop saving new drafts here",
-    "startSaving": "Save new drafts here",
     "shopifyCard": {
       "body": "Save drafts to your Shopify store. You approve ListSnap in Shopify, so there are no keys to copy.",
       "shop": "Store address",
@@ -720,7 +718,6 @@
       "location": "Stock is counted at {name}",
       "noLocation": "No location for stock yet",
       "chooseLocation": "Count stock at",
-      "saveLocation": "Save",
       "reconnect": "Connect again",
       "connected": "Shopify is connected.",
       "disconnectHint": "Drafts already in Shopify stay there. To remove ListSnap completely, also delete the app in Shopify → Settings → Apps.",
@@ -806,7 +803,21 @@
     "demoTitle": "No store yet?",
     "demoBody": "Try ListSnap with our test store, and connect your own any time.",
     "demoWoo": "Use the WooCommerce test store",
-    "demoShopify": "Use the Shopify test store"
+    "demoShopify": "Use the Shopify test store",
+    "saved": "Saved",
+    "notSaved": "Couldn’t save that. Try again.",
+    "saveDraftsHere": "Save new drafts here",
+    "defaultCategoryLabel": "Default category",
+    "categoriesHint": "Press Test now to load your store’s categories and choose one.",
+    "activity": {
+      "title": "Recent activity",
+      "empty": "No drafts saved here yet.",
+      "saved": "Saved {time}",
+      "failed": "Last save failed {time}",
+      "openInStore": "Open in store",
+      "newTab": "(opens in a new tab)",
+      "untitled": "Untitled listing"
+    }
   },
   "review": {
     "title": "Review listing",

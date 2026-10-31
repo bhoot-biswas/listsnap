@@ -707,8 +707,6 @@
     "shopify": "Shopify",
     "savingHere": "নতুন ড্রাফট এখানে সেভ হয়",
     "notSavingHere": "নতুন ড্রাফট এখানে সেভ হয় না",
-    "stopSaving": "এখানে নতুন ড্রাফট সেভ বন্ধ করুন",
-    "startSaving": "নতুন ড্রাফট এখানে সেভ করুন",
     "shopifyCard": {
       "body": "আপনার Shopify স্টোরে ড্রাফট সেভ করুন। ListSnap-কে অনুমতি দেবেন Shopify-তেই, তাই কোনো key কপি করতে হবে না।",
       "shop": "স্টোরের ঠিকানা",
@@ -720,7 +718,6 @@
       "location": "স্টক গোনা হয় {name}-এ",
       "noLocation": "স্টকের জন্য এখনো কোনো লোকেশন নেই",
       "chooseLocation": "স্টক গুনুন",
-      "saveLocation": "সেভ করুন",
       "reconnect": "আবার যুক্ত করুন",
       "connected": "Shopify যুক্ত হয়েছে।",
       "disconnectHint": "যে ড্রাফট আগেই Shopify-তে আছে সেগুলো থেকে যাবে। ListSnap পুরোপুরি সরাতে Shopify → Settings → Apps থেকে অ্যাপটিও মুছে দিন।",
@@ -806,7 +803,21 @@
     "demoTitle": "এখনো স্টোর নেই?",
     "demoBody": "আমাদের টেস্ট স্টোর দিয়ে ListSnap চালিয়ে দেখুন, নিজের স্টোর যেকোনো সময় যুক্ত করুন।",
     "demoWoo": "WooCommerce টেস্ট স্টোর ব্যবহার করুন",
-    "demoShopify": "Shopify টেস্ট স্টোর ব্যবহার করুন"
+    "demoShopify": "Shopify টেস্ট স্টোর ব্যবহার করুন",
+    "saved": "সেভ হয়েছে",
+    "notSaved": "সেভ করা গেল না। আবার চেষ্টা করুন।",
+    "saveDraftsHere": "নতুন ড্রাফট এখানে সেভ করুন",
+    "defaultCategoryLabel": "ডিফল্ট ক্যাটাগরি",
+    "categoriesHint": "স্টোরের ক্যাটাগরি আনতে “এখন পরীক্ষা করুন” চাপুন, তারপর একটি বেছে নিন।",
+    "activity": {
+      "title": "সাম্প্রতিক কাজ",
+      "empty": "এখনো এখানে কোনো ড্রাফট সেভ হয়নি।",
+      "saved": "সেভ হয়েছে {time}",
+      "failed": "শেষ সেভ ব্যর্থ হয়েছে {time}",
+      "openInStore": "স্টোরে খুলুন",
+      "newTab": "(নতুন ট্যাবে খোলে)",
+      "untitled": "নামহীন লিস্টিং"
+    }
   },
   "review": {
     "title": "লিস্টিং দেখে নিন",
