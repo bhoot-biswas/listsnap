@@ -13,6 +13,7 @@ import type { Locale } from "@/i18n/request";
  */
 
 export type StepErrorKey = keyof (typeof en)["stepText"]["errors"];
+export type ApiErrorKey = keyof (typeof en)["apiErrors"];
 export type TextParams = Record<string, string | number>;
 
 const translators = {

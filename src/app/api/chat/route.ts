@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const viewer = await apiViewer();
   if (!viewer) return unauthorized();
   const body = ChatRequest.safeParse(await request.json().catch(() => null));
-  if (!body.success) return fail(400, "invalid", "Write a message first.");
+  if (!body.success) return fail(400, "invalid", "writeMessage");
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({

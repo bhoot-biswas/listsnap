@@ -11,13 +11,14 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
   if (!viewer) return unauthorized();
   const { id, step } = await ctx.params;
   const parsed = Step.safeParse(step);
-  if (!parsed.success) return fail(404, "unknown_step", "Unknown step.");
+  if (!parsed.success) return fail(404, "unknown_step", "unknownStep");
   const params = new URL(request.url).searchParams;
   const r = await executeListingStep(viewer.workspace, id, parsed.data, {
     scene: params.get("scene") ?? undefined,
     force: params.get("retry") === "1",
   });
   if (!r.found) return notFound();
-  if ("invalid" in r) return fail(400, "invalid", r.invalid);
+  // the only request a listing step turns down is a scene that doesn't exist
+  if ("invalid" in r) return fail(400, "invalid", "unknownScene");
   return stepResponse(r.outcome);
 }

@@ -21,27 +21,24 @@ export async function POST(request: Request) {
   const viewer = await apiViewer();
   if (!viewer) return unauthorized();
   if ((await forWorkspace(viewer.workspace.id).brandPhotosToday()) >= PHOTOS_PER_DAY)
-    return fail(
-      429,
-      "limit_reached",
-      "You've added today's shop photos. You can add more after 6:00 AM Bangladesh time.",
-    );
+    return fail(429, "limit_reached", "shopPhotoLimit");
   let form: FormData;
   try {
     form = await request.formData();
   } catch {
-    return fail(400, "bad_request", "Send the photo as multipart form data.");
+    return fail(400, "bad_request", "sendPhoto");
   }
   const file = form.get("photo");
-  if (!(file instanceof File) || file.size === 0) return fail(400, "no_photo", "Add a photo.");
-  if (file.type && !TYPES.has(file.type)) return fail(415, "unsupported_file", "Use a JPG, PNG or HEIC photo.");
-  if (file.size > BRAND_PHOTO_MAX_BYTES) return fail(413, "too_large", "That photo is over 8 MB.");
+  if (!(file instanceof File) || file.size === 0) return fail(400, "no_photo", "addPhoto");
+  if (file.type && !TYPES.has(file.type)) return fail(415, "unsupported_file", "shopPhotoType");
+  if (file.size > BRAND_PHOTO_MAX_BYTES)
+    return fail(413, "too_large", "shopPhotoTooLarge", { mb: BRAND_PHOTO_MAX_BYTES / 1024 / 1024 });
 
   let photo;
   try {
     photo = await normalisePhoto(Buffer.from(await file.arrayBuffer()));
   } catch {
-    return fail(415, "unsupported_file", "That file isn't a photo we can read.");
+    return fail(415, "unsupported_file", "shopPhotoUnreadable");
   }
   const media = await saveMedia(viewer.workspace.id, "brand", photo.data, {
     mime: "image/jpeg",

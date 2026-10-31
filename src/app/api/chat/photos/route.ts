@@ -20,16 +20,15 @@ export async function POST(request: Request) {
   try {
     form = await request.formData();
   } catch {
-    return fail(400, "bad_request", "Send the photo as multipart form data.");
+    return fail(400, "bad_request", "sendPhoto");
   }
   const file = form.get("photo");
-  if (!(file instanceof File) || !file.size) return fail(400, "no_photo", "Add a photo first.");
-  const problem = photoFileProblem(file);
+  if (!(file instanceof File) || !file.size) return fail(400, "no_photo", "addPhotoFirst");
+  const problem = await photoFileProblem(file);
   if (problem) return problem;
 
   const ws = forWorkspace(viewer.workspace.id);
-  if ((await ws.loosePhotosToday()) >= LOOSE_PER_DAY)
-    return fail(429, "limit", "That's a lot of photos for one day. Make listings from the ones you've sent first.");
+  if ((await ws.loosePhotosToday()) >= LOOSE_PER_DAY) return fail(429, "limit", "chatPhotoLimit");
   const photo = await readPhotoFile(file);
   if (!photo) return unreadablePhoto();
   const media = await saveMedia(ws.id, "original", photo.data, {

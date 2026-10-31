@@ -1,7 +1,7 @@
 import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { brandVoice } from "@/server/db/workspaces";
-import { fail, notFound, ok, unauthorized } from "@/server/http";
+import { fail, failWords, notFound, ok, unauthorized } from "@/server/http";
 import { StepError } from "@/server/pipeline/run-step";
 import { meta } from "@/server/providers";
 import { AssistRequest } from "@/lib/schemas/assist";
@@ -19,14 +19,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
   const viewer = await apiViewer();
   if (!viewer) return unauthorized();
   const parsed = AssistRequest.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return fail(400, "bad_request", "There's no text to change here.");
+  if (!parsed.success) return fail(400, "bad_request", "noTextToChange");
   const { id } = await ctx.params;
   const ws = forWorkspace(viewer.workspace.id);
   const listing = await ws.getListing(id);
   const en = ListingText.safeParse(listing?.fields_json?.en);
   if (!listing || !en.success) return notFound();
-  if ((await ws.assistsToday()) >= DAILY_ASSISTS)
-    return fail(429, "limit_reached", "You've used today's AI help. It comes back at midnight; your text is saved.");
+  if ((await ws.assistsToday()) >= DAILY_ASSISTS) return fail(429, "limit_reached", "assistLimit");
 
   try {
     const text = await meta().assist(
@@ -39,8 +38,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
     );
     return ok({ text });
   } catch (err) {
-    if (err instanceof StepError) return fail(503, "busy", errorWords(err, await requestLocale()));
+    if (err instanceof StepError) return failWords(503, "busy", errorWords(err, await requestLocale()));
     console.error("[assist] unexpected error:", err);
-    return fail(500, "error", "Something went wrong. Your text hasn't changed; try again.");
+    return fail(500, "error", "assistFailed");
   }
 }
