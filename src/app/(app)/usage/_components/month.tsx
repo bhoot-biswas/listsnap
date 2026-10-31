@@ -63,7 +63,11 @@ export async function DayTable({ days, money }: { days: UsageDay[]; money: (n: n
     <details className="group rounded-xl border bg-card">
       <summary className="flex min-h-12 cursor-pointer items-center justify-between gap-3 px-4 text-base font-semibold md:px-5">
         {t("title")}
-        <a href="/api/usage/csv" download className="text-sm font-medium text-primary hover:underline">
+        <a
+          href="/api/usage/csv"
+          download
+          className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline md:min-h-0"
+        >
           {t("csv")}
         </a>
       </summary>

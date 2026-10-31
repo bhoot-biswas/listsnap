@@ -188,6 +188,7 @@ export function TextFields({
         <Button
           type="button"
           variant="outline"
+          className="h-11 md:h-10"
           onClick={() => set("attributes", [...value.attributes, { name: "", value: "" }])}
         >
           <Plus />

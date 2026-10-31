@@ -110,7 +110,7 @@ function Segmented<T extends string>({
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "h-10 min-w-20 rounded-md px-3 text-sm font-medium transition-colors md:h-9",
+            "h-11 min-w-20 rounded-md px-3 text-sm font-medium transition-colors md:h-9",
             value === o.value ? "bg-primary-soft text-primary" : "text-muted-foreground hover:text-foreground",
           )}
         >

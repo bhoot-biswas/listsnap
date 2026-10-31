@@ -27,7 +27,9 @@ function detail(step: string, result: unknown, locale: Locale): string | null {
   if (step === "segment") {
     const r = result as SegmentResult;
     const found = { count: r.instances.length, phrase: r.phrase, fill: r.check.fillPercent };
-    return r.tried.length > 1 ? t("foundRetried", { ...found, first: r.tried[0]! }) : t("found", found);
+    // a set searches every phrase at once, so only a different winning phrase means a retry
+    const retried = r.tried.length > 1 && r.phrase !== r.tried[0];
+    return retried ? t("foundRetried", { ...found, first: r.tried[0]! }) : t("found", found);
   }
   // the model writes this reason in English; it is shown as written
   if (step === "group") return (result as GroupResult).reason;

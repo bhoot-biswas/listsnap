@@ -93,7 +93,10 @@ export default async function DashboardPage() {
                 heading={t("recent")}
                 empty={t("empty")}
                 action={
-                  <Link href="/listings" className="text-sm font-medium text-primary hover:underline">
+                  <Link
+                    href="/listings"
+                    className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline md:min-h-0"
+                  >
                     {t("allListings")}
                   </Link>
                 }
