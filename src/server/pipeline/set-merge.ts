@@ -2,26 +2,36 @@ import "server-only";
 import { boxOverlap as overlap } from "@/server/image-ops";
 import type { SegmentInstance } from "@/server/providers/types";
 
-/** Pieces whose boxes share this much of the smaller one are parts of one thing. */
+/** Contents whose box shares this much of the product's belong to it. */
 const OVERLAP = 0.2;
 
 /**
  * SAM finds one kind of thing per phrase, so a cup on its saucer comes back as a saucer
- * for "blue cup saucer" and as a cup for "coffee cup". For a set, every phrase runs and
- * pieces that overlap become one item, its mask the union of theirs; the same piece found
- * by two phrases collapses the same way. Pieces lying apart stay separate items, for the
- * group step to sort out.
+ * for "blue cup saucer" and as a cup for "coffee cup". A set is sold as one bundle, so
+ * every phrase runs and every piece touching another joins it, through any chain of
+ * touching pieces, into one item whose mask is the union of theirs. Joining only the
+ * pieces that overlap a lot left a cluster of clay pots with bites where a pot in front,
+ * left out, covered the ones behind. Pieces lying apart stay separate items, for the
+ * group step.
  */
 export function mergeSetPieces(found: SegmentInstance[]): SegmentInstance[] {
   const parent = found.map((_, i) => i);
   const root = (i: number): number => (parent[i] === i ? i : (parent[i] = root(parent[i]!)));
   for (let i = 0; i < found.length; i++)
     for (let j = i + 1; j < found.length; j++)
-      if (overlap(found[i]!.box, found[j]!.box) >= OVERLAP) parent[root(j)] = root(i);
+      if (overlap(found[i]!.box, found[j]!.box) > 0) parent[root(j)] = root(i);
 
   const groups = new Map<number, SegmentInstance[]>();
   found.forEach((inst, i) => groups.set(root(i), [...(groups.get(root(i)) ?? []), inst]));
   return [...groups.values()].map((g) => (g.length === 1 ? g[0]! : union(g)));
+}
+
+/**
+ * A pair sold as one product (two earrings, two sandals) becomes one item, so its photos
+ * show both pieces rather than whichever came first.
+ */
+export function joinPieces(pieces: SegmentInstance[]): SegmentInstance {
+  return union(pieces);
 }
 
 /**
