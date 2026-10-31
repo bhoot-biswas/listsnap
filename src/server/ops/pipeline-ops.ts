@@ -5,7 +5,8 @@ import { executeListingStep, executeLookStep, executePostStep, executeReelStep }
 import { Look } from "@/lib/schemas/looks";
 import { ReelLang, ReelTemplate } from "@/lib/schemas/reels";
 import { PostRequest } from "@/lib/schemas/social";
-import { executeStoreStep } from "@/server/pipeline/store-step";
+import { saveToStores } from "@/server/pipeline/store-step";
+import { StoreKind } from "@/lib/stores";
 import type { StepOutcome } from "@/server/pipeline/run-step";
 import { defineOp } from "./define-op";
 import { ListingId } from "./listing-ops";
@@ -34,18 +35,22 @@ export const renderScene = defineOp({
 export const saveDraftToStore = defineOp({
   name: "saveDraftToStore",
   description:
-    "Save a finished listing to the shop's WooCommerce store as a draft product (never published). With update, send the latest edits to the same draft. Needs the seller's confirmation.",
-  input: z.object({ listingId: ListingId, update: z.boolean().default(false) }),
+    "Save a finished listing to the shop's online store as a draft product (never published): to every store the shop saves drafts to, or only to the stores named ('woo' for WooCommerce, 'shopify'). With update, send the latest edits to the same draft. Needs the seller's confirmation.",
+  input: z.object({
+    listingId: ListingId,
+    update: z.boolean().default(false),
+    stores: z.array(StoreKind).min(1).max(2).optional(),
+  }),
   effect: "changes_store",
-  async run({ workspace }, { listingId, update }) {
-    const r = await executeStoreStep(workspace, listingId, { update });
+  async run({ workspace }, { listingId, update, stores }) {
+    const r = await saveToStores(workspace, listingId, { update, stores });
     if (!r.found) return { ok: false, error: "not_found" };
     if ("invalid" in r) return { ok: false, error: "not_ready", message: r.invalid };
     return {
       ok: true,
       value: { outcome: r.outcome as StepOutcome<unknown> },
       listingId,
-      summary: update ? "update draft" : "save draft",
+      summary: `${update ? "update draft" : "save draft"}${stores ? ` (${stores.join(", ")})` : ""}`,
     };
   },
 });

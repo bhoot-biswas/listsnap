@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { execute, json, select, selectOne, transaction } from "./pool";
+import type { StoreKind } from "@/lib/stores";
 
 /**
  * Listing queries, bound to one workspace. Spread into forWorkspace(), so callers
@@ -253,14 +254,37 @@ export function listingQueries(ws: string) {
       });
     },
 
-    /** A store draft exists now; the id lets a later save update it instead of making another. */
-    async markInStore(id: string, productId: number) {
-      // a listing already posted stays "Posted": it is in the store and on social too
+    /** A store draft exists now; the ref lets a later save update it instead of making another. */
+    async markInStore(id: string, kind: StoreKind, productRef: string) {
+      const listing = await selectOne<{ id: string }>("SELECT id FROM listings WHERE id = ? AND workspace_id = ?", [
+        id,
+        ws,
+      ]);
+      if (!listing) return;
       await execute(
-        "UPDATE listings SET status = IF(status = 'posted', 'posted', 'in_store'), wc_product_id = ?, sent_at = UTC_TIMESTAMP(3) WHERE id = ? AND workspace_id = ?",
-        [productId, id, ws],
+        `INSERT INTO listing_store_products (listing_id, kind, workspace_id, product_ref) VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE product_ref = VALUES(product_ref), saved_at = UTC_TIMESTAMP(3)`,
+        [id, kind, ws, productRef],
+      );
+      // a listing already posted stays "Posted": it is in the store and on social too.
+      // wc_product_id is still written so the build before multi-store could be rolled back to
+      await execute(
+        "UPDATE listings SET status = IF(status = 'posted', 'posted', 'in_store'), wc_product_id = IF(? = 'woo', ?, wc_product_id), sent_at = UTC_TIMESTAMP(3) WHERE id = ? AND workspace_id = ?",
+        [kind, kind === "woo" ? Number(productRef) : null, id, ws],
       );
       await execute("INSERT INTO events (workspace_id, type, ref_id) VALUES (?, 'sent_to_store', ?)", [ws, id]);
+    },
+
+    /** Which stores each listing is in, and its product there. */
+    async storeProducts(ids: string[]): Promise<Map<string, Partial<Record<StoreKind, string>>>> {
+      const out = new Map<string, Partial<Record<StoreKind, string>>>();
+      if (!ids.length) return out;
+      const rows = await select<{ listing_id: string; kind: StoreKind; product_ref: string }>(
+        `SELECT listing_id, kind, product_ref FROM listing_store_products WHERE workspace_id = ? AND listing_id IN (${ids.map(() => "?").join(",")})`,
+        [ws, ...ids],
+      );
+      for (const r of rows) out.set(r.listing_id, { ...out.get(r.listing_id), [r.kind]: r.product_ref });
+      return out;
     },
 
     /** A reel went out to Facebook or Instagram. Instagram's media id is kept for later insights. */

@@ -101,7 +101,7 @@ describe.skipIf(!enabled)("workspace isolation (MariaDB)", async () => {
       stockQty: 1,
       selectedMediaIds: [],
     });
-    await B.markInStore(listingId, 999);
+    await B.markInStore(listingId, "woo", "999");
     expect(await snap()).toBe(snapshot);
   });
 

@@ -11,10 +11,10 @@ import type { ChatScope } from "./tools";
  * invent counts), never claim an action a tool didn't confirm, and approvals happen
  * on the card, not in text, so the seller isn't asked twice.
  */
-const LISTING_ROLE = `You are ListSnap's shop assistant. You help a small online seller in Bangladesh with one product listing: its text, price, AI photos, reels, saving it to their WooCommerce store and posting its reel.
+const LISTING_ROLE = `You are ListSnap's shop assistant. You help a small online seller in Bangladesh with one product listing: its text, price, AI photos, reels, saving it as a draft to their online store (WooCommerce, Shopify or both) and posting its reel.
 - A new product gets its own listing from the Assistant page or the Snap button, not from this chat.`;
 
-const SHOP_ROLE = `You are ListSnap's shop assistant. You help a small online seller in Bangladesh with their whole shop: finding listings, explaining their status, changing them, making AI photos and reels, saving them to their WooCommerce store and posting reels.
+const SHOP_ROLE = `You are ListSnap's shop assistant. You help a small online seller in Bangladesh with their whole shop: finding listings, explaining their status, changing them, making AI photos and reels, saving them as drafts to their online store (WooCommerce, Shopify or both) and posting reels.
 - Find listings with findListings before acting on them, and use the ids it returns. Never make up an id.
 - When the seller asks for something across several listings, say which listings you mean by title. For saving several to the store, use saveDraftsToStore once rather than one card per listing.
 - When the seller sends photos of something to sell, start a listing with startListing and the photo ids from their message: photos of one product together, a separate call for each different product. If they only ask about a photo, answer without starting one. Once started, tell them to open it to watch it being made.`;

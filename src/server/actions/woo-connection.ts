@@ -9,7 +9,7 @@ import { forWorkspace } from "@/server/db/scope";
 import { markOnboarded } from "@/server/db/workspaces";
 import { woo } from "@/server/providers";
 import { encryptWooKeys, resolveWooStore, wooSettings } from "@/server/stores/woo-store";
-import { normaliseStoreUrl, type WooCheckResult, type WooSettings } from "@/lib/woo-connection";
+import { normaliseStoreUrl, WooSettings, type WooCheckResult } from "@/lib/woo-connection";
 
 /**
  * Connecting a WooCommerce store, from onboarding and from Connections. "Test" only
@@ -70,10 +70,12 @@ export async function connectWoo(_prev: ConnectState, form: FormData): Promise<C
 
   const [id, ...rest] = (f.defaultCategory ?? "").split(":");
   const category = result.categories.find((c) => String(c.id) === id && c.name === rest.join(":"));
+  const previous = await wooSettings(viewer.workspace);
   const settings: WooSettings = {
     defaultCategoryId: category?.id ?? null,
     defaultCategoryName: category?.name ?? null,
     demo: false,
+    saveDrafts: previous.saveDrafts,
   };
   await forWorkspace(viewer.workspace.id).saveConnection("woo", {
     baseUrl: url,
@@ -93,7 +95,7 @@ export async function connectDemoStore(form: FormData): Promise<void> {
       baseUrl: null,
       credentialsEnc: null,
       checks: [],
-      settings: { defaultCategoryId: null, defaultCategoryName: null, demo: true } satisfies WooSettings,
+      settings: WooSettings.parse({ demo: true }),
     });
   }
   return finish(viewer.workspace.id, next);

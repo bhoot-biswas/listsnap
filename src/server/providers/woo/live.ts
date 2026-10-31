@@ -8,6 +8,7 @@ import { WooHttpError, wooApi, type WooApi } from "./http";
 import { checkWooStore } from "./check";
 import { colorAttribute, syncVariations } from "./variations";
 import { imageName, imagePlan, type StoreImage } from "./images";
+import { toHtml } from "../html";
 
 /**
  * The real WooCommerce client. Products are created as drafts and never published;
@@ -121,7 +122,7 @@ export const liveWoo: WooProvider = {
         },
       });
     }
-    return { productId: saved.id, editUrl: editUrl(store, saved.id) };
+    return { productRef: String(saved.id), editUrl: editUrl(store, saved.id) };
   },
 
   check: checkWooStore,
@@ -137,9 +138,9 @@ export const editUrl = (store: WooStore, productId: number) =>
  * still matches after the seller edits the title, then by title for drafts made before SKUs.
  */
 export async function findProduct(api: WooApi, input: WooDraftInput): Promise<Product | null> {
-  if (input.productId) {
+  if (input.productRef) {
     try {
-      const p = await api.get<Product>(`products/${input.productId}`);
+      const p = await api.get<Product>(`products/${Number(input.productRef)}`);
       if (p.status !== "trash") return p;
     } catch (err) {
       if (!(err instanceof WooHttpError && err.status === 404)) throw err;
@@ -197,15 +198,4 @@ const decodeEntities = (s: string) =>
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
 
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-/** Plain model text to store HTML: blank lines make paragraphs, single line breaks stay. */
-export function toHtml(text: string): string {
-  return text
-    .trim()
-    .split(/\n\s*\n/)
-    .filter(Boolean)
-    .map((p) => `<p>${escapeHtml(p.trim()).replace(/\n/g, "<br>\n")}</p>`)
-    .join("\n");
-}
+export { toHtml } from "../html";

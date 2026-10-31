@@ -7,6 +7,7 @@ import { RecentListings } from "@/components/app/recent-listings";
 import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
+import { connectedStores } from "@/server/stores/targets";
 import { Activity } from "./_components/activity";
 import { NeedsAttention } from "./_components/needs-attention";
 import { GetStarted, UsageToday, WeekBars } from "./_components/side-panels";
@@ -23,14 +24,14 @@ export default async function DashboardPage() {
   const tNav = await getTranslations("nav");
   const ws = forWorkspace(viewer.workspace.id);
   const { isDemo } = viewer.workspace;
-  const [stats, attention, recent, activity, days, checklist, store, used] = await Promise.all([
+  const [stats, attention, recent, activity, days, checklist, stores, used] = await Promise.all([
     ws.dashboardStats(),
     ws.attention(5),
     ws.recentListings(5),
     ws.activity(8),
     ws.listingsPerDay(),
     ws.checklist(),
-    isDemo ? null : ws.storeConnection("woo"),
+    connectedStores(viewer.workspace),
     ws.usageToday(),
   ]);
   // the demo shop saves to our test store, so it counts as connected
@@ -55,11 +56,11 @@ export default async function DashboardPage() {
           <h2 className="text-2xl font-semibold">{t("hello", { name })}</h2>
           <p className="mt-1 text-muted-foreground">
             {viewer.workspace.name} ·{" "}
-            {isDemo ? t("storeDemo") : store?.status === "connected" ? t("storeConnected") : t("storeMissing")}
+            {isDemo ? t("storeDemo") : stores.some((s) => !s.broken) ? t("storeConnected") : t("storeMissing")}
           </p>
         </section>
 
-        {store?.status === "broken" && (
+        {stores.some((s) => s.broken) && (
           <div
             role="alert"
             className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4"

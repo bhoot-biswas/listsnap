@@ -97,15 +97,17 @@
   },
   "onboarding": {
     "title": "Set up your shop",
-    "body": "Two quick steps: name your shop, then connect your WooCommerce store.",
+    "body": "Two quick steps: name your shop, then connect your online store.",
     "shopName": "Shop name",
     "shopNamePlaceholder": "Rupkotha Crafts",
     "continue": "Continue",
     "errorName": "Give your shop a name (2–80 characters).",
     "step": "Step {n} of 2",
-    "storeTitle": "Connect your WooCommerce store",
+    "storeTitle": "Connect your online store",
     "storeBody": "ListSnap saves every listing to your store as a draft. Nothing is published without you.",
-    "back": "Back"
+    "back": "Back",
+    "woo": "WooCommerce",
+    "shopify": "Shopify"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -167,8 +169,8 @@
     "activity": {
       "title": "Activity",
       "sent_to_store": "Draft “{title}” saved to the store",
-      "saved": "{kind, select, instagram {Instagram connected} other {Store connected}}",
-      "removed": "{kind, select, instagram {Instagram disconnected} other {Store disconnected}}",
+      "saved": "{kind, select, instagram {Instagram connected} shopify {Shopify connected} woo {WooCommerce connected} other {Store connected}}",
+      "removed": "{kind, select, instagram {Instagram disconnected} shopify {Shopify disconnected} woo {WooCommerce disconnected} other {Store disconnected}}",
       "untitled": "Untitled listing"
     }
   },
@@ -601,12 +603,12 @@
     "heading": "{count, plural, one {Draft saved} other {# drafts saved}}",
     "body": "“{title}” is in your store as a draft.",
     "open": "Open",
-    "openInStore": "Open in WooCommerce",
     "snapAnother": "Snap another",
     "toDashboard": "Back to dashboard",
     "stats": "Took {seconds} s · AI cost ${cost}",
     "reelOrPost": "Make a reel or post",
-    "reelOrPostMany": "Tap a product to make its reel or post it to Facebook and Instagram."
+    "reelOrPostMany": "Tap a product to make its reel or post it to Facebook and Instagram.",
+    "openIn": "Open in {store}"
   },
   "connect": {
     "url": "Store address",
@@ -701,7 +703,64 @@
     },
     "disconnectConfirm": "Disconnect your store? ListSnap can’t save drafts to it until you connect it again.",
     "disconnectYes": "Yes, disconnect",
-    "keepConnected": "Keep connected"
+    "keepConnected": "Keep connected",
+    "shopify": "Shopify",
+    "savingHere": "New drafts are saved here",
+    "notSavingHere": "New drafts aren't saved here",
+    "stopSaving": "Stop saving new drafts here",
+    "startSaving": "Save new drafts here",
+    "shopifyCard": {
+      "body": "Save drafts to your Shopify store. You approve ListSnap in Shopify, so there are no keys to copy.",
+      "shop": "Store address",
+      "shopPlaceholder": "myshop.myshopify.com",
+      "shopHint": "Your store's myshopify.com address. In Shopify it's under Settings → Domains.",
+      "connect": "Connect Shopify",
+      "demo": "No Shopify store yet? Use the demo store for now",
+      "usingDemoBody": "You're saving drafts to our Shopify test store for now. Connect your own store any time.",
+      "location": "Stock is counted at {name}",
+      "noLocation": "No location for stock yet",
+      "chooseLocation": "Count stock at",
+      "saveLocation": "Save",
+      "reconnect": "Connect again",
+      "connected": "Shopify is connected.",
+      "disconnectHint": "Drafts already in Shopify stay there. To remove ListSnap completely, also delete the app in Shopify → Settings → Apps.",
+      "disconnectConfirm": "Disconnect Shopify? ListSnap can't save drafts to it until you connect it again.",
+      "errors": {
+        "shop": "Enter your store's myshopify.com address, like myshop.myshopify.com.",
+        "demo": "Demo shops always use our WooCommerce test store.",
+        "denied": "Shopify wasn't connected: the approval was cancelled.",
+        "expired": "That Shopify link expired or didn't match. Try connecting again.",
+        "scopes": "Shopify didn't give ListSnap all the access it needs. Connect again and approve every permission.",
+        "taken": "Another ListSnap shop is already connected to this Shopify store.",
+        "failed": "We couldn't connect Shopify just now. Try again in a moment."
+      },
+      "checks": {
+        "reach": {
+          "pass": "Store reachable",
+          "fail": "ListSnap couldn't reach your Shopify store."
+        },
+        "scopes": {
+          "pass": "Can save draft products and stock",
+          "fail": "ListSnap doesn't have all the access it needs."
+        },
+        "location": {
+          "pass": "Location for stock found",
+          "fail": "Your store has no active location to count stock at."
+        },
+        "currency": {
+          "pass": "Prices in taka (BDT)",
+          "warn": "Your store's currency isn't BDT. ListSnap sends prices as taka amounts."
+        }
+      },
+      "reasons": {
+        "unreachable": "Check that your store is online.",
+        "auth": "Connect Shopify again to give ListSnap access.",
+        "scopes": "Connect again and approve every permission.",
+        "no_location": "Add a location in Shopify → Settings → Locations.",
+        "currency": "Change it in Shopify → Settings → Store details, or check prices before you publish.",
+        "server": "Shopify had a problem. Try again in a moment."
+      }
+    }
   },
   "review": {
     "title": "Review listing",
@@ -1010,7 +1069,7 @@
       "testConnection": "This shop has a test connection. Connect your real Facebook Page to post.",
       "noInstagram": "Your Facebook Page has no Instagram business account linked, so there's nowhere on Instagram to post.",
       "demoStoreMissing": "The demo store isn't set up yet. Try again later.",
-      "connectStore": "Connect your WooCommerce store first, in Connections.",
+      "connectStore": "Connect a store first, in Connections.",
       "storePhotoFor": "The store couldn't download the photo for \"{name}\". Try again.",
       "storeColor": "The store didn't accept the color \"{name}\". Check its name and try again.",
       "storeKeys": "Your store didn't accept ListSnap's keys. Check them in Connections (read/write access).",
@@ -1021,7 +1080,18 @@
       "storeError": "Store error {status}",
       "storeHttps": "Your store address must start with https://.",
       "storePrivate": "That store address isn't reachable from the internet.",
-      "storeNoAnswer": "Your store didn't answer. Your listing is safe here; try again in a moment."
+      "storeNoAnswer": "Your store didn't answer. Your listing is safe here; try again in a moment.",
+      "noSaveStore": "None of your stores is set to get new drafts. Turn one on in Connections.",
+      "storeFailedIn": "{store}: {message}",
+      "shopifyAuth": "Shopify didn't accept ListSnap's access. Connect your store again in Connections.",
+      "shopifyReconnect": "Your Shopify connection has run out. Connect it again in Connections.",
+      "shopifyUnavailable": "Your Shopify store isn't open right now (it may be paused or unpaid). Check it in Shopify.",
+      "shopifyGone": "ListSnap couldn't find that Shopify store. Check it in Connections.",
+      "shopifyBusy": "Shopify is busy right now. Your listing is safe here; try again in a moment.",
+      "shopifyProblem": "Shopify had a problem (error {status}). Your listing is safe here.",
+      "shopifyNoAnswer": "Shopify didn't answer. Your listing is safe here; try again in a moment.",
+      "shopifySaid": "Shopify said: {message}",
+      "shopifyOptions": "This product's options were changed in Shopify, so ListSnap can't update its colours. Change them in Shopify instead."
     },
     "details": {
       "lookingFor": "Looking for: \"{phrase}\"",

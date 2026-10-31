@@ -27,6 +27,8 @@ export const WooSettings = z.object({
   defaultCategoryName: z.string().nullable().default(null),
   /** Connected to the shared demo store instead of the shop's own. */
   demo: z.boolean().default(false),
+  /** New drafts go here; off keeps the store connected without saving to it. */
+  saveDrafts: z.boolean().default(true),
 });
 export type WooSettings = z.infer<typeof WooSettings>;
 

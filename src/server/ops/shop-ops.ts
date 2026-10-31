@@ -2,7 +2,9 @@ import "server-only";
 import { z } from "zod";
 import { REELS_PER_DAY } from "@/server/db/limits";
 import { takeListingSlot } from "@/server/limits";
-import { executeStoreStep } from "@/server/pipeline/store-step";
+import { saveToStores } from "@/server/pipeline/store-step";
+import { connectedStores } from "@/server/stores/targets";
+import { StoreKind, STORE_NAMES } from "@/lib/stores";
 import { metaConnection } from "@/server/social/connection";
 import { defineOp } from "./define-op";
 import { ListingId } from "./listing-ops";
@@ -18,11 +20,16 @@ const STATUSES = ["processing", "needs_review", "ready", "in_store", "posted", "
 export const getShopSummary = defineOp({
   name: "getShopSummary",
   description:
-    "Read where the shop stands: how many listings have each status, AI photos and reels left today, and the connected Facebook Page and Instagram account.",
+    "Read where the shop stands: how many listings have each status, AI photos and reels left today, the online stores it saves drafts to, and the connected Facebook Page and Instagram account.",
   input: z.object({}),
   effect: "read",
   async run({ workspace, ws }) {
-    const [counts, usage, meta] = await Promise.all([ws.statusCounts(), ws.usageToday(), metaConnection(ws)]);
+    const [counts, usage, meta, stores] = await Promise.all([
+      ws.statusCounts(),
+      ws.usageToday(),
+      metaConnection(ws),
+      connectedStores(workspace),
+    ]);
     return {
       ok: true,
       value: {
@@ -30,6 +37,13 @@ export const getShopSummary = defineOp({
         listingsByStatus: counts,
         aiPhotosLeftToday: Math.max(0, workspace.limits.images - usage.images),
         reelsLeftToday: Math.max(0, REELS_PER_DAY - usage.reels),
+        stores: stores.map((s) => ({
+          kind: s.kind,
+          name: STORE_NAMES[s.kind],
+          address: s.demo ? "ListSnap's demo store" : s.address,
+          savesNewDrafts: s.saveDrafts,
+          needsAttention: s.broken,
+        })),
         facebookPage: meta?.settings.pageName ?? null,
         instagram: meta?.settings.igUsername ?? null,
       },
@@ -115,10 +129,13 @@ export const startListing = defineOp({
 export const saveDraftsToStore = defineOp({
   name: "saveDraftsToStore",
   description:
-    "Save several finished listings (up to 20) to the shop's WooCommerce store as draft products, never published. Needs the seller's confirmation; listings already in the store are left as they are.",
-  input: z.object({ listingIds: z.array(ListingId).min(1).max(20) }),
+    "Save several finished listings (up to 20) to the shop's online store as draft products, never published: to every store the shop saves drafts to, or only to the stores named ('woo' for WooCommerce, 'shopify'). Needs the seller's confirmation; listings already in a store are left as they are there.",
+  input: z.object({
+    listingIds: z.array(ListingId).min(1).max(20),
+    stores: z.array(StoreKind).min(1).max(2).optional(),
+  }),
   effect: "changes_store",
-  async run({ workspace, ws }, { listingIds }) {
+  async run({ workspace, ws }, { listingIds, stores }) {
     const ids = [...new Set(listingIds)];
     // all or nothing on ownership: one id from another shop means the request is wrong
     if ((await Promise.all(ids.map((id) => ws.getListing(id)))).some((l) => !l))
@@ -126,7 +143,7 @@ export const saveDraftsToStore = defineOp({
     const saved: string[] = [];
     const failed: { id: string; message: string }[] = [];
     for (const id of ids) {
-      const r = await executeStoreStep(workspace, id);
+      const r = await saveToStores(workspace, id, { stores });
       if (!r.found) failed.push({ id, message: "That isn't in this shop." });
       else if ("invalid" in r) failed.push({ id, message: r.invalid });
       else if (r.outcome.state === "done") saved.push(id);

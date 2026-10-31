@@ -10,6 +10,7 @@ import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { loadJobState } from "@/server/pipeline/job-state";
 import type { StoreResult } from "@/server/pipeline/store-step";
+import { STORE_KINDS, STORE_NAMES, storeStep, type StoreKind } from "@/lib/stores";
 import type { JobState } from "@/lib/job-state";
 import { cn } from "@/lib/utils";
 import { requestLocale } from "@/server/step-text";
@@ -26,6 +27,14 @@ function makingSeconds(state: JobState): number | null {
   return Math.max(1, Math.round((end - Date.parse(state.createdAt)) / 1000));
 }
 
+/** Where each store saved the listing; an older WooCommerce result has no productRef but has the link. */
+async function savedIn(ws: ReturnType<typeof forWorkspace>, jobId: string, listingId: string) {
+  const results = await Promise.all(
+    STORE_KINDS.map(async (kind) => ({ kind, r: await ws.stepResult<StoreResult>(jobId, storeStep(kind), listingId) })),
+  );
+  return results.flatMap(({ kind, r }) => (r?.editUrl ? [{ kind, editUrl: r.editUrl }] : []));
+}
+
 /** S8 Done: what was saved to the store, and where to go next (a reel or post is made on Review). */
 export default async function DonePage({ params }: PageProps<"/job/[id]/done">) {
   const viewer = await requireWorkspace();
@@ -36,8 +45,9 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
   const saved = await Promise.all(
     state.listings
       .filter((l) => l.status === "in_store" || l.status === "posted")
-      .map(async (l) => ({ listing: l, store: await ws.stepResult<StoreResult>(id, "store", l.id) })),
+      .map(async (l) => ({ listing: l, stores: await savedIn(ws, id, l.id) })),
   );
+  const several = new Set(saved.flatMap((s) => s.stores.map((x) => x.kind))).size > 1;
   if (!saved.length) redirect(`/job/${id}`);
 
   const t = await getTranslations("done");
@@ -61,7 +71,7 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
 
           {saved.length > 1 && (
             <ul className="divide-y rounded-lg border text-left">
-              {saved.map(({ listing, store }) => (
+              {saved.map(({ listing, stores }) => (
                 <li key={listing.id} className="flex items-center justify-between gap-3 px-3 py-2">
                   <Link
                     href={`/job/${id}/review?l=${listing.id}`}
@@ -69,29 +79,33 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
                   >
                     <span className="truncate">{listing.title}</span>
                   </Link>
-                  {store && (
-                    <a
-                      href={store.editUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-medium text-primary"
-                    >
-                      {t("open")}
-                      <ExternalLink className="size-3.5" aria-hidden="true" />
-                    </a>
-                  )}
+                  <span className="flex shrink-0 gap-3">
+                    {stores.map((s) => (
+                      <a
+                        key={s.kind}
+                        href={s.editUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-primary"
+                      >
+                        {several ? STORE_NAMES[s.kind] : t("open")}
+                        <ExternalLink className="size-3.5" aria-hidden="true" />
+                      </a>
+                    ))}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
 
           <div className="space-y-3">
-            {saved.length === 1 && saved[0]!.store && (
-              <a href={saved[0]!.store.editUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
-                {t("openInStore")}
-                <ExternalLink aria-hidden="true" />
-              </a>
-            )}
+            {saved.length === 1 &&
+              saved[0]!.stores.map((s) => (
+                <a key={s.kind} href={s.editUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
+                  {t("openIn", { store: STORE_NAMES[s.kind as StoreKind] })}
+                  <ExternalLink aria-hidden="true" />
+                </a>
+              ))}
             {saved.length === 1 && (
               <ButtonLink
                 href={`/job/${id}/review?l=${saved[0]!.listing.id}#extras`}

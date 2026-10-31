@@ -32,7 +32,7 @@ describe("oauthQuery", () => {
 });
 
 describe("findProduct after a lost answer", () => {
-  const input = { listingId: "L1", productId: null, title: "Edited title" } as WooDraftInput;
+  const input = { listingId: "L1", productRef: null, title: "Edited title" } as WooDraftInput;
   const draft = (id: number, listingId: string, status = "draft") => ({
     id,
     status,

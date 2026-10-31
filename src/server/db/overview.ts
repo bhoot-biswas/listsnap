@@ -136,7 +136,7 @@ export function overviewQueries(ws: string) {
           `SELECT AVG(span) AS s FROM (
              SELECT TIMESTAMPDIFF(MICROSECOND, MIN(js.started_at), MAX(js.finished_at)) / 1e6 AS span
                FROM job_steps js JOIN jobs j ON j.id = js.job_id
-              WHERE js.workspace_id = ? AND j.status = 'ready' AND js.step <> 'store'
+              WHERE js.workspace_id = ? AND j.status = 'ready' AND js.step NOT LIKE 'store:%'
                 AND j.created_at >= UTC_TIMESTAMP() - INTERVAL 7 DAY
               GROUP BY js.job_id HAVING COUNT(*) = SUM(js.status = 'done')) t`,
           [ws],
@@ -212,7 +212,7 @@ export function overviewQueries(ws: string) {
 
     async checklist(): Promise<Checklist> {
       const row = await selectOne<Record<keyof Checklist, number>>(
-        `SELECT EXISTS(SELECT 1 FROM store_connections WHERE workspace_id = ? AND kind = 'woo' AND status = 'connected') AS store,
+        `SELECT EXISTS(SELECT 1 FROM store_connections WHERE workspace_id = ? AND kind IN ('woo', 'shopify') AND status = 'connected') AS store,
                 EXISTS(SELECT 1 FROM listings WHERE workspace_id = ?) AS listing,
                 EXISTS(SELECT 1 FROM batches WHERE workspace_id = ?) AS bulk,
                 EXISTS(SELECT 1 FROM listings l JOIN jobs j ON j.id = l.job_id

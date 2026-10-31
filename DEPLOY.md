@@ -71,6 +71,7 @@ MEDIA_DIR=/var/lib/listsnap/media
 AUTH_IP_HEADER=x-real-ip
 PROVIDER_MODE_META=mock
 PROVIDER_MODE_WOO=mock
+PROVIDER_MODE_SHOPIFY=mock
 PROVIDER_MODE_INSTAGRAM=mock
 EOF
 chown root:listsnap /etc/listsnap /etc/listsnap/env
@@ -140,6 +141,7 @@ nano /etc/listsnap/env
 Then:
 
 - **The demo store:** paste the three `DEMO_WOO_…` lines from step 7, and set `PROVIDER_MODE_WOO=live`.
+- **Shopify:** see "Shopify" below. Until the app is registered, leave `PROVIDER_MODE_SHOPIFY=mock`.
 - **Meta AI:** add `MODEL_API_KEY=…` and set `PROVIDER_MODE_META=live`. Set a spend alert on the Meta side too.
 - **Reels:** set `PROVIDER_MODE_VIDEO=live`. On a 2-vCPU server also add `REEL_WORKERS=1`: a 12 s reel takes about 46 s and under 900 MB either way, and one worker leaves a core for the app.
 - **Email sign-in:** create a mailbox in hPanel (for example `hello@getlistsnap.com`), then add:
@@ -248,3 +250,16 @@ To try a standalone build locally:
 2. Copy `public` and `.next/static` into `.next/standalone`.
 3. Start the `listsnap-standalone` entry in `.claude/launch.json` (port 3001).
 4. Remove the `output` line afterwards.
+
+## Shopify
+
+Sellers connect Shopify with OAuth, so ListSnap is a public Shopify app. Until Shopify approves its App Store listing, it installs only on development stores.
+
+1. In the [Shopify Dev Dashboard](https://dev.shopify.com/dashboard), create the app with **public distribution** (this can't be changed later).
+2. Copy `shopify.app.toml.example` to `shopify.app.toml`, fill in `client_id`, and deploy the config with `shopify app deploy`. It sets the scopes, the redirect URL `https://getlistsnap.com/api/shopify/callback` and the webhooks (`app/uninstalled` and the three privacy topics) at `https://getlistsnap.com/api/shopify/webhooks`.
+3. In `/etc/listsnap/env` add `SHOPIFY_CLIENT_ID=…` and `SHOPIFY_CLIENT_SECRET=…` from the app's Settings, set `PROVIDER_MODE_SHOPIFY=live`, and `systemctl restart listsnap`.
+4. Check: on Connections, connect a dev store. Shopify asks to approve ListSnap, then the card shows "Connected" with every check passing. Save a listing; it appears in the store's admin as a draft with its photos.
+
+**The Shopify demo store** (optional): create a dev store from the Dev Dashboard's **Dev stores** page (so it's in our organisation) and set its currency to BDT. Create a second app there with the same three scopes, install it on that store, and add `DEMO_SHOPIFY_SHOP=…myshopify.com`, `DEMO_SHOPIFY_CLIENT_ID=…` and `DEMO_SHOPIFY_CLIENT_SECRET=…`. Sellers can then pick "Use the demo store" on the Shopify card. Demo shops (the "Try the demo" button) still save to the WooCommerce demo store.
+
+Shopify's offline tokens last about an hour and are refreshed on the next save; a refresh token lasts 90 days, so a shop that saves nothing for 90 days is asked to connect again. Bump `SHOPIFY_API_VERSION` once a year; each version is supported for at least 12 months.

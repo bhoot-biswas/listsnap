@@ -47,7 +47,7 @@ export function mockChatTurn(input: ChatInput): ChatTurn {
   if (/reel/.test(text) && /post|instagram|facebook/.test(text))
     return call("postReel", { lang, destination: /instagram/.test(text) ? "instagram" : "facebook" });
   if (/reel|video/.test(text)) return call("makeReel", { lang });
-  if (/store|draft|woo/.test(text)) return call("saveDraftToStore", {});
+  if (/store|draft|woo|shopify/.test(text)) return call("saveDraftToStore", {});
   if (/undo|go back/.test(text)) return call("undoLast");
   const price = /price[^\d]*(\d[\d,]*)/.exec(text);
   if (price) return call("editListingFields", { priceBdt: Number(price[1]!.replace(/,/g, "")) });
