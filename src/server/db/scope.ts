@@ -33,6 +33,7 @@ export interface JobRow {
   group_mode: string | null;
   camera_angle: "top_down" | "side" | "angled" | null;
   created_at: Date;
+  archived_at: Date | null;
 }
 
 export interface PhotoRow {
@@ -117,9 +118,42 @@ export function forWorkspace(workspaceId: string) {
 
     getJob: (id: string) =>
       selectOne<JobRow>(
-        "SELECT id, status, group_mode, camera_angle, created_at FROM jobs WHERE id = ? AND workspace_id = ?",
+        "SELECT id, status, group_mode, camera_angle, created_at, archived_at FROM jobs WHERE id = ? AND workspace_id = ?",
         [id, ws],
       ),
+
+    /**
+     * Archives a job and its listings at one moment, or brings them back. Restoring takes
+     * back only the listings archived with the job, not ones the seller archived on their own.
+     */
+    async setJobArchived(id: string, archived: boolean): Promise<boolean> {
+      return transaction(async (conn) => {
+        const [rows] = await conn.query("SELECT archived_at FROM jobs WHERE id = ? AND workspace_id = ? FOR UPDATE", [
+          id,
+          ws,
+        ]);
+        const job = (rows as { archived_at: Date | null }[])[0];
+        if (!job || !!job.archived_at === archived) return false;
+        if (archived) {
+          await conn.query("UPDATE jobs SET archived_at = UTC_TIMESTAMP(3) WHERE id = ? AND workspace_id = ?", [
+            id,
+            ws,
+          ]);
+          await conn.query(
+            `UPDATE listings l JOIN jobs j ON j.id = l.job_id SET l.archived_at = j.archived_at
+              WHERE l.job_id = ? AND l.workspace_id = ? AND l.archived_at IS NULL`,
+            [id, ws],
+          );
+        } else {
+          await conn.query(
+            "UPDATE listings SET archived_at = NULL WHERE job_id = ? AND workspace_id = ? AND archived_at = ?",
+            [id, ws, job.archived_at],
+          );
+          await conn.query("UPDATE jobs SET archived_at = NULL WHERE id = ? AND workspace_id = ?", [id, ws]);
+        }
+        return true;
+      });
+    },
 
     async updateJob(id: string, fields: { status?: JobStatus; groupMode?: string; cameraAngle?: string }) {
       await execute(
@@ -226,7 +260,7 @@ export function forWorkspace(workspaceId: string) {
     /** Sidebar badges: listings waiting for review, and today's listing slots used (the limit's own count). */
     async counts(): Promise<{ needsReview: number; listingsToday: number }> {
       const row = await selectOne<{ needs_review: number; today: number }>(
-        `SELECT (SELECT COUNT(*) FROM listings WHERE workspace_id = ? AND status = 'needs_review') AS needs_review,
+        `SELECT (SELECT COUNT(*) FROM listings WHERE workspace_id = ? AND status = 'needs_review' AND archived_at IS NULL) AS needs_review,
                 (SELECT listings FROM usage_daily WHERE workspace_id = ? AND date = UTC_DATE()) AS today`,
         [ws, ws],
       );

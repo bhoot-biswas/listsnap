@@ -190,7 +190,8 @@
     "status": "Status",
     "confidence": "AI confidence",
     "created": "Made",
-    "open": "Open"
+    "open": "Open",
+    "archived": "Archived"
   },
   "usage": {
     "title": "Usage",
@@ -1011,5 +1012,17 @@
       "foundRetried": "{count, plural, one {# item} other {# items}} for \"{phrase}\" (after trying \"{first}\") · fills {fill, number}% of the frame",
       "quoted": "\"{title}\""
     }
+  },
+  "archive": {
+    "listing": "Archive",
+    "job": "Archive job",
+    "restore": "Restore",
+    "listingDone": "Listing archived.",
+    "jobDone": "Job archived.",
+    "undo": "Undo",
+    "restored": "Restored.",
+    "failed": "That didn't work. Try again.",
+    "listingNotice": "This listing is archived. It's hidden from Listings, the dashboard and the media library until you restore it.",
+    "jobNotice": "This job is archived, with its listings. They're hidden from the lists until you restore them."
   }
 }

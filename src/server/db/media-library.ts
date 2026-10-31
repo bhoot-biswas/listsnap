@@ -41,9 +41,10 @@ export function mediaLibraryQueries(ws: string) {
     async mediaPage(opts: { group: MediaGroup | null; q: string; page: number }) {
       const kinds = opts.group ? MEDIA_GROUPS[opts.group] : SHOWN;
       const params: (string | number)[] = [ws, ...kinds];
-      let filter = "";
+      // an archived listing's or job's photos leave the library with it
+      let filter = "WHERE t.archived_at IS NULL";
       if (opts.q) {
-        filter = "WHERE t.title COLLATE utf8mb4_unicode_ci LIKE ? OR t.title_bn COLLATE utf8mb4_unicode_ci LIKE ?";
+        filter += " AND (t.title COLLATE utf8mb4_unicode_ci LIKE ? OR t.title_bn COLLATE utf8mb4_unicode_ci LIKE ?)";
         params.push(likeTerm(opts.q), likeTerm(opts.q));
       }
       // the job comes from the listing (AI photos), the photo (originals) or the item (cutouts)
@@ -53,7 +54,9 @@ export function mediaLibraryQueries(ws: string) {
                COALESCE(${TITLE("l")}, (SELECT ${TITLE("l2")} FROM listings l2
                   WHERE l2.job_id = COALESCE(p.job_id, pm.job_id, pc.job_id) ORDER BY l2.sort LIMIT 1)) AS title,
                COALESCE(${TITLE("l", "bn")}, (SELECT ${TITLE("l2", "bn")} FROM listings l2
-                  WHERE l2.job_id = COALESCE(p.job_id, pm.job_id, pc.job_id) ORDER BY l2.sort LIMIT 1)) AS title_bn
+                  WHERE l2.job_id = COALESCE(p.job_id, pm.job_id, pc.job_id) ORDER BY l2.sort LIMIT 1)) AS title_bn,
+               COALESCE(l.archived_at, (SELECT j.archived_at FROM jobs j
+                  WHERE j.id = COALESCE(l.job_id, p.job_id, pm.job_id, pc.job_id))) AS archived_at
           FROM media m
           LEFT JOIN listings l ON l.id = m.listing_id
           LEFT JOIN photos p ON p.media_id = m.id
