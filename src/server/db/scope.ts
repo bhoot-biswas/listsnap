@@ -241,6 +241,15 @@ export function forWorkspace(workspaceId: string) {
       );
       return Number(row?.n ?? 0);
     },
+
+    /** Shop photos uploaded today (UTC), for the brand kit's daily cap. */
+    async brandPhotosToday(): Promise<number> {
+      const row = await selectOne<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM media WHERE workspace_id = ? AND kind = 'brand' AND created_at >= UTC_DATE()",
+        [ws],
+      );
+      return Number(row?.n ?? 0);
+    },
   };
 }
 

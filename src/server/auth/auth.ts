@@ -1,12 +1,14 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
+import { APIError } from "better-auth/api";
 import { anonymous, magicLink } from "better-auth/plugins";
 import { env } from "@/server/env";
 import { getPool } from "@/server/db/pool";
 import { createWorkspaceForUser } from "@/server/db/workspaces";
 import { seedDemoWorkspace } from "@/server/demo/seed";
 import { sendMagicLinkMail } from "./mail";
+import { checkUserWrite } from "./profile-fields";
 
 /**
  * Better Auth, following the SOHOZ TOOLS setup (README → pre-existing code):
@@ -38,6 +40,13 @@ async function prune(now = Date.now()): Promise<void> {
   } catch (err) {
     console.error("[auth] prune failed:", err instanceof Error ? err.message : err);
   }
+}
+
+/** A user write with its extra fields checked and trimmed; refused when one isn't allowed. */
+function checked(user: Record<string, unknown>) {
+  const fields = checkUserWrite(user);
+  if (!fields) throw new APIError("BAD_REQUEST", { message: "Invalid profile field" });
+  return fields;
 }
 
 function build() {
@@ -91,7 +100,10 @@ function build() {
 
     databaseHooks: {
       user: {
+        // the extra fields can come straight from the browser through /update-user
+        update: { before: async (user) => ({ data: { ...user, ...checked(user) } }) },
         create: {
+          before: async (user) => ({ data: { ...user, ...checked(user) } }),
           after: async (user) => {
             const demo = !!(user as { isAnonymous?: boolean }).isAnonymous;
             const workspaceId = await createWorkspaceForUser(user.id, { demo });

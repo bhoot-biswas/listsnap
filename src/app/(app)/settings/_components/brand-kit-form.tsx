@@ -28,7 +28,7 @@ export function BrandKitForm({ initial }: { initial: BrandKitValues }) {
   const [state, action, pending] = useActionState<BrandKitState, FormData>(saveBrandKit, { status: "idle" });
   const [setting, setSetting] = useState({ id: initial.settingMediaId, url: initial.settingUrl });
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState(false);
+  const [uploadError, setUploadError] = useState<"failed" | "limit" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const colors = Array.from({ length: BRAND_COLORS_MAX }, (_, i) => initial.colors[i] ?? STARTER[i]!);
 
@@ -38,8 +38,8 @@ export function BrandKitForm({ initial }: { initial: BrandKitValues }) {
 
   async function upload(file: File | undefined) {
     if (!file) return;
-    setUploadError(false);
-    if (file.size > BRAND_PHOTO_MAX_BYTES) return setUploadError(true);
+    setUploadError(null);
+    if (file.size > BRAND_PHOTO_MAX_BYTES) return setUploadError("failed");
     setUploading(true);
     const body = new FormData();
     body.set("photo", file);
@@ -47,7 +47,7 @@ export function BrandKitForm({ initial }: { initial: BrandKitValues }) {
     const json = res?.ok ? ((await res.json()) as { id: string; url: string }) : null;
     setUploading(false);
     if (json) setSetting(json);
-    else setUploadError(true);
+    else setUploadError(res?.status === 429 ? "limit" : "failed");
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -127,7 +127,9 @@ export function BrandKitForm({ initial }: { initial: BrandKitValues }) {
             className="sr-only"
             onChange={(e) => void upload(e.target.files?.[0])}
           />
-          {uploadError && <p className="text-sm text-destructive">{t("uploadFailed")}</p>}
+          {uploadError && (
+            <p className="text-sm text-destructive">{t(uploadError === "limit" ? "uploadLimit" : "uploadFailed")}</p>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">{t("note")}</p>
         <div className="flex items-center gap-3">

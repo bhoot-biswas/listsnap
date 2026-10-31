@@ -331,6 +331,7 @@
       "remove": "Remove photo",
       "uploading": "Uploading…",
       "uploadFailed": "That photo couldn't be used. Try a JPG, PNG or HEIC under 8 MB.",
+      "uploadLimit": "You've added today's shop photos. You can add more after 6:00 AM Bangladesh time.",
       "note": "Lifestyle and banner photos use the brand kit. Studio photos always stay on a plain background.",
       "save": "Save brand kit",
       "saved": "Brand kit saved. New AI photos use it.",

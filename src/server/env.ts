@@ -71,7 +71,8 @@ export function env(): Env {
             from: read("MAIL_FROM") || `ListSnap <${smtpUser}>`,
           }
         : null,
-    ipHeader: (read("AUTH_IP_HEADER") || "x-forwarded-for").toLowerCase(),
+    // X-Forwarded-For starts with whatever the visitor sent; X-Real-IP is set by our Nginx alone
+    ipHeader: (read("AUTH_IP_HEADER") || "x-real-ip").toLowerCase(),
     // a runtime location outside the deploy; the build must not trace it
     mediaDir: path.resolve(/*turbopackIgnore: true*/ read("MEDIA_DIR") || "./.data/media"),
     credentialsKey: read("CREDENTIALS_KEY"),

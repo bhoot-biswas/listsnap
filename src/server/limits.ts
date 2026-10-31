@@ -19,9 +19,12 @@ export async function reserveListingSlot(
   return release ? { ok: true, release } : { ok: false, response: limitReached() };
 }
 
-/** The visitor's address as Nginx saw it: the first in the header, the rest are proxies. */
+/**
+ * The visitor's address as Nginx saw it. In a list (X-Forwarded-For) only the last entry was
+ * added by Nginx; the ones before it came from the visitor and can say anything.
+ */
 export const clientIp = (request: Request): string =>
-  request.headers.get(env().ipHeader)?.split(",")[0]?.trim() || "unknown";
+  request.headers.get(env().ipHeader)?.split(",").at(-1)?.trim() || "unknown";
 
 /** The same slot for callers without a request, such as a chat tool; null at the limit. */
 export async function takeListingSlot(

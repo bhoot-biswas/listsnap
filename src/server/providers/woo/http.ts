@@ -1,7 +1,9 @@
 import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
+// undici's own fetch, so the public-only Agent below is always one it understands
+import { fetch, type Response } from "undici";
 import { env } from "@/server/env";
-import { isPublicHost } from "@/server/net/public-host";
+import { isPublicHost, publicOnlyAgent } from "@/server/net/public-host";
 import { StepError } from "@/server/pipeline/run-step";
 import type { StepErrorKey, TextParams } from "@/server/step-text";
 import { logged } from "../log";
@@ -87,6 +89,7 @@ export function wooApi(ctx: CallContext, store: WooStore): WooApi {
             body: body === undefined ? undefined : JSON.stringify(body),
             signal: AbortSignal.timeout(timeoutMs),
             redirect: "error",
+            dispatcher: env().prod ? publicOnlyAgent() : undefined,
           });
         } catch {
           throw new WooHttpError(0, "unreachable", "storeNoAnswer");
