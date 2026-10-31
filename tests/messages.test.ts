@@ -55,3 +55,13 @@ describe("messages", () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe("media library labels", () => {
+  it("has a label for every kind of photo the library shows", async () => {
+    // the grid looks these up at runtime (t(`kinds.${kind}`)), which the check above can't see
+    const { MEDIA_GROUPS } = await import("@/server/db/media-library");
+    const kinds = Object.values(MEDIA_GROUPS).flat();
+    for (const lang of ["en", "bn"])
+      expect(kinds.filter((k) => !has(load(lang), `media.kinds.${k}`)), lang).toEqual([]);
+  });
+});
