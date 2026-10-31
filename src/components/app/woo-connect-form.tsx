@@ -60,7 +60,7 @@ export function WooConnectForm({ next }: { next: "onboarding" | "connections" })
       </div>
 
       <details className="rounded-lg border bg-muted/40 px-3 py-2 text-sm">
-        <summary className="min-h-8 cursor-pointer py-1 font-medium">{t("guideTitle")}</summary>
+        <summary className="min-h-11 cursor-pointer py-2.5 font-medium md:min-h-8 md:py-1">{t("guideTitle")}</summary>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
           <li>{t("guide1")}</li>
           <li>{t("guide2")}</li>
