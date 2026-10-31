@@ -2,18 +2,11 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { getAuth } from "@/server/auth/auth";
+import { ProfileFields } from "@/server/auth/profile-fields";
 import { requireWorkspace } from "@/server/auth/session";
 
-const Profile = z.object({
-  name: z.string().trim().min(1).max(80),
-  // optional; digits, spaces, dashes and a leading + are enough for a Bangladeshi number
-  phone: z
-    .string()
-    .trim()
-    .regex(/^\+?[0-9 -]{0,20}$/),
-});
+const Profile = ProfileFields.pick({ name: true, phone: true });
 
 export type ProfileState = { status: "idle" | "saved" | "invalid"; field?: "name" | "phone" };
 
@@ -46,7 +39,7 @@ export async function signOutOtherDevices(): Promise<void> {
 
 /** The theme follows the person to other devices, like the UI language. */
 export async function saveTheme(theme: string): Promise<void> {
-  const parsed = z.enum(["light", "dark", "system"]).safeParse(theme);
+  const parsed = ProfileFields.shape.theme.safeParse(theme);
   const viewer = await requireWorkspace();
   if (!parsed.success || viewer.user.isDemo) return;
   await getAuth().api.updateUser({ headers: await headers(), body: { theme: parsed.data } });
