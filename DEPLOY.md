@@ -202,7 +202,7 @@ sshd -t && systemctl reload ssh
 
 ## 11. Check it works
 
-1. **Health:** `https://getlistsnap.com/api/health` should answer `200` with `"database":"ok"` and `"media":"ok"`, and the providers you turned on should read `live`.
+1. **Health:** `https://getlistsnap.com/api/health` should answer `200` with `"database":"ok"` and `"media":"ok"`. On the server, `curl -s localhost:3000/api/health` also shows the providers, which should read `live` for the ones you turned on, and the secrets; visitors see only the first three fields.
 2. **Email sign-in:** the email should arrive from `MAIL_FROM`.
 3. **Store:** in shop setup, choose the demo store.
 4. **A real product:** snap one. It should cost about $0.06 on the Meta key.

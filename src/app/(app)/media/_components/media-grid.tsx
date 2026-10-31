@@ -63,7 +63,7 @@ export async function MediaGrid({ tiles }: { tiles: MediaTile[] }) {
                 <Link
                   href={m.listing_id ? `/job/${m.job_id}/review?l=${m.listing_id}` : `/job/${m.job_id}`}
                   lang={title.lang}
-                  className="line-clamp-1 text-sm font-medium hover:underline"
+                  className="-my-3 line-clamp-1 py-3 text-sm font-medium hover:underline md:my-0 md:py-0"
                 >
                   {title.text ?? t("untitled")}
                 </Link>

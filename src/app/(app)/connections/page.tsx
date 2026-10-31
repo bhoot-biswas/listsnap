@@ -75,7 +75,9 @@ export default async function ConnectionsPage() {
             <>
               <p className="text-sm text-muted-foreground">{t("usingDemoBody")}</p>
               <details className="rounded-lg border px-3 py-2">
-                <summary className="min-h-10 cursor-pointer py-2 text-sm font-medium">{t("connectOwn")}</summary>
+                <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium md:min-h-10">
+                  {t("connectOwn")}
+                </summary>
                 <div className="pt-3">
                   <WooConnectForm next="connections" />
                 </div>
@@ -101,7 +103,9 @@ export default async function ConnectionsPage() {
                 </form>
               </div>
               <details className="rounded-lg border px-3 py-2">
-                <summary className="min-h-10 cursor-pointer py-2 text-sm font-medium">{t("replaceKeys")}</summary>
+                <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium md:min-h-10">
+                  {t("replaceKeys")}
+                </summary>
                 <div className="pt-3">
                   <WooConnectForm next="connections" />
                 </div>
@@ -111,7 +115,7 @@ export default async function ConnectionsPage() {
                   question={t("disconnectConfirm")}
                   confirmLabel={t("disconnectYes")}
                   cancelLabel={t("keepConnected")}
-                  className="text-destructive"
+                  className="h-11 text-destructive md:h-10"
                 >
                   {t("disconnect")}
                 </ConfirmButton>
@@ -155,7 +159,7 @@ export default async function ConnectionsPage() {
                   question={t("meta.disconnectConfirm")}
                   confirmLabel={t("disconnectYes")}
                   cancelLabel={t("keepConnected")}
-                  className="text-destructive"
+                  className="h-11 text-destructive md:h-10"
                 >
                   {t("meta.disconnect")}
                 </ConfirmButton>
