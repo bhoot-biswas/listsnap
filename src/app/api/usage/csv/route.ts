@@ -2,7 +2,7 @@ import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { unauthorized } from "@/server/http";
 
-/** The last 30 days as a CSV file, one row per day (UTC), for sellers who keep their own books. */
+/** The last 30 days as a CSV file, one row per Dhaka day, for sellers who keep their own books. */
 export async function GET() {
   const viewer = await apiViewer();
   if (!viewer) return unauthorized();

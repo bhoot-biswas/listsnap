@@ -1,5 +1,7 @@
 import "server-only";
 import { select, selectOne } from "./pool";
+import { dhakaDay } from "@/lib/dhaka-day";
+import { dhakaDate, dhakaDayStart } from "./dhaka-sql";
 import { MEDIA_GROUPS } from "./media-library";
 
 /**
@@ -54,31 +56,32 @@ export interface UsageCall {
 
 export function usageQueries(ws: string) {
   return {
-    /** Each of the last 30 days, oldest first, zero-filled. Calls and cost count AI calls only. */
+    /** Each of the last 30 Dhaka days, oldest first, zero-filled. Calls and cost count AI calls only. */
     async usageDays(): Promise<UsageDay[]> {
-      const since = `UTC_DATE() - INTERVAL ${USAGE_DAYS - 1} DAY`;
+      const since = dhakaDayStart(USAGE_DAYS - 1);
       const [listings, photos, calls] = await Promise.all([
         select<{ day: string; n: number }>(
-          `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS n FROM listings
+          `SELECT ${dhakaDate("created_at")} AS day, COUNT(*) AS n FROM listings
             WHERE workspace_id = ? AND created_at >= ${since} GROUP BY day`,
           [ws],
         ),
         select<{ day: string; n: number }>(
-          `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS n FROM media
+          `SELECT ${dhakaDate("created_at")} AS day, COUNT(*) AS n FROM media
             WHERE workspace_id = ? AND kind IN (${AI_PHOTO_KINDS.map(() => "?").join(", ")})
               AND created_at >= ${since} GROUP BY day`,
           [ws, ...AI_PHOTO_KINDS],
         ),
         select<{ day: string; n: number; cost: number }>(
-          `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS n, SUM(cost_usd) AS cost FROM api_calls
+          `SELECT ${dhakaDate("created_at")} AS day, COUNT(*) AS n, SUM(cost_usd) AS cost FROM api_calls
             WHERE workspace_id = ? AND provider = 'meta' AND created_at >= ${since} GROUP BY day`,
           [ws],
         ),
       ]);
       const map = <T extends { day: string }>(rows: T[]) => new Map(rows.map((r) => [r.day, r]));
       const [l, p, c] = [map(listings), map(photos), map(calls)];
+      const now = Date.now();
       return Array.from({ length: USAGE_DAYS }, (_, i) => {
-        const day = new Date(Date.now() - (USAGE_DAYS - 1 - i) * 86_400_000).toISOString().slice(0, 10);
+        const day = dhakaDay(now, USAGE_DAYS - 1 - i);
         return {
           day,
           listings: Number(l.get(day)?.n ?? 0),
@@ -89,10 +92,10 @@ export function usageQueries(ws: string) {
       });
     },
 
-    /** AI calls today (UTC), for the Today card beside the listing and photo meters. */
+    /** AI calls today (the Dhaka day), for Usage's Behind the scenes. */
     async callsToday(): Promise<{ calls: number; cost: number }> {
       const row = await selectOne<{ n: number; cost: number | null }>(
-        "SELECT COUNT(*) AS n, SUM(cost_usd) AS cost FROM api_calls WHERE workspace_id = ? AND provider = 'meta' AND created_at >= UTC_DATE()",
+        `SELECT COUNT(*) AS n, SUM(cost_usd) AS cost FROM api_calls WHERE workspace_id = ? AND provider = 'meta' AND created_at >= ${dhakaDayStart()}`,
         [ws],
       );
       return { calls: Number(row?.n ?? 0), cost: Number(row?.cost ?? 0) };
@@ -103,7 +106,7 @@ export function usageQueries(ws: string) {
       select<UsageStep>(
         `SELECT provider, step, SUBSTRING_INDEX(MAX(model), ' (mock)', 1) AS model, COUNT(*) AS calls, SUM(mode = 'mock') AS mock, SUM(NOT ok) AS failed,
                 ROUND(AVG(IF(mode = 'live', ms, NULL))) AS avg_ms, SUM(cost_usd) AS cost
-           FROM api_calls WHERE workspace_id = ? AND created_at >= UTC_DATE() - INTERVAL ${USAGE_DAYS - 1} DAY
+           FROM api_calls WHERE workspace_id = ? AND created_at >= ${dhakaDayStart(USAGE_DAYS - 1)}
           GROUP BY provider, step ORDER BY cost DESC, calls DESC`,
         [ws],
       ),
