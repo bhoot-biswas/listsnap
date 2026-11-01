@@ -96,6 +96,19 @@ describe("listing chat", () => {
     expect(chatRevision(history)).toBe(1);
   });
 
+  it("hides steps a Stop kept from running, and keeps a card shown before it answerable", () => {
+    // the card and the reel came in one turn; Stop came between them
+    const turn = history.at(-1) as Extract<ChatMessage, { role: "assistant" }>;
+    const stopped: ChatMessage[] = [
+      ...history.slice(0, -1),
+      { ...turn, toolCalls: [...turn.toolCalls, call("c3", "makeReel", { lang: "bn" })] },
+      { role: "tool", toolCallId: "c3", name: "makeReel", result: { ok: false, stopped: true } },
+      { role: "assistant", content: null, toolCalls: [], stopped: true },
+    ];
+    expect(chatItems(stopped).map((i) => i.kind)).toEqual(["user", "tool", "assistant", "approval", "stopped"]);
+    expect(pendingCalls(stopped).map((c) => c.id)).toEqual(["c2"]);
+  });
+
   it("has a mock that picks tools and then answers in words", () => {
     const tools = listingTools();
     const reel = mockChatTurn({ system: "", tools, messages: [{ role: "user", content: "Make a Bangla reel" }] });

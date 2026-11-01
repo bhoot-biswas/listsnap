@@ -51,6 +51,8 @@ export function pendingCalls(history: ChatMessage[]): ToolCall[] {
   for (let i = history.length - 1; i >= 0; i--) {
     const m = history[i]!;
     if (m.role === "tool") answered.add(m.toolCallId);
+    // a card shown before the seller pressed Stop can still be answered
+    else if (m.role === "assistant" && m.stopped) continue;
     else if (m.role === "assistant") return m.toolCalls.filter((c) => needsApproval(c.name) && !answered.has(c.id));
     else return [];
   }
@@ -59,9 +61,9 @@ export function pendingCalls(history: ChatMessage[]): ToolCall[] {
 
 /** The stored conversation as the chat box draws it. */
 export function chatItems(history: ChatMessage[]): ChatItem[] {
-  const results = new Map<string, { ok?: boolean; declined?: boolean }>();
-  for (const m of history)
-    if (m.role === "tool") results.set(m.toolCallId, (m.result ?? {}) as { ok?: boolean; declined?: boolean });
+  type Result = { ok?: boolean; declined?: boolean; stopped?: boolean };
+  const results = new Map<string, Result>();
+  for (const m of history) if (m.role === "tool") results.set(m.toolCallId, (m.result ?? {}) as Result);
   const items: ChatItem[] = [];
   history.forEach((m, i) => {
     if (m.role === "user")
@@ -72,9 +74,12 @@ export function chatItems(history: ChatMessage[]): ChatItem[] {
         ...(m.photoIds?.length && { photos: m.photoIds.map(mediaUrl) }),
       });
     if (m.role !== "assistant") return;
+    if (m.stopped) return void items.push({ kind: "stopped", id: `m${i}` });
     if (m.content) items.push({ kind: "assistant", id: `m${i}`, text: m.content });
     for (const c of m.toolCalls) {
       const r = results.get(c.id);
+      // a step Stop kept from running did nothing worth a line
+      if (r?.stopped) continue;
       if (needsApproval(c.name)) {
         const state = !r ? "pending" : r.declined ? "declined" : r.ok ? "approved" : "failed";
         items.push(approvalItem(c, state, r));

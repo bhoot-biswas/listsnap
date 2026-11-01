@@ -35,6 +35,11 @@ export function useChat({
   // undefined: idle; null: the model is thinking; a name: that tool is running
   const [working, setWorking] = useState<string | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  // when the running request began, for the time shown beside what's running
+  const [since, setSince] = useState<number | null>(null);
+  // the conversation of the running turn, once the server has stored it: Stop needs it
+  const [stoppable, setStoppable] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
   // the last message never reached the server and is back in the box, ready to send again
   const [unsent, setUnsent] = useState(false);
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
@@ -72,6 +77,7 @@ export function useChat({
     setError(null);
     setUnsent(false);
     setWorking(null);
+    setSince(Date.now());
     try {
       await beforeSend?.();
       const res = await fetch(endpoint, {
@@ -90,8 +96,11 @@ export function useChat({
         buffer = lines.pop() ?? "";
         for (const line of lines.filter(Boolean)) {
           const e = JSON.parse(line) as ChatEvent;
-          if (e.type === "received") started = true;
-          else if (e.type === "chat") {
+          if (e.type === "received") {
+            started = true;
+            setChatId(e.chatId);
+            setStoppable(e.chatId);
+          } else if (e.type === "chat") {
             started = true;
             setChatId(e.chatId);
             onStarted?.(e.chatId);
@@ -116,7 +125,26 @@ export function useChat({
       if (started) setElsewhere(false);
       setBusy(false);
       setWorking(undefined);
+      setSince(null);
+      setStoppable(null);
+      setStopping(false);
       router.refresh();
+    }
+  }
+
+  /**
+   * Asks the server to end the running turn. The turn ends at its next step, so the
+   * stream stays open until then and shows what was done before the Stop.
+   */
+  async function stop() {
+    if (!stoppable || stopping) return;
+    setStopping(true);
+    try {
+      const res = await fetch(`/api/chats/${stoppable}/stop`, { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch {
+      setStopping(false);
+      setError(t("stopFailed"));
     }
   }
 
@@ -198,7 +226,17 @@ export function useChat({
     uploading,
     chatId,
     status:
-      working === undefined ? "" : working && t.has(`working.${working}`) ? t(`working.${working}`) : t("thinking"),
+      working === undefined
+        ? ""
+        : stopping
+          ? t("stopping")
+          : working && t.has(`working.${working}`)
+            ? t(`working.${working}`)
+            : t("thinking"),
+    since,
+    /** The running turn can be stopped: the server has the message, and no Stop is on its way. */
+    canStop: !!stoppable && !stopping,
+    stop: () => void stop(),
     send,
     answer: (id: string, yes: boolean) => void request({ approve: { toolCallId: id, yes }, ...which() }),
     attach: (files: File[]) => void attach(files),
