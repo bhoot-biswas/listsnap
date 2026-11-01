@@ -84,7 +84,7 @@ export function ChooseItems({
             aria-checked={mode === m}
             variant={mode === m ? "default" : "outline"}
             size="sm"
-            className="h-11 md:h-8"
+
             onClick={() => setMode(m)}
           >
             {t(LABEL[m])}

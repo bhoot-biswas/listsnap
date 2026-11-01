@@ -37,7 +37,7 @@ export default async function ConnectServicePage({ params, searchParams }: PageP
   return (
     <>
       <TopBar title={t("connectService", { name: t(`names.${service}`) })} />
-      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 pt-4 pb-24 md:px-6 md:pb-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-4 md:px-6 md:pb-6">
         {service === "shopify" && <ShopifyNotice value={notice} />}
         <DetailHeader s={s} back="add" />
         <ConnectStep service={service} />

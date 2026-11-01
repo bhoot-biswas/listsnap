@@ -19,7 +19,7 @@ export default async function AddConnectionPage() {
   return (
     <>
       <TopBar title={tNav("connections")} />
-      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 pt-4 pb-24 md:px-6 md:pb-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-4 md:px-6 md:pb-6">
         <ConnectionsTabs current="add" />
         {services.some((s) => s.status === "none") && <p className="text-muted-foreground">{t("addIntro")}</p>}
         <Catalogue services={services} />

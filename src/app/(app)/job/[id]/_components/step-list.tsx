@@ -129,7 +129,7 @@ function StepRow({ row, onRetry }: { row: Row; onRetry: (s: StepView) => Promise
           // a used-up daily limit isn't a failure to retry: say when more come, and where to see usage
           <div className="mt-1 space-y-2 rounded-lg bg-muted p-3 text-sm">
             <p>{row.step.error}</p>
-            <ButtonLink href="/usage" variant="outline" size="sm" className="h-11 md:h-8">
+            <ButtonLink href="/usage" variant="outline" size="sm">
               {t("job.seeUsage")}
             </ButtonLink>
           </div>
@@ -144,7 +144,7 @@ function StepRow({ row, onRetry }: { row: Row; onRetry: (s: StepView) => Promise
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-11 md:h-8"
+
                     disabled={retrying}
                     onClick={async () => {
                       setRetrying(true);

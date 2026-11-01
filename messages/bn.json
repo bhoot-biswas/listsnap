@@ -9,6 +9,12 @@
     "mock": "মক",
     "aiBackground": "AI ব্যাকগ্রাউন্ড",
     "aiScene": "AI দৃশ্য",
+    "ui": {
+      "close": "বন্ধ করুন",
+      "menu": "মেনু",
+      "menuHint": "ListSnap-এর পাতাগুলো।",
+      "toggleMenu": "মেনু দেখান বা লুকান"
+    },
     "pager": {
       "pages": "পাতা",
       "range": "{total, number}টির মধ্যে {from, number}–{to, number}",

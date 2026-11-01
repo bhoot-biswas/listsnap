@@ -32,7 +32,7 @@ export default async function ConnectionsPage() {
   return (
     <>
       <TopBar title={tNav("connections")} />
-      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 pt-4 pb-24 md:px-6 md:pb-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-4 md:px-6 md:pb-6">
         <ConnectionsTabs current="connected" />
         <p className="text-muted-foreground">{connected.length ? t("intro") : t("emptyIntro")}</p>
 

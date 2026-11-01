@@ -127,7 +127,7 @@ export function AppSidebar({ data }: { data: SidebarData }) {
             <SidebarMenuButton
               tooltip={t("newListing")}
               isActive={pathname === "/snap"}
-              className="h-10 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
+              className="h-11 md:h-10 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground data-active:bg-primary data-active:text-primary-foreground"
               render={<Link href="/snap" onClick={closeOnPhone} />}
             >
               <Plus />
@@ -153,7 +153,7 @@ export function AppSidebar({ data }: { data: SidebarData }) {
                       <SidebarMenuButton
                         tooltip={item.label}
                         isActive={isActive(item.href)}
-                        className="h-10"
+                        className="h-11 md:h-10"
                         render={<Link href={item.href} onClick={closeOnPhone} />}
                       >
                         <item.icon />
@@ -175,7 +175,7 @@ export function AppSidebar({ data }: { data: SidebarData }) {
             <SidebarMenuButton
               tooltip={t("help")}
               isActive={isActive("/help")}
-              className="h-10"
+              className="h-11 md:h-10"
               render={<Link href="/help" onClick={closeOnPhone} />}
             >
               <CircleHelp />

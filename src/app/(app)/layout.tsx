@@ -34,8 +34,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <OfflineBanner />
         {viewer.workspace.isDemo && <DemoBanner />}
         {children}
+        {/* inside the page's flow, so its spacer adds room under the content */}
+        <SnapFab />
       </SidebarInset>
-      <SnapFab />
       <KeyboardShortcuts />
     </SidebarProvider>
   );
