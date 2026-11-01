@@ -24,6 +24,13 @@ export interface CatalogResult {
   checked: boolean;
 }
 
+/**
+ * Meta keeps re-downloading catalog photos long after a save, and an item whose photo
+ * link has expired loses its picture and stops being eligible. A year outlasts how long
+ * a listing is usually for sale; "Update the catalog" sends fresh links anyway.
+ */
+export const CATALOG_LINK_TTL_S = 365 * 24 * 3600;
+
 // Meta checks a small batch within seconds; past this it carries on without us waiting
 const STATUS_TRIES = 8;
 const STATUS_WAIT_MS = 2_000;
@@ -66,7 +73,7 @@ async function send(
   if (!workspace.settings.website) throw new StepError("catalogNeedsWebsite");
 
   const product = await listingProduct(ws, workspace, listing);
-  const items = catalogItems([product], await csvShop(workspace, [{ product, bn: null }]));
+  const items = catalogItems([product], await csvShop(workspace, [{ product, bn: null }], CATALOG_LINK_TTL_S));
   if (!items.length) throw new StepError("addPriceFirst");
 
   const ctx = { workspaceId: ws.id, jobId: listing.job_id, step: "catalog" };
