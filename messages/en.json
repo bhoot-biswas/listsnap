@@ -232,7 +232,14 @@
     "archivedCount": "{count, plural, one {Archived # listing.} other {Archived # listings.}}",
     "restoredCount": "{count, plural, one {Restored # listing.} other {Restored # listings.}}",
     "clearSelection": "Clear selection",
-    "exportCount": "{count, plural, one {Export #} other {Export #}}"
+    "exportCount": "{count, plural, one {Export #} other {Export #}}",
+    "catalog": {
+      "button": "{count, plural, one {Save # to catalog} other {Save # to catalog}}",
+      "sending": "Saving {current} of {total} to the catalog…",
+      "saved": "{count, plural, one {Saved # listing to {catalog}.} other {Saved # listings to {catalog}.}}",
+      "savedSome": "Saved {saved} to the catalog; {failed} didn't go.",
+      "failed": "Couldn't save to the catalog. Try again."
+    }
   },
   "usage": {
     "title": "Usage",

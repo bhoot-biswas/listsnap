@@ -9,7 +9,7 @@ describe.skipIf(!enabled)("Facebook catalog (MariaDB)", async () => {
   const { forWorkspace } = await import("@/server/db/scope");
   const { encryptSecret } = await import("@/server/crypto");
   const { finishLogin } = await import("@/server/social/meta-connect");
-  const { metaConnection } = await import("@/server/social/connection");
+  const { metaConnection, readyCatalog } = await import("@/server/social/connection");
   const { saveToCatalog } = await import("@/server/pipeline/catalog-step");
   const { mockFacebook } = await import("@/server/providers/fb/mock");
 
@@ -56,6 +56,9 @@ describe.skipIf(!enabled)("Facebook catalog (MariaDB)", async () => {
     const conn = (await metaConnection(A))!;
     expect(conn.userToken()).toBe("mock-user-token");
     expect(conn.settings).toMatchObject({ catalogAccess: true, catalogId: "900000000000001" });
+    // Listings offers the catalog only once it can be used: chosen, with access, and a website
+    expect(readyCatalog(conn, "https://rupkotha.example")).toMatchObject({ name: "Rupkotha products" });
+    expect(readyCatalog(conn, null)).toBeNull();
     // the token never reaches the settings a page renders
     expect(JSON.stringify((await A.storeConnection("meta"))?.settings_json)).not.toContain("mock-user-token");
   });
