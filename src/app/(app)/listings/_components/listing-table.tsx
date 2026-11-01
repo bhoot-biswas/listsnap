@@ -1,16 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { StatusBadge } from "@/components/app/status-badge";
 import { listingHref } from "@/lib/listing-links";
 import { localTitle } from "@/lib/titles";
 import { sized } from "@/lib/media-size";
 import { suggestedPrice } from "@/lib/schemas/review";
+import { STORE_NAMES } from "@/lib/stores";
 import type { ListingListRow } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
 import { relativeTime } from "@/lib/relative-time";
+import { cn } from "@/lib/utils";
 
 function Thumb({ mediaId, size }: { mediaId: string | null; size: number }) {
   return (
@@ -38,20 +40,48 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
   const format = await getFormatter();
   const locale = await getLocale();
   const view = rows.map((r) => {
-    const price =
-      r.price_bdt ??
-      (r.hint_low != null && r.hint_high != null
+    const suggested =
+      r.price_bdt == null && r.hint_low != null && r.hint_high != null
         ? suggestedPrice({ low: r.hint_low, high: r.hint_high }, rounding)
-        : null);
+        : null;
+    const price = r.price_bdt ?? suggested;
     return {
       ...r,
       href: listingHref(r),
       title: localTitle(r, locale).text ?? t("untitled"),
       lang: localTitle(r, locale).lang,
-      price: price == null ? "–" : `৳${format.number(price)}`,
+      // the model's guess is only a starting point; it mustn't read like a price the seller set
+      price:
+        price == null ? (
+          "–"
+        ) : suggested != null ? (
+          <span className="text-muted-foreground" title={t("suggestedHint")}>
+            ~৳{format.number(price)}
+            <span className="sr-only"> ({t("suggested")})</span>
+          </span>
+        ) : (
+          `৳${format.number(price)}`
+        ),
       created: relativeTime(format, r.created_at),
     };
   });
+  const store = (r: (typeof view)[number], align: "start" | "end") =>
+    (r.stores.length > 0 || r.behind) && (
+      <span className={cn("flex flex-col gap-0.5 text-xs", align === "end" ? "items-end" : "items-start")}>
+        {r.stores.length > 0 && (
+          <span className="text-muted-foreground">
+            <span className="sr-only">{t("storesIn")} </span>
+            {r.stores.map((k) => STORE_NAMES[k]).join(" · ")}
+          </span>
+        )}
+        {r.behind && (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap text-warning">
+            <RefreshCw className="size-3" aria-hidden="true" />
+            {t("behindShort")}
+          </span>
+        )}
+      </span>
+    );
 
   return (
     <>
@@ -64,13 +94,16 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
                 <p lang={r.lang} className="truncate text-sm font-medium">
                   {r.title}
                 </p>
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <p className="flex flex-wrap items-center gap-x-2 text-xs whitespace-nowrap text-muted-foreground">
                   <span className="tabular-nums">{r.price}</span>
                   {r.colors > 1 && <span>· {t("colors", { count: r.colors })}</span>}
                   <span>· {r.created}</span>
                 </p>
               </div>
-              <StatusBadge status={r.status} />
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <StatusBadge status={r.status} />
+                {store(r, "end")}
+              </span>
             </Link>
           </li>
         ))}
@@ -122,7 +155,10 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
                 <td className="px-3 py-2 text-right tabular-nums">{r.price}</td>
                 <td className="max-w-40 truncate px-3 py-2 text-muted-foreground max-lg:hidden">{r.category ?? "–"}</td>
                 <td className="px-3 py-2">
-                  <StatusBadge status={r.status} />
+                  <span className="flex flex-col items-start gap-1">
+                    <StatusBadge status={r.status} />
+                    {store(r, "start")}
+                  </span>
                 </td>
                 <td className="px-3 py-2 max-lg:hidden">
                   {r.confidence != null ? <ConfidenceDots confidence={r.confidence} /> : "–"}
