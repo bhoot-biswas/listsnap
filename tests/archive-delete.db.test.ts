@@ -46,6 +46,28 @@ describe.skipIf(!enabled)("archive and account deletion (MariaDB)", async () => 
     expect((await A.statusCounts()).archived).toBeUndefined();
   });
 
+  it("counts the Media chips the way the grid finds photos, archived ones left out", async () => {
+    const shown = async () => {
+      const groups = ["originals", "cutouts", "ai"] as const;
+      const totals = await Promise.all(
+        groups.map(async (group) => (await A.mediaPage({ group, q: "", page: 1 })).total),
+      );
+      return {
+        counts: (await A.mediaSummary()).counts,
+        grid: Object.fromEntries(groups.map((g, i) => [g, totals[i]])),
+      };
+    };
+    const before = await shown();
+    expect(before.counts).toEqual(before.grid);
+    expect(before.counts.ai).toBeGreaterThan(0);
+
+    await ops.archiveJob.call(a.workspace, { jobId }, { via: "ui" });
+    const after = await shown();
+    expect(after.counts).toEqual(after.grid);
+    expect(after.counts).toEqual({ originals: 0, cutouts: 0, ai: 0 });
+    await ops.archiveJob.call(a.workspace, { jobId, archived: false }, { via: "ui" });
+  });
+
   it("archives a job with its listings, and restores only the ones archived with it", async () => {
     const second = await createTestJob(a.workspace.id, await samplePhoto("kurti.jpg"));
     const [own] = (await runJob(a.workspace, second)).listings;
