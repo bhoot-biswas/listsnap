@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Check, ChevronDown, CloudOff, Loader2 } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, CloudOff, Loader2 } from "lucide-react";
 import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,8 @@ import { parseAmount } from "@/lib/amount";
 import { cn } from "@/lib/utils";
 import { SaveToStore } from "@/components/app/save-to-store";
 import { ExportMenu } from "@/components/app/export-menu";
+import { MediaImg } from "@/components/app/media-img";
+import { nextListing } from "@/lib/review-next";
 import { Autosaver, type SaveState } from "./autosave";
 import { CheckPanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
 import { LooksPanel } from "./looks-panel";
@@ -72,7 +74,16 @@ export function ReviewForm({
   /** Edited since the store draft was saved. */
   storeBehind: boolean;
   archived: boolean;
-  others: { id: string; n: number; status: ListingStatus; current: boolean }[];
+  /** Every listing from this photo, for the tabs and "Next". */
+  others: {
+    id: string;
+    n: number;
+    status: ListingStatus;
+    current: boolean;
+    title: string | null;
+    lang: "en" | "bn";
+    thumb: string | null;
+  }[];
 }) {
   const t = useTranslations("review");
   const tArchive = useTranslations("archive");
@@ -161,6 +172,7 @@ export function ReviewForm({
     }
   }, []);
 
+  const next = nextListing(others, listingId);
   const selected = new Set(edit.selectedMediaIds);
   const outside = edit.priceBdt !== null && (edit.priceBdt < hint.low || edit.priceBdt > hint.high);
   const text: TextValue | null = lang === "en" ? edit.en : edit.bn;
@@ -216,18 +228,34 @@ export function ReviewForm({
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pt-6 md:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {others.length > 1 ? (
-          <nav aria-label={t("title")} className="flex flex-wrap gap-2">
+          // one row that scrolls on a phone, so three products don't push the form down
+          <nav
+            aria-label={t("title")}
+            className="flex gap-2 max-sm:-mx-4 max-sm:w-[calc(100%+2rem)] max-sm:overflow-x-auto max-sm:px-4 sm:flex-wrap"
+          >
             {others.map((o) => (
               <Link
                 key={o.id}
                 href={`/job/${jobId}/review?l=${o.id}`}
                 aria-current={o.current ? "page" : undefined}
                 className={cn(
-                  "flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm",
+                  "flex min-h-11 shrink-0 items-center gap-2 rounded-lg border py-1 pr-3 pl-1 text-sm",
                   o.current ? "border-primary bg-primary-soft font-medium" : "hover:bg-muted/60",
                 )}
               >
-                {t("listingN", { n: o.n })}
+                {o.thumb ? (
+                  <MediaImg
+                    src={o.thumb}
+                    sizes="36px"
+                    alt=""
+                    className="size-9 rounded-md border bg-white object-cover"
+                  />
+                ) : (
+                  <span className="pl-2" />
+                )}
+                <span lang={o.title ? o.lang : undefined} className="max-w-36 truncate">
+                  {o.title ?? t("listingN", { n: o.n })}
+                </span>
                 <StatusBadge status={o.status} />
               </Link>
             ))}
@@ -338,6 +366,19 @@ export function ReviewForm({
 
       {/* on every width, so saving never means scrolling back up a long listing */}
       <div className="sticky bottom-0 z-10 -mx-4 space-y-2 border-t bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
+        {next && (
+          <Link
+            href={`/job/${jobId}/review?l=${next.id}`}
+            className="flex min-h-11 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            <span className="shrink-0">{t("next")}</span>
+            <span lang={next.title ? next.lang : undefined} className="min-w-0 truncate">
+              {next.title ?? t("listingN", { n: next.n })}
+            </span>
+            <StatusBadge status={next.status} />
+            <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
+          </Link>
+        )}
         {/* the autosave keeps ListSnap's copy; the store's draft changes only on Update */}
         {inStore && behind && (
           <p role="status" className="text-sm font-medium text-warning">

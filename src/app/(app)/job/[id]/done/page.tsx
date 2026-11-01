@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { CircleCheck, Clapperboard, ExternalLink } from "lucide-react";
+import { ArrowRight, CircleCheck, Clapperboard, ExternalLink } from "lucide-react";
 import { TopBar } from "@/components/app/top-bar";
 import { ButtonLink } from "@/components/app/button-link";
 import { ExportMenu } from "@/components/app/export-menu";
@@ -14,6 +14,7 @@ import type { StoreResult } from "@/server/pipeline/store-step";
 import { STORE_KINDS, STORE_NAMES, storeStep, type StoreKind } from "@/lib/stores";
 import type { JobState } from "@/lib/job-state";
 import { cn } from "@/lib/utils";
+import { nextListing, numberRepeats, REVIEWABLE } from "@/lib/review-next";
 import { requestLocale } from "@/server/step-text";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -52,7 +53,17 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
   if (!saved.length) redirect(`/job/${id}`);
 
   const t = await getTranslations("done");
+  const tReview = await getTranslations("review");
   const seconds = makingSeconds(state);
+  // one photo, several products: lead to the next one not saved yet, not back to Snap
+  const next = nextListing(
+    numberRepeats(
+      state.listings.filter((l) => REVIEWABLE.has(l.status)),
+      (title, n) => tReview("titleN", { title, n }),
+    ),
+    null,
+  );
+  const unsaved = state.listings.filter((l) => l.status === "needs_review" || l.status === "ready").length;
   const linkClass = cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full");
 
   return (
@@ -99,6 +110,16 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
             </ul>
           )}
 
+          {next && (
+            <div className="space-y-2">
+              <ButtonLink href={`/job/${id}/review?l=${next.id}`} size="lg" className="w-full">
+                <span className="min-w-0 truncate">{t("next", { title: next.title ?? "" })}</span>
+                <ArrowRight aria-hidden="true" />
+              </ButtonLink>
+              <p className="text-sm text-muted-foreground">{t("moreToSave", { count: unsaved })}</p>
+            </div>
+          )}
+
           <div className="space-y-3">
             {saved.length === 1 &&
               saved[0]!.stores.map((s) => (
@@ -125,7 +146,7 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
                 {t("reelOrPost")}
               </ButtonLink>
             )}
-            <ButtonLink href="/snap" size="lg" className="w-full">
+            <ButtonLink href="/snap" size="lg" variant={next ? "outline" : "default"} className="w-full">
               {t("snapAnother")}
             </ButtonLink>
             <ButtonLink href="/dashboard" variant="ghost" className="w-full">
