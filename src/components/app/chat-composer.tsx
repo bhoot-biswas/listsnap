@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { ImagePlus, Loader2, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,13 +27,10 @@ export function ChatComposer({
   className?: string;
 }) {
   const t = useTranslations("chat");
-  const [text, setText] = useState("");
   const picker = useRef<HTMLInputElement>(null);
   const { busy, uploading, photos } = chat;
 
-  const submit = () => {
-    if (chat.send(text, newChat)) setText("");
-  };
+  const submit = () => chat.send(chat.draft, newChat);
 
   return (
     <form
@@ -74,11 +71,11 @@ export function ChatComposer({
       <textarea
         aria-label={t("label")}
         placeholder={placeholder}
-        value={text}
+        value={chat.draft}
         maxLength={CHAT_MESSAGE_MAX}
         rows={2}
         autoFocus={autoFocus}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => chat.setDraft(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
@@ -114,7 +111,7 @@ export function ChatComposer({
           type="submit"
           size="icon"
           className="size-11 rounded-full md:size-9"
-          disabled={busy || uploading > 0 || (!text.trim() && !photos.length)}
+          disabled={busy || uploading > 0 || (!chat.draft.trim() && !photos.length)}
         >
           <SendHorizontal className="size-4" aria-hidden="true" />
           <span className="sr-only">{t("send")}</span>
