@@ -85,6 +85,8 @@ export type ChatItem =
  */
 export type ChatEvent =
   | { type: "chat"; chatId: string }
+  /** The seller's message is stored, so a later failure mustn't hand it back to the box. */
+  | { type: "received" }
   | { type: "item"; item: ChatItem }
   | { type: "working"; name: string | null }
   | { type: "error"; code: "busy" | "limit" | "steps" | "answered" | "generic"; message?: string }

@@ -1076,6 +1076,7 @@
     "label": "Message",
     "placeholder": "Ask about this listing…",
     "send": "Send",
+    "sendAgain": "Send again",
     "newChat": "New chat",
     "you": "You",
     "assistant": "ListSnap",

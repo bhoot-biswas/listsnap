@@ -1076,6 +1076,7 @@
     "label": "মেসেজ",
     "placeholder": "এই লিস্টিং নিয়ে জিজ্ঞেস করুন…",
     "send": "পাঠান",
+    "sendAgain": "আবার পাঠান",
     "newChat": "নতুন চ্যাট",
     "you": "আপনি",
     "assistant": "ListSnap",

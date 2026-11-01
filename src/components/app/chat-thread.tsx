@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronRight, Loader2 } from "lucide-react";
+import { Check, ChevronRight, Loader2, RotateCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChatItem } from "@/lib/schemas/chat";
 import type { Chat } from "@/hooks/use-chat";
@@ -25,6 +26,7 @@ export function ChatThread({
   visible?: boolean;
   className?: string;
 }) {
+  const t = useTranslations("chat");
   const end = useRef<HTMLDivElement>(null);
   const { items, busy, status, error } = chat;
 
@@ -63,7 +65,17 @@ export function ChatThread({
           {status}
         </p>
       )}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-sm text-destructive">{error}</p>
+          {chat.unsent && !busy && (
+            <Button type="button" variant="outline" className="h-11 md:h-9" onClick={() => chat.send(chat.draft)}>
+              <RotateCw aria-hidden="true" />
+              {t("sendAgain")}
+            </Button>
+          )}
+        </div>
+      )}
       <div ref={end} />
     </div>
   );

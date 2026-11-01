@@ -73,6 +73,7 @@ export async function runChat(
       emit({ type: "item", item: approvalItem(call, "declined") });
     }
     await add({ role: "user", content: req.message, ...(photoIds.length && { photoIds }) });
+    emit({ type: "received" });
   } else {
     const call = pendingCalls(history).find((c) => c.id === req.approve.toolCallId);
     if (!call) return emit({ type: "error", code: "answered" });
