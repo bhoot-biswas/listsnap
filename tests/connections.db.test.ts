@@ -118,5 +118,35 @@ describe.skipIf(!enabled)("Connections overview (MariaDB)", async () => {
       await ops.saveDraftToStore.call(workspace, { listingId, update: true }, ui);
       expect((await storeActivity(workspace, "woo", "en")).failure).toBeNull();
     });
+
+    it("marks the store broken when a save is refused for its keys", async () => {
+      const { workspace } = await c;
+      const C = forWorkspace(workspace.id);
+      const { encryptWooKeys } = await import("@/server/stores/woo-store");
+      const { WooHttpError } = await import("@/server/providers/woo/http");
+      await C.saveConnection("woo", {
+        baseUrl: "https://myshop.example",
+        credentialsEnc: encryptWooKeys({ key: "ck_test", secret: "cs_test" }),
+        checks: [],
+        settings: {},
+      });
+      const jobId = await createTestJob(workspace.id, await samplePhoto("kurti.jpg"));
+      const listingId = (await runJob(workspace, jobId)).listings[0]!.id;
+
+      // the store's own keys are only read in live mode
+      const woo = mockWoo as { mode: string };
+      woo.mode = "live";
+      const refused = vi.spyOn(mockWoo, "saveDraft").mockRejectedValue(new WooHttpError(401, "", "storeKeys"));
+      try {
+        await ops.saveDraftToStore.call(workspace, { listingId }, ui);
+      } finally {
+        refused.mockRestore();
+        woo.mode = "mock";
+      }
+
+      const row = await C.storeConnection("woo");
+      expect(row?.status).toBe("broken");
+      expect((await statuses(workspace)).woo).toBe("broken");
+    });
   });
 });

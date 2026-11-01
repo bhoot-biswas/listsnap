@@ -1,5 +1,6 @@
 import "server-only";
 import { select, selectOne } from "./pool";
+import { MEDIA_GROUPS } from "./media-library";
 
 /**
  * Usage numbers for the Usage page, bound to one workspace. Spread into forWorkspace().
@@ -9,8 +10,12 @@ import { select, selectOne } from "./pool";
 
 export const USAGE_DAYS = 30;
 
-/** Made by Muse Image; cutouts and main images are SAM and local work. */
-const AI_PHOTO_KINDS = "('studio', 'lifestyle', 'banner')";
+/**
+ * Made by Muse Image, campaign looks included, since each takes a daily photo slot like a
+ * scene does; cutouts and main images are SAM and local work. The Media library's list, so
+ * the two pages can't count differently.
+ */
+const AI_PHOTO_KINDS = MEDIA_GROUPS.ai;
 
 export interface UsageDay {
   day: string;
@@ -60,8 +65,9 @@ export function usageQueries(ws: string) {
         ),
         select<{ day: string; n: number }>(
           `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS n FROM media
-            WHERE workspace_id = ? AND kind IN ${AI_PHOTO_KINDS} AND created_at >= ${since} GROUP BY day`,
-          [ws],
+            WHERE workspace_id = ? AND kind IN (${AI_PHOTO_KINDS.map(() => "?").join(", ")})
+              AND created_at >= ${since} GROUP BY day`,
+          [ws, ...AI_PHOTO_KINDS],
         ),
         select<{ day: string; n: number; cost: number }>(
           `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS n, SUM(cost_usd) AS cost FROM api_calls

@@ -4,6 +4,7 @@ import { forWorkspace, type ItemRow, type ListingRow, type WorkspaceScope } from
 import type { Workspace } from "@/server/db/workspaces";
 import { shopify, woo } from "@/server/providers";
 import type { StoreDraftInput } from "@/server/providers/types";
+import { WooHttpError } from "@/server/providers/woo/http";
 import { resolveWooStore } from "@/server/stores/woo-store";
 import { resolveShopifyStore, shopifySettings } from "@/server/stores/shopify-store";
 import { storeTargets } from "@/server/stores/targets";
@@ -11,6 +12,7 @@ import { storedError } from "@/server/step-text";
 import { ListingText } from "@/lib/schemas/pipeline";
 import { listingPrice, suggestedPrice } from "@/lib/schemas/review";
 import { listingVariants } from "@/lib/variants";
+import type { WooCheck } from "@/lib/woo-connection";
 import { STORE_NAMES, storeStep, type StoreKind } from "@/lib/stores";
 import { runStep, StepError, type StepOutcome } from "./run-step";
 
@@ -136,10 +138,18 @@ async function saveDraft(
   if (kind === "woo") {
     // mock mode needs no store, so a shop without a connection can still try the flow
     const target = woo().mode === "mock" ? null : await resolveWooStore(workspace);
-    saved = await woo().saveDraft(ctx, target?.store ?? null, {
-      ...input,
-      fallbackCategoryId: target?.settings.defaultCategoryId ?? null,
-    });
+    try {
+      saved = await woo().saveDraft(ctx, target?.store ?? null, {
+        ...input,
+        fallbackCategoryId: target?.settings.defaultCategoryId ?? null,
+      });
+    } catch (err) {
+      // keys revoked or made read-only in the store: only the seller can fix that, so the
+      // Connections page and dashboard say so instead of still showing Connected
+      if (target && !target.settings.demo && err instanceof WooHttpError && err.key === "storeKeys")
+        await ws.setConnectionChecks("woo", "broken", wooKeyChecks(err.status));
+      throw err;
+    }
   } else {
     const target = shopify().mode === "mock" ? null : await resolveShopifyStore(workspace, ctx);
     const settings = target?.settings ?? (await shopifySettings(workspace));
@@ -170,4 +180,18 @@ function images(
     if (c.mediaId && !list.some((x) => x.mediaId === c.mediaId))
       list.push({ mediaId: c.mediaId, alt: `${title}, ${c.color}` });
   return list;
+}
+
+/** What a refused save says about the keys, in the words the connection check uses. */
+function wooKeyChecks(status: number): WooCheck[] {
+  return status === 401
+    ? [
+        { id: "reach", status: "pass" },
+        { id: "read", status: "fail", reason: "keys" },
+      ]
+    : [
+        { id: "reach", status: "pass" },
+        { id: "read", status: "pass" },
+        { id: "write", status: "fail", reason: "read_only" },
+      ];
 }

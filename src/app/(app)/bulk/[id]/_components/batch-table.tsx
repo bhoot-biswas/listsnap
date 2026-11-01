@@ -68,6 +68,9 @@ function InlineField({
   );
 }
 
+/** Out of attempts, or failed with nothing made: only "Try again" on the job page moves it on. */
+export const isStuck = (row: BatchRow) => row.stuck || (row.jobStatus === "failed" && !row.listing);
+
 /** The row's status: the listing's word once there is one, otherwise what the job is doing. */
 function RowStatus({ row, active }: { row: BatchRow; active: boolean }) {
   const t = useTranslations("bulk");
@@ -77,7 +80,7 @@ function RowStatus({ row, active }: { row: BatchRow; active: boolean }) {
         {t("needsChoice")}
       </Link>
     );
-  if (row.stuck || (row.jobStatus === "failed" && !row.listing))
+  if (isStuck(row))
     return (
       <Link
         href={`/job/${row.jobId}`}
