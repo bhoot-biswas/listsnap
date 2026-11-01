@@ -82,6 +82,9 @@ describe.skipIf(!enabled)("Facebook catalog (MariaDB)", async () => {
     expect(items.length).toBeGreaterThan(0);
     expect(items[0]).toMatchObject({ link: "https://rupkotha.example", condition: "new", brand: "test shop" });
     expect(items[0]!.price).toMatch(/^\d+ BDT$/);
+    // Meta re-downloads catalog photos for months, so their links must outlive an import's month
+    const expires = Number(new URL(items[0]!.images[0]!).searchParams.get("e"));
+    expect(expires * 1000 - Date.now()).toBeGreaterThan(360 * 24 * 3600 * 1000);
 
     await saveToCatalog(a.workspace, listingId, {}, noWait);
     expect(send).toHaveBeenCalledTimes(1);

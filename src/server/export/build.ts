@@ -56,8 +56,15 @@ export async function loadExport(
   return listings.length ? { ok: true, listings } : { ok: false, error: "not_ready" };
 }
 
-/** What a store or Meta needs to know about the shop, with photo links that last a month. */
-export async function csvShop(workspace: Workspace, listings: ExportListing[]): Promise<CsvShop> {
+/**
+ * What a store or Meta needs to know about the shop. Photo links last a month by default,
+ * enough for an import; the catalog sync asks for longer (see CATALOG_LINK_TTL_S).
+ */
+export async function csvShop(
+  workspace: Workspace,
+  listings: ExportListing[],
+  linkTtlSeconds = LINK_TTL_S,
+): Promise<CsvShop> {
   const ws = forWorkspace(workspace.id);
   const types = await ws.mediaTypes([...new Set(listings.flatMap((l) => l.product.images.map((i) => i.mediaId)))]);
   return {
@@ -65,7 +72,7 @@ export async function csvShop(workspace: Workspace, listings: ExportListing[]): 
     website: workspace.settings.website ?? "",
     imageUrl: (id) => {
       const mime = types.get(id);
-      return mime ? signedMediaUrl(workspace.id, id, mime, LINK_TTL_S) : null;
+      return mime ? signedMediaUrl(workspace.id, id, mime, linkTtlSeconds) : null;
     },
   };
 }
