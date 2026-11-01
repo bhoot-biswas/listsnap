@@ -17,6 +17,8 @@ import { metaConnection, publicMeta } from "@/server/social/connection";
 import { chatItems, chatRevision } from "@/server/chat/view";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
 import { StillMaking } from "./_components/still-making";
+import type { VoiceNoteView } from "./_components/voice-note-card";
+import { ListenResult } from "@/lib/schemas/voice-note";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("review"))("title") };
@@ -60,6 +62,16 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
     metaConnection(ws),
   ]);
   const chatId = await ws.listingChat(listing.id);
+  const heard = ListenResult.safeParse(job.voice_media_id ? await ws.stepResult(id, "listen") : null);
+  const voiceNote: VoiceNoteView | null = job.voice_media_id
+    ? {
+        url: mediaUrl(job.voice_media_id),
+        transcript: heard.success ? heard.data.transcript : null,
+        fromAudio: heard.success && heard.data.heardBy === "audio",
+        facts: heard.success ? heard.data.facts : null,
+        used: all.length === 1,
+      }
+    : null;
   const history = chatId ? await ws.chatMessages(chatId) : [];
   const posted: Record<string, Record<string, { permalink: string; test: boolean }>> = {};
   for (const raw of postResults) {
@@ -114,6 +126,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
         hint={{ low: price_hint_bdt.low, high: price_hint_bdt.high }}
         confidence={listing.confidence}
         checkNotes={listing.check_notes ?? []}
+        voiceNote={voiceNote}
         status={listing.status}
         inStore={listing.status === "in_store" || listing.status === "posted"}
         archived={!!listing.archived_at}
