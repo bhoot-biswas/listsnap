@@ -534,9 +534,7 @@
       "record": "Record a voice note",
       "stop": "Stop recording",
       "recording": "Recording… {time} of {max}",
-      "delete": "Delete the voice note",
-      "denied": "ListSnap can't use your microphone. Allow it in your browser's settings to record.",
-      "unsupported": "This browser can't record. Try Chrome, or type the details on Review."
+      "delete": "Delete the voice note"
     }
   },
   "job": {
@@ -1161,6 +1159,14 @@
       "deleted": "Conversation deleted",
       "renameFailed": "Couldn't rename it. Try again.",
       "deleteFailed": "Couldn't delete it. Try again."
+    },
+    "voice": {
+      "speak": "Speak your message",
+      "stopSpeaking": "Stop and write it down",
+      "listening": "Listening… {time}",
+      "writing": "Writing down what you said…",
+      "notHeard": "We couldn't make out any words. Try again, or type it.",
+      "failed": "That recording didn't work. Try again, or type it."
     }
   },
   "stepText": {
@@ -1273,6 +1279,12 @@
     "invalidRequest": "Invalid request.",
     "notVoiceNote": "That file isn't a voice recording.",
     "voiceNoteTooLarge": "That voice note is too large. Keep it under a minute.",
-    "unreadableVoiceNote": "We couldn't play that voice note. Record it again."
+    "unreadableVoiceNote": "We couldn't play that voice note. Record it again.",
+    "sendRecording": "Send the recording as multipart form data.",
+    "dictateLimit": "That's a lot of talking for one day. Type your message instead; voice comes back tomorrow."
+  },
+  "recorder": {
+    "denied": "ListSnap can't use your microphone. Allow it in your browser's settings to record.",
+    "unsupported": "This browser can't record. Try Chrome, or type instead."
   }
 }
