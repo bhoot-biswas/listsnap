@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getFormatter, getLocale, getTranslations } from "next-intl/server";
 import { ChevronRight, RefreshCw } from "lucide-react";
+import { ArchiveButton } from "@/components/app/archive-button";
 import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { StatusBadge } from "@/components/app/status-badge";
 import { listingHref } from "@/lib/listing-links";
@@ -13,6 +14,7 @@ import type { ListingListRow } from "@/server/db/scope";
 import { mediaUrl } from "@/server/media/store";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
+import { SelectAllBox, SelectBox } from "./listing-selection";
 
 function Thumb({ mediaId, size }: { mediaId: string | null; size: number }) {
   return (
@@ -33,9 +35,18 @@ function Thumb({ mediaId, size }: { mediaId: string | null; size: number }) {
 
 /**
  * The listings as a table on desktop and as cards on phones. Both come from the same
- * rows; CSS picks one, so there is no client code and no layout jump.
+ * rows; CSS picks one, so there is no layout jump. Only the tick boxes are client code.
+ * Archived listings get their own Restore.
  */
-export async function ListingTable({ rows, rounding }: { rows: ListingListRow[]; rounding: number }) {
+export async function ListingTable({
+  rows,
+  rounding,
+  archived,
+}: {
+  rows: ListingListRow[];
+  rounding: number;
+  archived: boolean;
+}) {
   const t = await getTranslations("listings");
   const format = await getFormatter();
   const locale = await getLocale();
@@ -85,10 +96,17 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
 
   return (
     <>
+      <div className="md:hidden">
+        <SelectAllBox withText />
+      </div>
       <ul className="divide-y rounded-xl border bg-card md:hidden">
         {view.map((r) => (
-          <li key={r.id}>
-            <Link href={r.href} className="flex min-h-16 items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
+          <li key={r.id} className="flex items-center pl-1">
+            <SelectBox id={r.id} label={t("selectRow", { title: r.title })} />
+            <Link
+              href={r.href}
+              className="flex min-h-16 min-w-0 flex-1 items-center gap-3 py-2.5 pr-3 pl-1 hover:bg-muted/60"
+            >
               <Thumb mediaId={r.cutout_media_id} size={52} />
               <div className="min-w-0 flex-1 space-y-1">
                 <p lang={r.lang} className="truncate text-sm font-medium">
@@ -105,6 +123,7 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
                 {store(r, "end")}
               </span>
             </Link>
+            {archived && <ArchiveButton kind="listing" id={r.id} archived className="mr-2 h-11 px-3" />}
           </li>
         ))}
       </ul>
@@ -113,6 +132,9 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
+              <th scope="col" className="w-12 pl-1">
+                <SelectAllBox />
+              </th>
               <th scope="col" className="w-16 px-3 py-2.5">
                 <span className="sr-only">{t("photo")}</span>
               </th>
@@ -142,10 +164,13 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
           <tbody className="divide-y">
             {view.map((r) => (
               <tr key={r.id} className="relative hover:bg-muted/50">
+                <td className="pl-1">
+                  <SelectBox id={r.id} label={t("selectRow", { title: r.title })} />
+                </td>
                 <td className="px-3 py-2">
                   <Thumb mediaId={r.cutout_media_id} size={44} />
                 </td>
-                <td className="max-w-80 px-3 py-2">
+                <td className="max-w-72 px-3 py-2">
                   {/* the title link covers the row, so the whole row opens the listing */}
                   <Link href={r.href} lang={r.lang} className="block truncate font-medium after:absolute after:inset-0">
                     {r.title}
@@ -158,6 +183,8 @@ export async function ListingTable({ rows, rounding }: { rows: ListingListRow[];
                   <span className="flex flex-col items-start gap-1">
                     <StatusBadge status={r.status} />
                     {store(r, "start")}
+                    {/* here rather than a column of its own, so the table still fits beside the sidebar */}
+                    {archived && <ArchiveButton kind="listing" id={r.id} archived className="relative z-10 h-9" />}
                   </span>
                 </td>
                 <td className="px-3 py-2 max-lg:hidden">

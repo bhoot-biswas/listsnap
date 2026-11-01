@@ -219,7 +219,14 @@
     "suggested": "প্রস্তাবিত, এখনো ঠিক করা হয়নি",
     "suggestedHint": "প্রস্তাবিত দাম। লিস্টিংয়ে নিজের দাম দিন।",
     "storesIn": "সেভ হয়েছে:",
-    "behindShort": "ড্রাফট পুরোনো"
+    "behindShort": "ড্রাফট পুরোনো",
+    "selectAll": "এই পাতার সব বাছুন",
+    "selectRow": "{title} বাছুন",
+    "selectedCount": "{count, number}টি বাছা হয়েছে",
+    "saveCount": "{count, number}টি স্টোরে সেভ করুন",
+    "archivedCount": "{count, number}টি লিস্টিং আর্কাইভ হয়েছে।",
+    "restoredCount": "{count, number}টি লিস্টিং ফিরিয়ে আনা হয়েছে।",
+    "clearSelection": "বাছাই মুছুন"
   },
   "usage": {
     "title": "ব্যবহার",

@@ -10,6 +10,7 @@ import { forWorkspace } from "@/server/db/scope";
 import { LISTING_PAGE_SIZE, LISTING_SORTS } from "@/server/db/overview";
 import { LISTING_VIEWS, ListingFilters, listingsHref } from "./_components/listing-filters";
 import { ListingTable } from "./_components/listing-table";
+import { ListingSelection } from "./_components/listing-selection";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("listings") };
@@ -84,7 +85,13 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
               </div>
             ) : (
               <>
-                <ListingTable rows={rows} rounding={viewer.workspace.settings.priceRounding} />
+                <ListingSelection
+                  key={listingsHref(filter)}
+                  rows={rows.map((r) => ({ id: r.id, jobId: r.job_id, status: r.status }))}
+                  archived={archived}
+                >
+                  <ListingTable rows={rows} rounding={viewer.workspace.settings.priceRounding} archived={archived} />
+                </ListingSelection>
                 <Pager
                   page={filter.page}
                   total={total}
