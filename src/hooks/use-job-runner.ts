@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JobState, StepView } from "@/lib/job-state";
+import { loadState } from "./load-state";
+import { useDoneCue } from "./use-done-cue";
+import { useWakeLock } from "./use-wake-lock";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -23,23 +26,23 @@ export function useJobRunner(initial: JobState) {
   const alive = useRef(true);
   const id = initial.id;
 
+  // while steps are left, a locked screen would freeze them; once none are, say so
+  useWakeLock(state.next.length > 0 && !offline);
+  useDoneCue(state.next.length ? false : state.status === "ready" ? "ready" : "needs-you");
+
   const load = useCallback(async (): Promise<JobState | null> => {
-    const res = await fetch(`/api/jobs/${id}`, { cache: "no-store" }).catch(() => null);
-    if (res?.status === 401) {
-      router.push("/sign-in");
+    const r = await loadState<JobState>(`/api/jobs/${id}`);
+    if ("error" in r) {
+      if (r.error === "signed-out") router.push("/sign-in");
+      // without a state there's nothing to call next; say so instead of spinning forever
+      else if (alive.current) (r.error === "offline" ? setOffline : setStalled)(true);
       return null;
     }
-    // without a state there's nothing to call next; say so instead of spinning forever
-    if (!res?.ok) {
-      if (alive.current) setStalled(navigator.onLine);
-      return null;
-    }
-    const next = (await res.json()) as JobState;
     if (alive.current) {
-      setState(next);
+      setState(r.state);
       setStalled(false);
     }
-    return next;
+    return r.state;
   }, [id, router]);
 
   const drive = useCallback(async () => {
@@ -97,13 +100,15 @@ export function useJobRunner(initial: JobState) {
     };
   }, [drive]);
 
-  /** "Try again" on a step that ran out of attempts. */
+  /** "Try again" on a step that ran out of attempts. A dropped request leaves the button ready to tap again. */
   const retry = useCallback(
     async (step: StepView) => {
-      await fetch(retryUrl(id, step), { method: "POST" });
+      const res = await fetch(retryUrl(id, step), { method: "POST" }).catch(() => null);
+      if (res?.status === 401) return router.push("/sign-in");
+      if (!res) setStalled(navigator.onLine);
       await drive();
     },
-    [id, drive],
+    [id, drive, router],
   );
 
   /** The seller's answer on Choose items. */
@@ -113,11 +118,15 @@ export function useJobRunner(initial: JobState) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode, keepItemIds }),
-      });
+      }).catch(() => null);
+      if (res?.status === 401) {
+        router.push("/sign-in");
+        return false;
+      }
       await drive();
-      return res.ok;
+      return !!res?.ok;
     },
-    [id, drive],
+    [id, drive, router],
   );
 
   return { state, offline, stalled, retry, choose, resume: drive };

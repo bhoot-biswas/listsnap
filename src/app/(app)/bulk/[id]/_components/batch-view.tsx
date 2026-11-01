@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Pause, Play } from "lucide-react";
+import { CircleAlert, Pause, Play } from "lucide-react";
 import { TopBar } from "@/components/app/top-bar";
 import { SaveToStore } from "@/components/app/save-to-store";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,8 @@ import { WatchPanel } from "./watch-panel";
 /** One bulk upload: progress, pause and resume, the rows, and saving the chosen ones to the store. */
 export function BatchView({ initial, autoStart }: { initial: BatchState; autoStart: boolean }) {
   const t = useTranslations("bulk");
-  const { state, running, resume, pause, reload } = useBatchRunner(initial, autoStart);
+  const tCommon = useTranslations("common");
+  const { state, running, paused, offline, stalled, resume, pause, reload } = useBatchRunner(initial, autoStart);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const rows = state.rows;
@@ -60,6 +61,7 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
             )}
           </div>
           {left > 0 &&
+            !offline &&
             (running ? (
               <Button variant="outline" size="lg" onClick={pause}>
                 <Pause />
@@ -91,10 +93,23 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
 
         {state.watch && <WatchPanel batchId={state.id} watch={state.watch} running={running} onRetried={resume} />}
 
-        {!running && left > 0 && !watching && (
-          <p role="status" className="rounded-lg border border-warning/40 bg-marigold-soft px-4 py-3 text-sm">
-            {t("pausedBanner", { count: left })}
-          </p>
+        {/* a dropped connection isn't the seller's Pause: the app's offline banner says so, and it carries on by itself */}
+        {offline ? null : stalled ? (
+          <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-destructive/5 px-4 py-3 text-sm">
+            <CircleAlert className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+            {t("stalled")}
+            <Button variant="outline" size="sm" onClick={resume}>
+              {tCommon("tryAgain")}
+            </Button>
+          </div>
+        ) : (
+          paused &&
+          left > 0 &&
+          !watching && (
+            <p role="status" className="rounded-lg border border-warning/40 bg-marigold-soft px-4 py-3 text-sm">
+              {t("pausedBanner", { count: left })}
+            </p>
+          )
         )}
         {left === 0 &&
           !watching &&
