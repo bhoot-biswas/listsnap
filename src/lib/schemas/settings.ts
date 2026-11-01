@@ -6,6 +6,25 @@ export const PRICE_ROUNDINGS = [1, 10, 50, 100] as const;
 export const BRAND_NOTE_MAX = 160;
 
 /**
+ * The shop's website or Facebook Page. "facebook.com/myshop" is fine as typed: https is
+ * added. Empty means none.
+ */
+export const ShopWebsite = z
+  .string()
+  .trim()
+  .max(200)
+  .transform((v) => (!v ? null : /^https?:\/\//i.test(v) ? v : `https://${v}`))
+  .refine((v) => {
+    if (v === null) return true;
+    try {
+      const u = new URL(v);
+      return /^https?:$/.test(u.protocol) && u.hostname.includes(".") && !u.username && !u.password;
+    } catch {
+      return false;
+    }
+  });
+
+/**
  * The Settings form. Checkboxes arrive as repeated fields (scenes) or "on"; everything
  * else is text. English is always on: the store's listing is written in English first.
  */
@@ -25,6 +44,7 @@ export const SettingsForm = z.object({
   scenes: z.array(z.enum(SCENES)).max(SCENES.length),
   priceRounding: z.coerce.number().pipe(z.union(PRICE_ROUNDINGS.map((n) => z.literal(n)))),
   bangla: z.boolean(),
+  website: ShopWebsite,
 });
 export type SettingsForm = z.infer<typeof SettingsForm>;
 
@@ -37,4 +57,5 @@ export const settingsFromForm = (form: FormData) =>
     scenes: [...new Set(form.getAll("scenes"))],
     priceRounding: form.get("priceRounding"),
     bangla: form.get("bangla") === "on",
+    website: form.get("website") ?? "",
   });

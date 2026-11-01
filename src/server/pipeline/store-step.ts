@@ -1,6 +1,6 @@
 import "server-only";
 import { reopenDoneStep, sqlStepStore } from "@/server/db/steps";
-import { forWorkspace, type ItemRow, type ListingRow, type WorkspaceScope } from "@/server/db/scope";
+import { forWorkspace, type ListingRow, type WorkspaceScope } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
 import { shopify, woo } from "@/server/providers";
 import type { StoreDraftInput } from "@/server/providers/types";
@@ -9,12 +9,11 @@ import { resolveWooStore } from "@/server/stores/woo-store";
 import { resolveShopifyStore, shopifySettings } from "@/server/stores/shopify-store";
 import { storeTargets } from "@/server/stores/targets";
 import { storedError } from "@/server/step-text";
-import { ListingText } from "@/lib/schemas/pipeline";
-import { listingPrice, suggestedPrice } from "@/lib/schemas/review";
-import { listingVariants } from "@/lib/variants";
+import { suggestedPrice } from "@/lib/schemas/review";
+import { listingProduct } from "@/server/stores/listing-product";
 import type { WooCheck } from "@/lib/woo-connection";
 import { STORE_NAMES, storeStep, type StoreKind } from "@/lib/stores";
-import { runStep, StepError, type StepOutcome } from "./run-step";
+import { runStep, type StepOutcome } from "./run-step";
 
 /**
  * "Save as draft in store" (S8). Not part of the automatic pipeline: the seller starts
@@ -98,41 +97,10 @@ async function saveDraft(
   listing: ListingRow,
   kind: StoreKind,
 ): Promise<StoreResult> {
-  const en = ListingText.safeParse(listing.fields_json?.en);
-  if (!en.success) throw new StepError("textMissing");
-  const text = en.data;
   // api_calls keeps one "store" step for usage, whichever store it was
   const ctx = { workspaceId: ws.id, jobId: listing.job_id, step: "store" };
-  const [job, items, media, refs] = await Promise.all([
-    ws.getJob(listing.job_id),
-    ws.items(listing.job_id),
-    ws.listingMedia([listing.id]),
-    ws.storeProducts([listing.id]),
-  ]);
-  const price = listingPrice(listing.price_bdt, text.price_hint_bdt, workspace.settings.priceRounding);
-  const colors = listingVariants(job?.group_mode ?? null, listing.item_ids_json, items, listing.fields_json?.variants)
-    ?.filter((v) => v.on)
-    .map((v) => ({
-      itemId: v.itemId,
-      color: v.color,
-      regularPrice: v.priceBdt ?? price,
-      stockQty: v.stockQty,
-      mediaId: items.find((i) => i.id === v.itemId)?.cutout_media_id ?? null,
-    }));
-  const input: StoreDraftInput = {
-    listingId: listing.id,
-    productRef: refs.get(listing.id)?.[kind] ?? null,
-    title: text.title,
-    description: text.description,
-    shortDescription: text.short_description,
-    category: text.category,
-    regularPrice: price,
-    stockQty: listing.stock_qty,
-    tags: text.tags,
-    attributes: text.attributes,
-    images: images(listing, items, media, text.title, colors ?? []),
-    variants: colors?.length ? colors : null,
-  };
+  const [product, refs] = await Promise.all([listingProduct(ws, workspace, listing), ws.storeProducts([listing.id])]);
+  const input: StoreDraftInput = { ...product, productRef: refs.get(listing.id)?.[kind] ?? null };
 
   let saved;
   if (kind === "woo") {
@@ -160,27 +128,6 @@ async function saveDraft(
 }
 
 export { suggestedPrice };
-
-/**
- * The white main image first, then the scenes the seller kept, in their saved order,
- * then each other colour's image, so the gallery shows every colour on sale.
- */
-function images(
-  listing: ListingRow,
-  items: ItemRow[],
-  media: { id: string; kind: string; selected: number | boolean | null }[],
-  title: string,
-  colors: { color: string; mediaId: string | null }[],
-) {
-  const main = items.find((i) => i.id === listing.item_ids_json[0])?.cutout_media_id;
-  const list = [...(main ? [{ mediaId: main, alt: title }] : [])];
-  // a reel is a video for social posts, never a product image
-  for (const m of media) if (m.selected && m.kind !== "reel") list.push({ mediaId: m.id, alt: title });
-  for (const c of colors)
-    if (c.mediaId && !list.some((x) => x.mediaId === c.mediaId))
-      list.push({ mediaId: c.mediaId, alt: `${title}, ${c.color}` });
-  return list;
-}
 
 /** What a refused save says about the keys, in the words the connection check uses. */
 function wooKeyChecks(status: number): WooCheck[] {

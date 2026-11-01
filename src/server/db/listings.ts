@@ -187,6 +187,16 @@ export function listingQueries(ws: string) {
           )
         : Promise.resolve([]),
 
+    /** Each photo's file type, for links that must end in the right extension (WordPress reads it). */
+    async mediaTypes(ids: string[]): Promise<Map<string, string>> {
+      if (!ids.length) return new Map();
+      const rows = await select<{ id: string; mime: string }>(
+        `SELECT id, mime FROM media WHERE workspace_id = ? AND id IN (${ids.map(() => "?").join(",")})`,
+        [ws, ...ids],
+      );
+      return new Map(rows.map((r) => [r.id, r.mime]));
+    },
+
     /**
      * The seller's edits from Review. The text replaces each language's editable fields
      * but keeps what the seller can't edit (the price hint, confidence, check notes), so

@@ -21,6 +21,7 @@ export interface SettingsValues {
   scenes: string[];
   priceRounding: number;
   bangla: boolean;
+  website: string;
 }
 
 /** A native radio or checkbox in a bordered row, so the whole row is the 44 px tap target. */
@@ -102,6 +103,30 @@ export function SettingsForm({ initial, isDemo }: { initial: SettingsValues; isD
             placeholder={t("shop.categoryPlaceholder")}
             className="h-11"
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="website">{t("shop.website")}</Label>
+          <Input
+            id="website"
+            name="website"
+            type="text"
+            inputMode="url"
+            autoComplete="url"
+            maxLength={200}
+            defaultValue={initial.website}
+            placeholder="facebook.com/yourshop"
+            aria-invalid={invalid("website") || undefined}
+            aria-describedby={invalid("website") ? "website-error website-hint" : "website-hint"}
+            className="h-11"
+          />
+          <p id="website-hint" className="text-xs text-muted-foreground">
+            {t("shop.websiteHint")}
+          </p>
+          {invalid("website") && (
+            <p id="website-error" className="text-sm text-destructive">
+              {t("shop.websiteError")}
+            </p>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{t("shop.fixed")}</p>
       </FormSection>

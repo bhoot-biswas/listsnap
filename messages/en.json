@@ -226,7 +226,8 @@
     "saveCount": "{count, plural, one {Save # to store} other {Save # to store}}",
     "archivedCount": "{count, plural, one {Archived # listing.} other {Archived # listings.}}",
     "restoredCount": "{count, plural, one {Restored # listing.} other {Restored # listings.}}",
-    "clearSelection": "Clear selection"
+    "clearSelection": "Clear selection",
+    "exportCount": "{count, plural, one {Export #} other {Export #}}"
   },
   "usage": {
     "title": "Usage",
@@ -315,7 +316,10 @@
       "nameError": "Give your shop a name (2–80 characters).",
       "category": "Main category",
       "categoryPlaceholder": "Sarees, jewellery, home decor…",
-      "fixed": "Prices are in Bangladeshi taka (৳), and dates follow Bangladesh time."
+      "fixed": "Prices are in Bangladeshi taka (৳), and dates follow Bangladesh time.",
+      "website": "Website or Facebook Page",
+      "websiteHint": "Optional. Exported Facebook catalog files link each product here.",
+      "websiteError": "Enter a web address, like facebook.com/yourshop."
     },
     "writing": {
       "title": "How listings are written",
@@ -525,6 +529,18 @@
       "title": "About ListSnap",
       "body": "Built for the Meta AI Developer Hackathon with Muse Spark, SAM 3.1 and Muse Image.",
       "contact": "Found a problem or have an idea? <link>Tell us on GitHub.</link>"
+    },
+    "export": {
+      "title": "Sell on Facebook Marketplace and other sites",
+      "intro": "Export makes files you can post anywhere, even without a connected store.",
+      "steps": {
+        "kit": "On Review, press Export and choose Listing kit. On a phone, Share photos sends them straight to the Facebook app and copies the text.",
+        "post": "In Marketplace, create a listing, add the photos, and copy each block of listing-en.txt or listing-bn.txt into the matching field.",
+        "many": "To export many at once, tick them on Listings and press Export: you get a kit for each, plus CSV files for a Facebook catalog, WooCommerce and Shopify.",
+        "shopify": "When you import the Shopify file, untick \"Publish new products to all sales channels\" in Shopify's Import window. The products arrive as drafts either way.",
+        "website": "The Facebook catalog file needs your shop's website or Facebook Page, set in Settings."
+      },
+      "note": "Facebook says Marketplace is for personal items. A business should sell through a Facebook Shop or ads; the catalog file works for both."
     }
   },
   "snap": {
@@ -673,7 +689,8 @@
     "stats": "Took {seconds} s · AI cost ${cost}",
     "reelOrPost": "Make a reel or post",
     "reelOrPostMany": "Tap a product to make its reel or post it to Facebook and Instagram.",
-    "openIn": "Open in {store}"
+    "openIn": "Open in {store}",
+    "export": "Export for Facebook Marketplace"
   },
   "connect": {
     "url": "Store address",
@@ -1099,7 +1116,8 @@
       "failed": "We couldn't watch this video.",
       "retry": "Try again",
       "batchTitle": "From a video · {count, plural, one {# product} other {# products}}"
-    }
+    },
+    "exportSelected": "{count, plural, one {Export #} other {Export #}}"
   },
   "chat": {
     "open": "Ask ListSnap",
@@ -1358,10 +1376,47 @@
     "videoTooLarge": "That video is over {mb, number} MB. Film a shorter one.",
     "videoTooLong": "Keep the video under {minutes, number} minutes.",
     "unreadableVideo": "We couldn't play that video. Try filming it again.",
-    "videoLimit": "You've made today's listings from videos. You can upload more tomorrow."
+    "videoLimit": "You've made today's listings from videos. You can upload more tomorrow.",
+    "exportTooMany": "Export up to {max} listings at a time.",
+    "exportNeedsWebsite": "Add your shop's website or Facebook Page in Settings first."
   },
   "recorder": {
     "denied": "ListSnap can't use your microphone. Allow it in your browser's settings to record.",
     "unsupported": "This browser can't record. Try Chrome, or type instead."
+  },
+  "export": {
+    "button": "Export",
+    "kit": "Listing kit (photos + text)",
+    "kits": "Kits and CSV files (zip)",
+    "facebook": "Facebook catalog (CSV)",
+    "woocommerce": "WooCommerce import (CSV)",
+    "shopify": "Shopify import (CSV)",
+    "share": "Share photos",
+    "needsWebsite": "Add your website in Settings for a Facebook catalog",
+    "notChecked": "Not checked yet: look it over before posting.",
+    "tooMany": "Export up to {max} listings at a time.",
+    "failed": "Couldn't export. Try again.",
+    "shareFailed": "Couldn't share the photos. Download the listing kit instead.",
+    "copied": "Listing text copied. Paste it into your post.",
+    "readme": {
+      "title": "ListSnap export: what goes where",
+      "kits": "Each folder is one listing: its photos, and its text in listing-en.txt and listing-bn.txt. For Facebook Marketplace, Daraz or any other site, add the photos and copy each block of text into the matching field.",
+      "facebook": "catalog-facebook.csv: in Meta Commerce Manager, open your catalog, then Data sources → Data feed → Upload once, and choose this file.",
+      "facebookMissing": "There is no Facebook catalog file: add your shop's website or Facebook Page in ListSnap's Settings, then export again.",
+      "woocommerce": "products-woocommerce.csv: in WordPress, open Products → Import. The products arrive as drafts.",
+      "shopify": "products-shopify.csv: in Shopify admin, open Products → Import. Untick \"Publish new products to all sales channels\" before you import. The products arrive as drafts.",
+      "links": "The photo links in the CSV files work for 30 days. Import before then, or export again."
+    },
+    "text": {
+      "title": "Title",
+      "price": "Price",
+      "category": "Category",
+      "condition": "Condition",
+      "conditionNew": "New",
+      "description": "Description",
+      "colours": "Colours",
+      "tags": "Tags",
+      "note": "Facebook says Marketplace is for personal items. A business should sell through a Facebook Shop or ads."
+    }
   }
 }
