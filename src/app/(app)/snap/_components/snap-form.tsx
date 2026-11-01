@@ -24,6 +24,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [voice, setVoice] = useState<File | null>(null);
+  const [recording, setRecording] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLInputElement>(null);
 
@@ -212,18 +213,27 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
               </li>
             ))}
           </ul>
-          <VoiceRecorder onChange={setVoice} disabled={uploading} />
+          <VoiceRecorder onChange={setVoice} onRecording={setRecording} disabled={uploading} />
+          {recording && (
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {t("voice.stopFirst")}
+            </p>
+          )}
           {files.length > 1 ? (
-            <fieldset className="space-y-3" disabled={uploading}>
+            <fieldset className="space-y-3" disabled={uploading || recording}>
               <legend className="mb-3 text-sm font-medium">{t("several", { count: files.length })}</legend>
               <div className="grid gap-3 sm:grid-cols-2">
+                {/* one note can't say which price is whose, so bulk takes photos only */}
                 <button
                   type="button"
                   onClick={uploadEach}
+                  disabled={!!voice}
                   className="min-h-16 rounded-xl border bg-card p-4 text-left hover:border-primary disabled:opacity-60"
                 >
                   <span className="block font-medium">{t("eachOwn")}</span>
-                  <span className="block text-sm text-muted-foreground">{t("eachOwnHint")}</span>
+                  <span className="block text-sm text-muted-foreground">
+                    {voice ? t("eachOwnNoVoice") : t("eachOwnHint")}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -242,7 +252,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
               )}
             </fieldset>
           ) : (
-            <Button size="lg" className="w-full" onClick={upload} disabled={uploading}>
+            <Button size="lg" className="w-full" onClick={upload} disabled={uploading || recording}>
               {uploading && <Loader2 className="animate-spin" />}
               {uploading ? t("uploading") : t("start")}
             </Button>

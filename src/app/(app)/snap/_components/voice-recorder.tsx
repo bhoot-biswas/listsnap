@@ -12,7 +12,16 @@ import { VOICE_NOTE_MAX_S } from "@/lib/schemas/voice-note";
  * limit), play it back, delete it. The seller says what a photo can't show, like the
  * price, sizes, stock and fabric. Hands the recording to the form as a File.
  */
-export function VoiceRecorder({ disabled, onChange }: { disabled?: boolean; onChange: (note: File | null) => void }) {
+export function VoiceRecorder({
+  disabled,
+  onChange,
+  onRecording,
+}: {
+  disabled?: boolean;
+  onChange: (note: File | null) => void;
+  /** The note only exists once recording stops, so the form must not upload before then. */
+  onRecording?: (recording: boolean) => void;
+}) {
   const t = useTranslations("snap.voice");
   const tRec = useTranslations("recorder");
   const [url, setUrl] = useState<string | null>(null);
@@ -20,6 +29,8 @@ export function VoiceRecorder({ disabled, onChange }: { disabled?: boolean; onCh
     onChange(file);
     setUrl(URL.createObjectURL(file));
   });
+
+  useEffect(() => onRecording?.(mic.recording), [mic.recording, onRecording]);
 
   // let go of the playback URL when it's replaced or the form goes away
   useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url]);

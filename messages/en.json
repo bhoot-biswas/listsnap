@@ -527,6 +527,7 @@
     "several": "{count} photos: how should they be listed?",
     "eachOwn": "One listing each",
     "eachOwnHint": "Different products, listed together in bulk",
+    "eachOwnNoVoice": "A voice note goes with one listing. Delete it to list each photo on its own.",
     "sameProduct": "Same product, different angles",
     "sameProductHint": "One listing with all the photos",
     "voice": {
@@ -535,6 +536,7 @@
       "record": "Record a voice note",
       "stop": "Stop recording",
       "recording": "Recording… {time} of {max}",
+      "stopFirst": "Stop the recording first, then make the listing.",
       "delete": "Delete the voice note"
     },
     "video": {
