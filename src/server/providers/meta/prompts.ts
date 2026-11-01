@@ -1,4 +1,5 @@
 import "server-only";
+import type { SellerFacts } from "@/lib/schemas/voice-note";
 
 // Prompts tuned during the Phase 0a spike runs; see the field descriptions in the schemas too.
 export const SELLER_CONTEXT =
@@ -35,3 +36,17 @@ export const MATCH_SYSTEM =
   "or embroidery. Ignore the background, setting, lighting, camera angle, pose, and how it is folded, draped or " +
   "placed. Answer same only if a buyer who saw image 2 would receive exactly the item in image 1. A different " +
   "colour, a changed or missing pattern or motif, a different border, or a different item is not the same.";
+
+/**
+ * The seller's own words from their voice note, as facts for the listing. Quoted as data,
+ * so a note can't change the rules; what the seller said outranks what the photo suggests.
+ */
+export function saidText(said: SellerFacts | null): string {
+  if (!said) return "";
+  return (
+    " The seller described this product in a voice note. These are facts from the seller, so use them over " +
+    "anything the photo suggests: put sizes, material and colours in the attributes and description, and the " +
+    "notes in the description where a buyer needs them. Don't repeat the price or stock in the text, and don't " +
+    `ask the seller to check what they said. The seller said: ${JSON.stringify(said)}`
+  );
+}

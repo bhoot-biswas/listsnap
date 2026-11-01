@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { resizeForUpload } from "@/lib/resize-image";
 import { uploadBatch } from "@/lib/bulk-upload";
 import { cn } from "@/lib/utils";
+import { VoiceRecorder } from "./voice-recorder";
 
 const MAX = 5;
 const isPhoto = (f: File) => f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name);
@@ -21,6 +22,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
   const [files, setFiles] = useState<{ file: File; url: string }[]>([]);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [voice, setVoice] = useState<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLInputElement>(null);
 
@@ -84,6 +86,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
       const form = new FormData();
       for (const { file } of files)
         form.append("photos", await resizeForUpload(file), file.name.replace(/\.\w+$/, ".jpg"));
+      if (voice) form.append("voice", voice, voice.name);
       const res = await fetch("/api/jobs", { method: "POST", body: form });
       const body = await res.json().catch(() => null);
       if (res.status === 401) return router.push("/sign-in");
@@ -206,6 +209,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
               </li>
             ))}
           </ul>
+          <VoiceRecorder onChange={setVoice} disabled={uploading} />
           {files.length > 1 ? (
             <fieldset className="space-y-3" disabled={uploading}>
               <legend className="mb-3 text-sm font-medium">{t("several", { count: files.length })}</legend>

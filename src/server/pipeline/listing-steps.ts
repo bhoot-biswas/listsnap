@@ -19,6 +19,7 @@ import {
 } from "@/lib/schemas/pipeline";
 import type { BrandKit } from "@/lib/schemas/brand-kit";
 import { LOOKS, lookKind, type Look, type LookResult } from "@/lib/schemas/looks";
+import { ListenResult, type SellerFacts } from "@/lib/schemas/voice-note";
 
 /** Per-listing steps: write (English), translate (Bangla), render (one scene per call), look (on request). */
 
@@ -67,11 +68,31 @@ async function itemImages(
   };
 }
 
+/**
+ * What the seller said in their voice note, for this listing. One note describes one
+ * product, so a photo that became several separate listings uses it for none of them.
+ */
+async function spoken(ctx: ListingStepContext): Promise<ListenResult | null> {
+  const heard = ListenResult.safeParse(await ctx.ws.stepResult(ctx.listing.job_id, "listen"));
+  if (!heard.success || !heard.data.facts) return null;
+  return (await ctx.ws.listings(ctx.listing.job_id)).length === 1 ? heard.data : null;
+}
+
 export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
   const p = await plan(ctx);
-  const text = ListingText.parse(
-    await meta().write(call(ctx, "write"), await originalPhoto(ctx), p, brandVoice(ctx.workspace.settings)),
+  const heard = await spoken(ctx);
+  const said: SellerFacts | null = heard?.facts ?? null;
+  const written = ListingText.parse(
+    await meta().write(call(ctx, "write"), await originalPhoto(ctx), p, brandVoice(ctx.workspace.settings), said),
   );
+  // heard from the audio alone, the price can be wrong (the spike's was), so it isn't filled in
+  const guessed = heard?.heardBy === "audio" && said?.price_bdt != null;
+  const text = guessed
+    ? {
+        ...written,
+        check_notes: [`Check the price: we heard ৳${said!.price_bdt} in your voice note.`, ...written.check_notes],
+      }
+    : written;
   // Bangla and the photos are still to come, so the listing stays in Processing until
   // they settle; this also brings back a listing whose earlier write gave up
   await ctx.ws.saveListingText(ctx.listing.id, "en", text, {
@@ -79,6 +100,11 @@ export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
     checkNotes: text.check_notes,
     status: "processing",
   });
+  if (said && (said.price_bdt !== null || said.stock !== null))
+    await ctx.ws.setSpokenPriceStock(ctx.listing.id, {
+      priceBdt: guessed || said.price_bdt === null ? null : Math.round(said.price_bdt),
+      stockQty: said.stock,
+    });
   return text;
 }
 

@@ -31,10 +31,13 @@ export interface Env {
     instagram: ProviderMode;
     facebook: ProviderMode;
     video: ProviderMode;
+    /** Muse Spark Open (Meta's open weights) on Baseten, which reads the voice note. */
+    baseten: ProviderMode;
   };
   /** Chrome workers per reel render; each takes about 256 MB. */
   reelWorkers: number;
   modelApiKey: string;
+  basetenApiKey: string;
   mockDelayMs: number;
   /** The store every demo shop saves to. Null until configured. */
   demoWoo: { url: string; key: string; secret: string } | null;
@@ -88,9 +91,11 @@ export function env(): Env {
       instagram: mode("PROVIDER_MODE_INSTAGRAM"),
       facebook: mode("PROVIDER_MODE_FACEBOOK"),
       video: mode("PROVIDER_MODE_VIDEO"),
+      baseten: mode("PROVIDER_MODE_BASETEN"),
     },
     reelWorkers: Math.min(8, Math.max(1, Number(read("REEL_WORKERS")) || 2)),
     modelApiKey: read("MODEL_API_KEY"),
+    basetenApiKey: read("BASETEN_API_KEY"),
     mockDelayMs: Math.max(0, Number(read("MOCK_DELAY_MS")) || 0),
     demoWoo:
       read("DEMO_WOO_URL") && read("DEMO_WOO_KEY") && read("DEMO_WOO_SECRET")

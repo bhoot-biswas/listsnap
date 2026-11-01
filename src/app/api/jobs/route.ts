@@ -2,6 +2,7 @@ import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { saveMedia } from "@/server/media/store";
 import { photoFileProblem, readPhotoFile, unreadablePhoto } from "@/server/media/upload";
+import { normaliseVoice, unreadableVoice, voiceFileProblem } from "@/server/media/voice";
 import { fail, ok, unauthorized } from "@/server/http";
 import { reserveListingSlot } from "@/server/limits";
 
@@ -11,8 +12,9 @@ const MAX_PHOTOS = 5;
  * Starts a job from 1–5 photos of one product (multipart field "photos"). The browser
  * has already shrunk them to 2048 px; here each is re-encoded, which also strips EXIF
  * and GPS, and stored under MEDIA_DIR. The pipeline steps are then driven by the page.
- * With a `batchId` field the job joins that bulk upload. Each job takes one of today's
- * listing slots.
+ * With a `batchId` field the job joins that bulk upload. An optional `voice` file is the
+ * seller's voice note about the product, kept as a mono WAV for the listen step. Each job
+ * takes one of today's listing slots.
  */
 export async function POST(request: Request) {
   const viewer = await apiViewer();
@@ -35,6 +37,15 @@ export async function POST(request: Request) {
     const problem = await photoFileProblem(f);
     if (problem) return problem;
   }
+  const voiceFile = form.get("voice");
+  const voice = voiceFile instanceof File && voiceFile.size > 0 ? voiceFile : null;
+  if (voice) {
+    const problem = voiceFileProblem(voice);
+    if (problem) return problem;
+  }
+  // read before the slot is taken, so a bad recording costs the seller nothing
+  const note = voice ? await normaliseVoice(Buffer.from(await voice.arrayBuffer())) : null;
+  if (voice && !note) return unreadableVoice();
 
   // the slot is taken before any work, and given back if the photo never becomes a job
   const slot = await reserveListingSlot(ws, viewer.workspace, request);
@@ -54,7 +65,10 @@ export async function POST(request: Request) {
       });
       saved.push({ mediaId: media.id, width: photo.width, height: photo.height });
     }
-    const id = await ws.createJob(saved, batchId ?? undefined);
+    const voiceMedia = note
+      ? await saveMedia(ws.id, "voice", note.data, { mime: "audio/wav", width: 0, height: 0, selected: false })
+      : null;
+    const id = await ws.createJob(saved, batchId ?? undefined, voiceMedia?.id);
     return ok({ id }, 201);
   } catch (err) {
     await slot.release();

@@ -8,15 +8,16 @@ ListSnap is for small social-commerce sellers in Bangladesh. One phone photo bec
 
 ## How it works
 
-| Step      | Model                | What happens                                                                                                                  |
-| --------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Plan      | Muse Spark           | Looks at the photo and picks what to cut out ("jamdani saree"), how many items there are, and the camera angle                |
-| Segment   | SAM 3.1              | Finds every matching item, then cuts each one out onto white; also checks fill, sharpness and light                           |
-| Group     | Muse Spark           | When there are several items: separate products, a set, or colour variants                                                    |
-| Write     | Muse Spark           | The English listing: title, descriptions, attributes, tags, category, a BDT price range and a confidence score                |
-| Translate | Muse Spark           | A natural Bangla version, not word-for-word                                                                                   |
-| Render    | Muse Image           | Studio and banner photos keep the product's real pixels on a generated background; the lifestyle scene is labelled "AI scene" |
-| Save      | WooCommerce, Shopify | Creates or updates a **draft** product in each connected store, never a published one                                         |
+| Step      | Model                                  | What happens                                                                                                                                                                     |
+| --------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Listen    | Muse Voice Transcribe, Muse Spark Open | Optional: the seller's voice note (Bangla, English or both) becomes words, then the price, sizes, stock and fabric they said, which the listing uses over guesses from the photo |
+| Plan      | Muse Spark                             | Looks at the photo and picks what to cut out ("jamdani saree"), how many items there are, and the camera angle                                                                   |
+| Segment   | SAM 3.1                                | Finds every matching item, then cuts each one out onto white; also checks fill, sharpness and light                                                                              |
+| Group     | Muse Spark                             | When there are several items: separate products, a set, or colour variants                                                                                                       |
+| Write     | Muse Spark                             | The English listing: title, descriptions, attributes, tags, category, a BDT price range and a confidence score                                                                   |
+| Translate | Muse Spark                             | A natural Bangla version, not word-for-word                                                                                                                                      |
+| Render    | Muse Image                             | Studio and banner photos keep the product's real pixels on a generated background; the lifestyle scene is labelled "AI scene"                                                    |
+| Save      | WooCommerce, Shopify                   | Creates or updates a **draft** product in each connected store, never a published one                                                                                            |
 
 Each step is one short request driven by the browser, with its state and lock in MySQL. A refresh, a second tab or a server restart repeats nothing that already finished.
 

@@ -3,7 +3,7 @@ import { execute } from "@/server/db/pool";
 import type { CallContext } from "./types";
 
 export interface CallInfo {
-  provider: "meta" | "woo" | "shopify" | "instagram" | "facebook" | "video";
+  provider: "meta" | "baseten" | "woo" | "shopify" | "instagram" | "facebook" | "video";
   model: string;
   endpoint: string;
   mode: "mock" | "live";

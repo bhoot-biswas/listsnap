@@ -3,7 +3,7 @@ import { apiViewer } from "@/server/auth/session";
 import { executeJobStep } from "@/server/pipeline/execute";
 import { fail, notFound, stepResponse, unauthorized } from "@/server/http";
 
-const Step = z.enum(["plan", "segment", "group"]);
+const Step = z.enum(["plan", "segment", "group", "listen"]);
 
 /** Runs one job-level step. `?retry=1` is the "Try again" button. */
 export async function POST(request: Request, ctx: RouteContext<"/api/jobs/[id]/steps/[step]">) {

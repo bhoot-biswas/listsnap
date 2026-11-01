@@ -32,6 +32,7 @@ export interface JobRow {
   status: JobStatus;
   group_mode: string | null;
   camera_angle: "top_down" | "side" | "angled" | null;
+  voice_media_id: string | null;
   created_at: Date;
   archived_at: Date | null;
 }
@@ -90,13 +91,18 @@ export function forWorkspace(workspaceId: string) {
   return {
     id: ws,
 
-    async createJob(photos: { mediaId: string; width: number; height: number }[], batchId?: string): Promise<string> {
+    async createJob(
+      photos: { mediaId: string; width: number; height: number }[],
+      batchId?: string,
+      voiceMediaId?: string,
+    ): Promise<string> {
       const jobId = randomUUID();
       await transaction(async (conn) => {
-        await conn.query("INSERT INTO jobs (id, workspace_id, batch_id) VALUES (?, ?, ?)", [
+        await conn.query("INSERT INTO jobs (id, workspace_id, batch_id, voice_media_id) VALUES (?, ?, ?, ?)", [
           jobId,
           ws,
           batchId ?? null,
+          voiceMediaId ?? null,
         ]);
         for (const [sort, p] of photos.entries()) {
           await conn.query(
@@ -104,7 +110,8 @@ export function forWorkspace(workspaceId: string) {
             [randomUUID(), jobId, ws, p.mediaId, sort, p.width, p.height],
           );
         }
-        for (const step of JOB_STEPS) {
+        // only a job with a voice note listens; the step's row is how the pipeline knows
+        for (const step of voiceMediaId ? [...JOB_STEPS, "listen"] : JOB_STEPS) {
           await conn.query("INSERT INTO job_steps (job_id, step, target, workspace_id) VALUES (?, ?, '-', ?)", [
             jobId,
             step,
@@ -118,7 +125,7 @@ export function forWorkspace(workspaceId: string) {
 
     getJob: (id: string) =>
       selectOne<JobRow>(
-        "SELECT id, status, group_mode, camera_angle, created_at, archived_at FROM jobs WHERE id = ? AND workspace_id = ?",
+        "SELECT id, status, group_mode, camera_angle, voice_media_id, created_at, archived_at FROM jobs WHERE id = ? AND workspace_id = ?",
         [id, ws],
       ),
 

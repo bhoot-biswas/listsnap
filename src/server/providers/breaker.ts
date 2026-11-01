@@ -17,7 +17,7 @@ import type { StepErrorKey } from "@/server/step-text";
 export const BREAKER_THRESHOLD = 3;
 export const BREAKER_COOLDOWN_MS = 30_000;
 
-type Service = "spark" | "image" | "sam";
+type Service = "spark" | "image" | "sam" | "transcribe" | "open";
 
 const state = new Map<Service, { failures: number; openedAt: number | null }>();
 const of = (s: Service) => state.get(s) ?? state.set(s, { failures: 0, openedAt: null }).get(s)!;

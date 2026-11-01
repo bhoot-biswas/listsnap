@@ -22,6 +22,7 @@ import { VariantFields } from "./variant-fields";
 import { ListingChat } from "./listing-chat";
 import { ArchiveButton } from "@/components/app/archive-button";
 import type { ChatItem } from "@/lib/schemas/chat";
+import { VoiceNoteCard, type VoiceNoteView } from "./voice-note-card";
 
 export type { ReviewPhoto } from "./review-side";
 
@@ -38,6 +39,7 @@ export function ReviewForm({
   hint,
   confidence,
   checkNotes,
+  voiceNote,
   status,
   inStore,
   storeBehind,
@@ -59,6 +61,8 @@ export function ReviewForm({
   hint: { low: number; high: number };
   confidence: number | null;
   checkNotes: string[];
+  /** The seller's voice note for this job, when there was one. */
+  voiceNote: VoiceNoteView | null;
   status: ListingStatus;
   inStore: boolean;
   /** Edited since the store draft was saved. */
@@ -249,8 +253,9 @@ export function ReviewForm({
           />
         </div>
 
-        <div className="lg:col-start-1 lg:row-start-2">
+        <div className="space-y-6 lg:col-start-1 lg:row-start-2">
           <CheckPanel listingId={listingId} confidence={confidence} notes={checkNotes} status={status} />
+          {voiceNote && <VoiceNoteCard note={voiceNote} />}
         </div>
 
         <div className="space-y-6 lg:col-start-2 lg:row-span-3 lg:row-start-1">

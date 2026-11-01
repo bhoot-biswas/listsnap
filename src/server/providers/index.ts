@@ -9,8 +9,11 @@ import { liveShopify } from "./shopify/live";
 import { mockInstagram } from "./ig/mock";
 import { mockFacebook } from "./fb/mock";
 import { mockVideo } from "./video/mock";
+import { mockBaseten } from "./baseten/mock";
+import { liveBaseten } from "./baseten/live";
 import { liveVideo } from "./video/live";
 import type {
+  BasetenProvider,
   FacebookProvider,
   InstagramProvider,
   MetaProvider,
@@ -48,6 +51,10 @@ class NotBuiltYet extends Error {
  */
 export function meta(): MetaProvider {
   return env().providers.meta === "live" ? liveMeta : mockMeta;
+}
+
+export function baseten(): BasetenProvider {
+  return env().providers.baseten === "live" ? liveBaseten : mockBaseten;
 }
 
 export function woo(): WooProvider {

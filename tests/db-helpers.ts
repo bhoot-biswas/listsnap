@@ -65,7 +65,8 @@ export async function createTestWorkspace(settings: Record<string, unknown> = {}
 }
 
 /** Uploads a photo the way the upload route does: normalised, saved as media, then a job. */
-export async function createTestJob(workspaceId: string, photo: Buffer): Promise<string> {
+/** A job from one photo, with a voice note when `voice` (a WAV) is given. */
+export async function createTestJob(workspaceId: string, photo: Buffer, voice?: Buffer): Promise<string> {
   const { normalisePhoto, saveMedia } = await import("@/server/media/store");
   const { forWorkspace } = await import("@/server/db/scope");
   const p = await normalisePhoto(photo);
@@ -74,7 +75,33 @@ export async function createTestJob(workspaceId: string, photo: Buffer): Promise
     width: p.width,
     height: p.height,
   });
-  return forWorkspace(workspaceId).createJob([{ mediaId: media.id, width: p.width, height: p.height }]);
+  const note = voice
+    ? await saveMedia(workspaceId, "voice", voice, { mime: "audio/wav", width: 0, height: 0, selected: false })
+    : null;
+  return forWorkspace(workspaceId).createJob(
+    [{ mediaId: media.id, width: p.width, height: p.height }],
+    undefined,
+    note?.id,
+  );
+}
+
+/** A second of quiet 24 kHz mono WAV: the mock "hears" its fixed transcript in anything. */
+export function sampleVoice(seconds = 1): Buffer {
+  const data = Buffer.alloc(24_000 * 2 * seconds);
+  const head = Buffer.alloc(44);
+  head.write("RIFF", 0, "ascii");
+  head.writeUInt32LE(36 + data.length, 4);
+  head.write("WAVEfmt ", 8, "ascii");
+  head.writeUInt32LE(16, 16);
+  head.writeUInt16LE(1, 20);
+  head.writeUInt16LE(1, 22);
+  head.writeUInt32LE(24_000, 24);
+  head.writeUInt32LE(48_000, 28);
+  head.writeUInt16LE(2, 32);
+  head.writeUInt16LE(16, 34);
+  head.write("data", 36, "ascii");
+  head.writeUInt32LE(data.length, 40);
+  return Buffer.concat([head, data]);
 }
 
 type Workspace = Awaited<ReturnType<typeof createTestWorkspace>>["workspace"];
@@ -94,9 +121,9 @@ export async function runJob(workspace: Workspace, jobId: string, maxRounds = 20
     await Promise.all(
       state.next.map(async ({ url }) => {
         const u = new URL(url, "http://test");
-        const job = u.pathname.match(/^\/api\/jobs\/([^/]+)\/steps\/(plan|segment|group)$/);
+        const job = u.pathname.match(/^\/api\/jobs\/([^/]+)\/steps\/(plan|segment|group|listen)$/);
         const listing = u.pathname.match(/^\/api\/listings\/([^/]+)\/steps\/(write|translate|render)$/);
-        if (job) return executeJobStep(workspace, job[1]!, job[2] as "plan" | "segment" | "group");
+        if (job) return executeJobStep(workspace, job[1]!, job[2] as "plan" | "segment" | "group" | "listen");
         if (listing)
           return executeListingStep(workspace, listing[1]!, listing[2] as "write" | "translate" | "render", {
             scene: u.searchParams.get("scene") ?? undefined,

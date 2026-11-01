@@ -13,6 +13,7 @@ import type { ShopifyCheckResult } from "@/lib/shopify-connection";
 import type { AssistRequest } from "@/lib/schemas/assist";
 import type { ReelTemplate, ReelVariables } from "@/lib/schemas/reels";
 import type { ChatMessage } from "@/lib/schemas/chat";
+import type { SellerFacts } from "@/lib/schemas/voice-note";
 
 /**
  * Every outside service sits behind one of these interfaces, each with a mock and a
@@ -47,7 +48,16 @@ export interface MetaProvider {
     colors: string[];
     reason: string;
   }>;
-  write(ctx: CallContext, photo: Buffer, plan: PlanResult, voice: BrandVoice): Promise<ListingText>;
+  /** `said` is what the seller said in a voice note; it outranks what the photo suggests. */
+  write(
+    ctx: CallContext,
+    photo: Buffer,
+    plan: PlanResult,
+    voice: BrandVoice,
+    said: SellerFacts | null,
+  ): Promise<ListingText>;
+  /** Muse Voice Transcribe: a mono 24 kHz WAV into words, in Bangla, English or both. */
+  transcribe(ctx: CallContext, wav: Buffer, keywords: string[]): Promise<Transcript>;
   translate(ctx: CallContext, listing: ListingText): Promise<BanglaText>;
   /** Review's per-field help: the new text for one field. */
   assist(ctx: CallContext, input: AssistInput): Promise<string>;
@@ -77,6 +87,22 @@ export interface MetaProvider {
     brief: SceneBrief | null,
     kit: SceneKit | null,
   ): Promise<Buffer>;
+}
+
+export interface Transcript {
+  text: string;
+  seconds: number;
+}
+
+/**
+ * Muse Spark Open, Meta's open-weights model, on Baseten. It reads what the seller said
+ * about the product, with the photo; when Transcribe fails it hears the recording itself.
+ */
+export interface BasetenProvider {
+  readonly mode: "mock" | "live";
+  facts(ctx: CallContext, transcript: string, photo: Buffer): Promise<SellerFacts>;
+  /** The fallback: what was heard, and the facts, from the audio alone. */
+  factsFromAudio(ctx: CallContext, wav: Buffer, photo: Buffer): Promise<{ heard: string; facts: SellerFacts }>;
 }
 
 /** What a lifestyle scene in the seller's own shop needs from the brand kit. */

@@ -125,6 +125,18 @@ export function listingQueries(ws: string) {
       });
     },
 
+    /**
+     * The price and stock the seller said in their voice note. Never over a seller's own
+     * edit on Review, and a null leaves what is there (identical copies' count stays).
+     */
+    async setSpokenPriceStock(id: string, said: { priceBdt: number | null; stockQty: number | null }) {
+      await execute(
+        `UPDATE listings SET price_bdt = COALESCE(?, price_bdt), stock_qty = COALESCE(?, stock_qty)
+          WHERE id = ? AND workspace_id = ? AND edited_at IS NULL`,
+        [said.priceBdt, said.stockQty, id, ws],
+      );
+    },
+
     async setListingStatus(id: string, status: ListingStatus) {
       await execute("UPDATE listings SET status = ? WHERE id = ? AND workspace_id = ?", [status, id, ws]);
     },

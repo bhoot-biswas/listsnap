@@ -24,6 +24,35 @@ describe("nextCalls", () => {
     expect(stepBefore("group")).toBe("segment");
   });
 
+  it("listens to a voice note beside the photo steps, and writes only once it has", () => {
+    const listen = { step: "listen", target: "-", status: "pending", attempts: 0 } as const;
+    expect(nextCalls({ ...base, steps: [listen] })).toEqual([
+      { kind: "job", step: "listen" },
+      { kind: "job", step: "plan" },
+    ]);
+    const jobDone = [done("plan"), done("segment"), done("group")];
+    // still listening: renders may start, write waits
+    expect(nextCalls({ ...base, steps: [...jobDone, listen], listingIds: ["L1"] })).toEqual([
+      { kind: "job", step: "listen" },
+      { kind: "listing", step: "render", listingId: "L1", scene: "studio" },
+    ]);
+    expect(nextCalls({ ...base, steps: [...jobDone, done("listen")], listingIds: ["L1"] })).toContainEqual({
+      kind: "listing",
+      step: "write",
+      listingId: "L1",
+    });
+  });
+
+  it("writes from the photo alone once the voice note is out of attempts", () => {
+    const steps = [done("plan"), done("segment"), done("group"), failed("listen", "-", 3)];
+    const calls = nextCalls({ ...base, steps, listingIds: ["L1"] });
+    expect(calls).toContainEqual({ kind: "listing", step: "write", listingId: "L1" });
+    expect(calls).not.toContainEqual({ kind: "job", step: "listen" });
+    expect(
+      isSettled({ ...base, steps: [...steps, done("write", "L1")], listingIds: ["L1"], scenes: [], translate: false }),
+    ).toBe(true);
+  });
+
   it("calls nothing while the seller is choosing items", () => {
     expect(
       nextCalls({ ...base, jobStatus: "awaiting_choice", steps: [done("plan"), done("segment"), done("group")] }),

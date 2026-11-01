@@ -8,9 +8,13 @@ import { MAX_ATTEMPTS } from "./run-step";
  * Order: plan → segment → group, one at a time. Then per listing: write, then
  * translate; renders need only the cutout, so they run beside write. At most two
  * listings are worked on at once to stay under Muse Image's rate limit.
+ *
+ * A job with a voice note has a `listen` step row too. It needs nothing before it, so it
+ * runs beside plan; write waits for it, unless it is out of attempts, when the listing
+ * is written from the photo alone rather than held up by the note.
  */
 
-export type JobStepName = "plan" | "segment" | "group";
+export type JobStepName = "plan" | "segment" | "group" | "listen";
 export type ListingStepName = "write" | "translate" | "render";
 
 export interface StepState {
@@ -34,11 +38,12 @@ export interface NextInput {
 }
 
 export const JOB_ORDER: JobStepName[] = ["plan", "segment", "group"];
+const LISTEN: NextCall = { kind: "job", step: "listen" };
 
 /** The job step that must be done before this one may run; null for the first. */
 export const stepBefore = (step: JobStepName): JobStepName | null => JOB_ORDER[JOB_ORDER.indexOf(step) - 1] ?? null;
 
-export const renderTarget =(listingId: string, scene: string) => `${listingId}:${scene}`;
+export const renderTarget = (listingId: string, scene: string) => `${listingId}:${scene}`;
 
 export function nextCalls(input: NextInput): NextCall[] {
   const max = input.maxAttempts ?? MAX_ATTEMPTS;
@@ -56,12 +61,16 @@ export function nextCalls(input: NextInput): NextCall[] {
 
   if (input.jobStatus === "awaiting_choice" || input.jobStatus === "failed") return [];
 
+  // no row means no voice note
+  const listening = !!state("listen", "-") && callable("listen", "-");
+  const listen = listening ? [LISTEN] : [];
+
   for (const step of JOB_ORDER) {
     if (isDone(step, "-")) continue;
-    return callable(step, "-") ? [{ kind: "job", step }] : [];
+    return callable(step, "-") ? [...listen, { kind: "job", step }] : listen;
   }
 
-  const calls: NextCall[] = [];
+  const calls: NextCall[] = [...listen];
   let active = 0;
   for (const listingId of input.listingIds) {
     const pending: NextCall[] = [];
@@ -69,7 +78,7 @@ export function nextCalls(input: NextInput): NextCall[] {
 
     if (!isDone("write", listingId)) {
       unfinished = true;
-      if (callable("write", listingId)) pending.push({ kind: "listing", step: "write", listingId });
+      if (!listening && callable("write", listingId)) pending.push({ kind: "listing", step: "write", listingId });
     } else if (input.translate && !isDone("translate", listingId)) {
       unfinished = true;
       if (callable("translate", listingId)) pending.push({ kind: "listing", step: "translate", listingId });

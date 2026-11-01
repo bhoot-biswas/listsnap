@@ -28,8 +28,10 @@ export function StepList({ state, onRetry }: { state: JobState; onRetry: (s: Ste
   const nextKeys = new Set(state.next.map((n) => n.key.split(":")[0]));
 
   const rows: Row[] = [{ key: "upload", label: t("steps.upload"), status: "done" }];
-  for (const step of ["plan", "segment", "group"] as const) {
+  // listen exists only for a job with a voice note, and runs beside understanding the photo
+  for (const step of ["listen", "plan", "segment", "group"] as const) {
     const s = find(step);
+    if (step === "listen" && !s) continue;
     if (step === "group" && state.items.length <= 1 && s?.status === "done") continue;
     rows.push({
       key: step,
