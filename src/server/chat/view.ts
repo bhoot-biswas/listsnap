@@ -61,7 +61,7 @@ export function pendingCalls(history: ChatMessage[]): ToolCall[] {
 
 /** The stored conversation as the chat box draws it. */
 export function chatItems(history: ChatMessage[]): ChatItem[] {
-  type Result = { ok?: boolean; declined?: boolean; stopped?: boolean };
+  type Result = { ok?: boolean; declined?: boolean; stopped?: boolean; editedCaption?: string };
   const results = new Map<string, Result>();
   for (const m of history) if (m.role === "tool") results.set(m.toolCallId, (m.result ?? {}) as Result);
   const items: ChatItem[] = [];
@@ -82,7 +82,9 @@ export function chatItems(history: ChatMessage[]): ChatItem[] {
       if (r?.stopped) continue;
       if (needsApproval(c.name)) {
         const state = !r ? "pending" : r.declined ? "declined" : r.ok ? "approved" : "failed";
-        items.push(approvalItem(c, state, r));
+        // the caption the seller posted with, when they reworded it on the card
+        const sent = r?.editedCaption ? { ...c, args: { ...c.args, caption: r.editedCaption } } : c;
+        items.push(approvalItem(sent, state, r));
       } else if (r) items.push({ kind: "tool", id: c.id, name: c.name, ok: r.ok === true, ...toolExtras(c.name, r) });
     }
   });

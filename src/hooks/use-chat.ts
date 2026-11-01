@@ -244,7 +244,9 @@ export function useChat({
     canStop: !!stoppable && !stopping,
     stop: () => void stop(),
     send,
-    answer: (id: string, yes: boolean) => void request({ approve: { toolCallId: id, yes }, ...which() }),
+    /** `caption` is a reel's caption the seller reworded on the card. */
+    answer: (id: string, yes: boolean, caption?: string) =>
+      void request({ approve: { toolCallId: id, yes, ...(caption && { caption }) }, ...which() }),
     attach: (files: File[]) => void attach(files),
     removePhoto: (id: string) => setPhotos((cur) => cur.filter((c) => c.id !== id)),
     open: (id: string) => void open(id),
