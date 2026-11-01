@@ -37,9 +37,79 @@ const plainDescription = (p: ListingProduct) =>
     .join("\n\n")
     .slice(0, META_DESCRIPTION_MAX);
 
-const availability = (qty: number | null) => (qty === 0 ? "out of stock" : "in stock");
+const availability = (qty: number | null) => (qty === 0 ? ("out of stock" as const) : ("in stock" as const));
 
-/** Meta's catalog feed: one row per product, or per colour grouped by item_group_id. Rows need a price. */
+/** One Meta catalog item, as the CSV feed writes it and the catalog API sends it. */
+export interface CatalogItem {
+  id: string;
+  itemGroupId: string | null;
+  title: string;
+  description: string;
+  availability: "in stock" | "out of stock";
+  condition: "new";
+  /** "4650 BDT": Meta wants the amount, a space and the currency code. */
+  price: string;
+  link: string;
+  /** The main photo first; Meta takes up to 21. */
+  images: string[];
+  brand: string;
+  color: string | null;
+}
+
+/**
+ * Meta's catalog items: one per product, or one per colour grouped by item_group_id.
+ * A product without a price or a photo is left out, because Meta refuses it.
+ */
+export function catalogItems(products: ListingProduct[], shop: CsvShop): CatalogItem[] {
+  const items: CatalogItem[] = [];
+  for (const p of products) {
+    const photos = links(
+      shop,
+      p.images.map((i) => i.mediaId),
+    );
+    const description = plainDescription(p);
+    const item = (
+      id: string,
+      group: string | null,
+      price: number | null,
+      qty: number | null,
+      main: string[],
+      color: string | null,
+    ) => {
+      if (price === null || !main.length) return;
+      items.push({
+        id,
+        itemGroupId: group,
+        title: p.title,
+        description,
+        availability: availability(qty),
+        condition: "new",
+        price: `${price} BDT`,
+        link: shop.website,
+        images: main.slice(0, META_EXTRA_IMAGES + 1),
+        brand: shop.name,
+        color,
+      });
+    };
+    if (!p.variants) item(listingSku(p.listingId), null, p.regularPrice, p.stockQty, photos, null);
+    else
+      for (const v of p.variants) {
+        // the colour's own photo leads its item; the rest of the gallery follows
+        const own = links(shop, [v.mediaId]);
+        item(
+          variantSku(p.listingId, v.itemId),
+          listingSku(p.listingId),
+          v.regularPrice,
+          v.stockQty,
+          [...own, ...photos.filter((u) => !own.includes(u))],
+          v.color,
+        );
+      }
+  }
+  return items;
+}
+
+/** Meta's catalog feed as a CSV file, from the same items the catalog API sends. */
 export function catalogCsv(products: ListingProduct[], shop: CsvShop): string {
   const header = [
     "id",
@@ -55,52 +125,20 @@ export function catalogCsv(products: ListingProduct[], shop: CsvShop): string {
     "brand",
     "color",
   ];
-  const rows: (string | null)[][] = [];
-  for (const p of products) {
-    const photos = links(
-      shop,
-      p.images.map((i) => i.mediaId),
-    );
-    const description = plainDescription(p);
-    const row = (
-      id: string,
-      group: string | null,
-      price: number | null,
-      qty: number | null,
-      main: string[],
-      color: string | null,
-    ) => {
-      if (price === null || !main.length) return;
-      rows.push([
-        id,
-        group,
-        p.title,
-        description,
-        availability(qty),
-        "new",
-        `${price} BDT`,
-        shop.website,
-        main[0]!,
-        main.slice(1, META_EXTRA_IMAGES + 1).join(","),
-        shop.name,
-        color,
-      ]);
-    };
-    if (!p.variants) row(listingSku(p.listingId), null, p.regularPrice, p.stockQty, photos, null);
-    else
-      for (const v of p.variants) {
-        // the colour's own photo leads its row; the rest of the gallery follows
-        const own = links(shop, [v.mediaId]);
-        row(
-          variantSku(p.listingId, v.itemId),
-          listingSku(p.listingId),
-          v.regularPrice,
-          v.stockQty,
-          [...own, ...photos.filter((u) => !own.includes(u))],
-          v.color,
-        );
-      }
-  }
+  const rows = catalogItems(products, shop).map((i) => [
+    i.id,
+    i.itemGroupId,
+    i.title,
+    i.description,
+    i.availability,
+    i.condition,
+    i.price,
+    i.link,
+    i.images[0]!,
+    i.images.slice(1).join(","),
+    i.brand,
+    i.color,
+  ]);
   return csv(header, rows);
 }
 

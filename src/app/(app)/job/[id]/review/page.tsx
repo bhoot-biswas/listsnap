@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { z } from "zod";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { TopBar } from "@/components/app/top-bar";
@@ -17,11 +18,36 @@ import { metaConnection, publicMeta } from "@/server/social/connection";
 import { text } from "@/server/step-text";
 import { chatItems, chatRevision } from "@/server/chat/view";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
+import type { CatalogState } from "./_components/catalog-panel";
 import { StillMaking } from "./_components/still-making";
 import type { VoiceNoteView } from "./_components/voice-note-card";
 import { ListenResult } from "@/lib/schemas/voice-note";
 import { localTitle } from "@/lib/titles";
 import { numberRepeats, REVIEWABLE } from "@/lib/review-next";
+
+/** What the catalog card can do: the first thing missing, or the catalog and what was saved to it. */
+function catalogState(
+  meta: Awaited<ReturnType<typeof metaConnection>>,
+  website: string | null,
+  saved: unknown,
+): CatalogState {
+  const catalog = meta?.settings.catalogs.find((c) => c.id === meta.settings.catalogId) ?? null;
+  const result = CatalogSaved.safeParse(saved);
+  return {
+    catalogName: catalog?.name ?? null,
+    blocked:
+      !meta?.userToken() || !meta.settings.catalogAccess
+        ? "connect"
+        : !catalog
+          ? "choose"
+          : !website
+            ? "website"
+            : null,
+    saved: result.success && result.data.catalogId === catalog?.id ? result.data : null,
+  };
+}
+
+const CatalogSaved = z.object({ catalogId: z.string(), items: z.number(), checked: z.boolean() });
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("review"))("title") };
@@ -52,7 +78,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
   const en = ListingText.safeParse(listing.fields_json?.en);
   if (!en.success) notFound();
   const bn = BanglaText.safeParse(listing.fields_json?.bn);
-  const [items, media, usage, reelResults, postResults, meta] = await Promise.all([
+  const [items, media, usage, reelResults, postResults, meta, savedCatalog] = await Promise.all([
     ws.items(id),
     ws.listingMedia([listing.id]),
     ws.usageToday(),
@@ -61,6 +87,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
       REEL_LANGS.flatMap((lang) => DESTINATIONS.map((d) => ws.stepResult(id, "post", `${listing.id}:${lang}:${d}`))),
     ),
     metaConnection(ws),
+    ws.stepResult(id, "catalog", listing.id),
   ]);
   const chatId = await ws.listingChat(listing.id);
   // a voice note, or what the seller said in the video this job came from
@@ -196,6 +223,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
             ? { at: listing.marketplace_posted_at.toISOString(), url: listing.marketplace_url }
             : null,
         }}
+        catalog={catalogState(meta, viewer.workspace.settings.website, savedCatalog)}
         chat={{ items: chatItems(history), revision: chatRevision(history) }}
         others={tabs}
       />

@@ -31,6 +31,27 @@ export const mockFacebook: FacebookProvider = {
       ],
       (r) => ({ summary: `${r.length} pages`, costUsd: 0 }),
     ),
+  catalogs: (ctx) =>
+    logged(
+      ctx,
+      { provider: "facebook", model: "graph-api (mock)", endpoint: "me/businesses", mode: "mock" },
+      async () => [{ id: "900000000000001", name: "Rupkotha products", business: "Rupkotha Crafts" }],
+      (r) => ({ summary: `${r.length} catalogs`, costUsd: 0 }),
+    ),
+  saveCatalogItems: (ctx, input) =>
+    logged(
+      ctx,
+      { provider: "facebook", model: "graph-api (mock)", endpoint: "catalog items_batch", mode: "mock" },
+      async () => `mock-handle-${input.items.length}`,
+      () => ({ summary: `${input.items.length} items`, costUsd: 0 }),
+    ),
+  catalogBatch: (ctx) =>
+    logged(
+      ctx,
+      { provider: "facebook", model: "graph-api (mock)", endpoint: "catalog batch status", mode: "mock" },
+      async () => ({ done: true as const, errors: [] }),
+      () => ({ summary: "finished", costUsd: 0 }),
+    ),
   postReel: (ctx, input) =>
     logged(
       ctx,

@@ -34,6 +34,7 @@ describe.skipIf(!enabled)("ops (MariaDB)", async () => {
     makeReel: { listingId, lang: "en" },
     postReel: { listingId, lang: "en", destination: "facebook", caption: "Fixture caption" },
     saveDraftToStore: { listingId },
+    saveToFacebookCatalog: { listingId },
     estimateCost: { op: "renderScene", input: { listingId, scene: "lifestyle" } },
     // aimed at shop A's brand photo rather than a listing; shop B must not be able to use it
     setBrandKit: { colors: ["#7a1f2b"], settingMediaId: brandPhotoId },

@@ -23,6 +23,7 @@ export interface OneOfSeveral {
   color: string | null;
 }
 import type { VideoProduct } from "@/lib/schemas/video";
+import type { CatalogItem } from "@/server/export/formats";
 
 /**
  * Every outside service sits behind one of these interfaces, each with a mock and a
@@ -293,12 +294,36 @@ export interface MetaPage {
   instagram: { id: string; username: string } | null;
 }
 
+/** A product catalog in one of the seller's business portfolios. */
+export interface MetaCatalog {
+  id: string;
+  name: string;
+  business: string;
+}
+
+/** Items for the catalog API, already built from the listing (see export/formats.ts). */
+export type CatalogApiItem = CatalogItem;
+
+/** Meta's answer on a batch: still working, or done with the items it refused, worded by Meta. */
+export type CatalogBatch = { done: false } | { done: true; errors: { id: string; message: string }[] };
+
 export interface FacebookProvider {
   readonly mode: "mock" | "live";
   /** Spends Facebook Login's code for a long-lived user token, which then lists the Pages. */
   exchangeCode(ctx: CallContext, input: { code: string; redirectUri: string }): Promise<string>;
   /** The Pages the seller let ListSnap use. Their tokens don't expire, unlike the user token. */
   pages(ctx: CallContext, userToken: string): Promise<MetaPage[]>;
+  /** The catalogs in the seller's business portfolios; null when catalog access wasn't given. */
+  catalogs(ctx: CallContext, userToken: string): Promise<MetaCatalog[] | null>;
+  /** Creates or updates the items (by our id), so sending again never makes copies. Returns Meta's batch handle. */
+  saveCatalogItems(
+    ctx: CallContext,
+    input: { catalogId: string; userToken: string; items: CatalogApiItem[] },
+  ): Promise<string>;
+  catalogBatch(
+    ctx: CallContext,
+    input: { catalogId: string; userToken: string; handle: string },
+  ): Promise<CatalogBatch>;
   /** Posts a reel to the seller's Page from a public video URL. */
   postReel(ctx: CallContext, input: { page: SocialAccount; videoUrl: string; caption: string }): Promise<SocialPost>;
 }
