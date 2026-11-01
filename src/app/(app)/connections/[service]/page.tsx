@@ -47,7 +47,7 @@ export default async function ServicePage({ params, searchParams }: PageProps<"/
     <>
       <TopBar title={t(`names.${service}`)} />
       {/* room at the bottom so the camera button never covers Disconnect */}
-      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 pt-4 pb-24 md:px-6 md:pb-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-4 md:px-6 md:pb-6">
         {service === "shopify" && <ShopifyNotice value={notice} />}
         {meta ? (
           <MetaDetail s={s} meta={meta} />
