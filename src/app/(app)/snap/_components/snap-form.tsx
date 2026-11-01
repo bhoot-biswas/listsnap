@@ -10,6 +10,7 @@ import { resizeForUpload } from "@/lib/resize-image";
 import { uploadBatch } from "@/lib/bulk-upload";
 import { cn } from "@/lib/utils";
 import { VoiceRecorder } from "./voice-recorder";
+import { VideoUpload } from "./video-upload";
 
 const MAX = 5;
 const isPhoto = (f: File) => f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name);
@@ -155,6 +156,8 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
           onChange={(e) => e.target.files && add(e.target.files)}
         />
       </div>
+
+      {files.length === 0 && <VideoUpload disabled={uploading} />}
 
       {samples.length > 0 && files.length === 0 && (
         <div className="space-y-2">

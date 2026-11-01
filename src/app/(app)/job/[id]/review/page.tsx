@@ -62,16 +62,19 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
     metaConnection(ws),
   ]);
   const chatId = await ws.listingChat(listing.id);
-  const heard = ListenResult.safeParse(job.voice_media_id ? await ws.stepResult(id, "listen") : null);
-  const voiceNote: VoiceNoteView | null = job.voice_media_id
-    ? {
-        url: mediaUrl(job.voice_media_id),
-        transcript: heard.success ? heard.data.transcript : null,
-        fromAudio: heard.success && heard.data.heardBy === "audio",
-        facts: heard.success ? heard.data.facts : null,
-        used: all.length === 1,
-      }
-    : null;
+  // a voice note, or what the seller said in the video this job came from
+  const heard = ListenResult.safeParse(await ws.stepResult(id, "listen"));
+  const voiceNote: VoiceNoteView | null =
+    job.voice_media_id || heard.success
+      ? {
+          url: job.voice_media_id ? mediaUrl(job.voice_media_id) : null,
+          transcript: heard.success ? heard.data.transcript : null,
+          fromAudio: heard.success && heard.data.heardBy === "audio",
+          fromVideo: heard.success && heard.data.heardBy === "video",
+          facts: heard.success ? heard.data.facts : null,
+          used: all.length === 1,
+        }
+      : null;
   const history = chatId ? await ws.chatMessages(chatId) : [];
   const posted: Record<string, Record<string, { permalink: string; test: boolean }>> = {};
   for (const raw of postResults) {

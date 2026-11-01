@@ -5,10 +5,13 @@ import { Mic } from "lucide-react";
 import type { SellerFacts } from "@/lib/schemas/voice-note";
 
 export interface VoiceNoteView {
-  url: string;
+  /** The recording; null for a job from a video, where only what was said is kept. */
+  url: string | null;
   transcript: string | null;
   /** Heard by Spark Open from the audio alone, after Transcribe failed: its price isn't trusted. */
   fromAudio: boolean;
+  /** What the seller said about this product while filming it. */
+  fromVideo: boolean;
   facts: SellerFacts | null;
   /** False when the photo became several listings: one note can't say which it meant. */
   used: boolean;
@@ -36,9 +39,9 @@ export function VoiceNoteCard({ note }: { note: VoiceNoteView }) {
     <section aria-labelledby="voice-title" className="space-y-3 rounded-xl border bg-card p-4">
       <h2 id="voice-title" className="flex items-center gap-2 text-base font-semibold">
         <Mic className="size-4 text-primary" aria-hidden="true" />
-        {t("title")}
+        {note.fromVideo ? t("titleVideo") : t("title")}
       </h2>
-      <audio controls preload="none" src={note.url} className="h-11 w-full" />
+      {note.url && <audio controls preload="none" src={note.url} className="h-11 w-full" />}
       {note.transcript === null ? (
         <p className="text-sm text-muted-foreground">{t("notHeard")}</p>
       ) : note.transcript ? (
