@@ -35,6 +35,8 @@ export function useChat({
   // undefined: idle; null: the model is thinking; a name: that tool is running
   const [working, setWorking] = useState<string | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  // the last message never reached the server and is back in the box, ready to send again
+  const [unsent, setUnsent] = useState(false);
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(0);
   // the message box's text, here so a message that never started a chat can come back to it
@@ -42,11 +44,15 @@ export function useChat({
   // undefined: the conversation used last; null: a new one not sent yet
   const [chatId, setChatId] = useState<string | null | undefined>(initialChatId);
 
+  // the page's copy is of the conversation used last; after the seller opens an earlier one
+  // or starts a new one, a refresh of the page (a reel, a save) mustn't swap it back
+  const [elsewhere, setElsewhere] = useState(false);
+
   // after a refresh the server's copy is the truth; never swap it in mid-request
   const [server, setServer] = useState(initial);
   if (initial !== server && !busy) {
     setServer(initial);
-    setItems(initial);
+    if (!elsewhere) setItems(initial);
   }
 
   const upsert = (item: ChatItem) =>
@@ -55,15 +61,16 @@ export function useChat({
     );
 
   /**
-   * Sends one request and streams its events. `unsent` runs when a new chat's request
-   * failed before the server started the chat: nothing was stored, so the message can go
-   * back to the box to try again.
+   * Sends one request and streams its events. `giveBack` runs when the request failed
+   * before the server stored the message: nothing was kept, so the message goes back to
+   * the box to try again, instead of vanishing on flaky phone data.
    */
-  async function request(body: unknown, unsent?: () => void) {
+  async function request(body: unknown, giveBack?: () => void) {
     let started = false;
     let failed = false;
     setBusy(true);
     setError(null);
+    setUnsent(false);
     setWorking(null);
     try {
       await beforeSend?.();
@@ -83,7 +90,8 @@ export function useChat({
         buffer = lines.pop() ?? "";
         for (const line of lines.filter(Boolean)) {
           const e = JSON.parse(line) as ChatEvent;
-          if (e.type === "chat") {
+          if (e.type === "received") started = true;
+          else if (e.type === "chat") {
             started = true;
             setChatId(e.chatId);
             onStarted?.(e.chatId);
@@ -100,7 +108,12 @@ export function useChat({
       failed = true;
       setError(t("error.generic"));
     } finally {
-      if (failed && !started) unsent?.();
+      if (failed && !started && giveBack) {
+        giveBack();
+        setUnsent(true);
+      }
+      // a stored message makes this the conversation used last, so the page's copy is this one again
+      if (started) setElsewhere(false);
       setBusy(false);
       setWorking(undefined);
       router.refresh();
@@ -139,6 +152,7 @@ export function useChat({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setItems(((await res.json()) as { items: ChatItem[] }).items);
       setChatId(id);
+      setElsewhere(true);
     } catch {
       setError(t("history.failed"));
     } finally {
@@ -165,16 +179,11 @@ export function useChat({
       ...(photos.length && { photos: photos.map((p) => p.url) }),
     };
     setItems((cur) => (newChat ? [mine] : [...cur, mine]));
-    void request(
-      { message: clean, photoIds: photos.map((p) => p.id), newChat, ...(!newChat && which()) },
-      newChat
-        ? () => {
-            setItems(before);
-            setDraft(clean);
-            setPhotos(sent);
-          }
-        : undefined,
-    );
+    void request({ message: clean, photoIds: photos.map((p) => p.id), newChat, ...(!newChat && which()) }, () => {
+      setItems(before);
+      setDraft(clean);
+      setPhotos(sent);
+    });
     return true;
   }
 
@@ -184,6 +193,7 @@ export function useChat({
     setDraft,
     busy,
     error,
+    unsent,
     photos,
     uploading,
     chatId,
@@ -199,6 +209,7 @@ export function useChat({
       setItems([]);
       setChatId(null);
       setError(null);
+      setElsewhere(true);
     },
   };
 }

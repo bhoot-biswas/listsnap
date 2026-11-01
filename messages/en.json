@@ -527,6 +527,7 @@
     "several": "{count} photos: how should they be listed?",
     "eachOwn": "One listing each",
     "eachOwnHint": "Different products, listed together in bulk",
+    "eachOwnNoVoice": "A voice note goes with one listing. Delete it to list each photo on its own.",
     "sameProduct": "Same product, different angles",
     "sameProductHint": "One listing with all the photos",
     "voice": {
@@ -535,6 +536,7 @@
       "record": "Record a voice note",
       "stop": "Stop recording",
       "recording": "Recording… {time} of {max}",
+      "stopFirst": "Stop the recording first, then make the listing.",
       "delete": "Delete the voice note"
     },
     "video": {
@@ -590,6 +592,8 @@
     "saveAll": "Save all {count} as drafts",
     "saving": "Saving to your store…",
     "saveFailed": "Your store didn’t answer. Your listing is safe here. Try again.",
+    "editsOffline": "You’re offline. Your changes will save when you’re back; then save to the store again.",
+    "editsNotSaved": "Your latest changes aren’t saved yet, so nothing went to the store. Check the message beside the button.",
     "seeSaved": "See saved drafts",
     "foundCaption": "{count, plural, one {What we found} other {We found # items}}",
     "before": "Before",
@@ -905,6 +909,7 @@
     "saving": "Saving…",
     "saved": "Saved",
     "saveError": "Couldn’t save. Retrying…",
+    "saveInvalid": "Couldn’t save this. Check the price, stock and text lengths.",
     "offline": "Offline, will save",
     "saveToStore": "Save draft to store",
     "updateStore": "Update store draft",
@@ -1071,6 +1076,7 @@
     "label": "Message",
     "placeholder": "Ask about this listing…",
     "send": "Send",
+    "sendAgain": "Send again",
     "newChat": "New chat",
     "you": "You",
     "assistant": "ListSnap",
