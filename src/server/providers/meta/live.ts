@@ -81,9 +81,15 @@ export const liveMeta: MetaProvider = {
     return r.data;
   },
 
-  write: async (ctx, photo, plan, voice, said) => {
+  write: async (ctx, photo, plan, voice, said, one) => {
     const imageUrl = await photoDataUrl(photo);
     const firstLook = JSON.stringify({ product: plan.sam_phrase, category: plan.category_guess });
+    // the guess was made of the whole photo, which may hold other products, so the cutout wins
+    const ask = one
+      ? `This is one product cut out from a seller's photo that showed ${one.of} products, each listed on its own. ` +
+        `Write the listing for this product only${one.color ? `; its colour is ${one.color}, so say so in the title` : ""}. ` +
+        `A first look at the whole photo guessed: ${firstLook}. Where the photo shows something else, trust the photo.`
+      : `Write the listing for the product in this photo. A first look found: ${firstLook}.`;
     const r = await logged(
       ctx,
       info,
@@ -93,7 +99,7 @@ export const liveMeta: MetaProvider = {
           effort: SPARK_EFFORT.write,
           schema: ListingText,
           system: writeSystem(voice),
-          userText: `Write the listing for the product in this photo. A first look found: ${firstLook}.${saidText(said)}`,
+          userText: `${ask}${saidText(said)}`,
           imageUrl,
         }),
       (r) => ({

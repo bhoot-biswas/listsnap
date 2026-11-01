@@ -144,7 +144,7 @@ export const mockMeta: MetaProvider = {
       (r) => ({ summary: `suggest ${r.mode} · ${r.colors.join(", ")}`, costUsd: 0 }),
     ),
 
-  write: (ctx, _photo, plan, _voice, said) =>
+  write: (ctx, _photo, plan, _voice, said, one) =>
     logged(
       ctx,
       { ...SPARK, endpoint: "chat/completions" },
@@ -180,12 +180,14 @@ export const mockMeta: MetaProvider = {
           confidence: bag ? 0.82 : 0.66,
           check_notes: bag ? [] : ["Check the fabric: handloom or powerloom, cotton or silk blend."],
         };
+        // one product of several says its colour, as the live model is asked to
+        const titled = one?.color ? { ...text, title: `${text.title}, ${one.color}` } : text;
         return spoken.length
           ? {
-              ...text,
-              attributes: [...spoken, ...text.attributes.filter((a) => !spoken.some((s) => s.name === a.name))],
+              ...titled,
+              attributes: [...spoken, ...titled.attributes.filter((a) => !spoken.some((s) => s.name === a.name))],
             }
-          : text;
+          : titled;
       },
       (r) => ({ summary: `"${r.title}" · confidence ${r.confidence}${said ? " · with voice note" : ""}`, costUsd: 0 }),
     ),

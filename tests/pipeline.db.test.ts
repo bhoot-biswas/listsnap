@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
 import { createTestJob, createTestWorkspace, dbEnv, runJob, samplePhoto, sampleVoice, widePhoto } from "./db-helpers";
 
@@ -117,6 +117,39 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
     // separate listings get the studio photo only, to keep image costs down
     expect(done.scenes).toEqual(["studio"]);
     for (const l of done.listings) expect(l.images.map((i) => i.kind)).toEqual(["main", "studio"]);
+  });
+
+  it("writes each separate listing from its own product, with its colour", async () => {
+    const { meta } = await import("@/server/providers");
+    const write = vi.spyOn(meta(), "write");
+    try {
+      const jobId = await createTestJob(shop.workspace.id, await widePhoto());
+      const waiting = await runJob(shop.workspace, jobId);
+      const keep = waiting.items.slice(0, 2).map((i) => i.id);
+      expect(await applyChoice(shop.workspace, jobId, { mode: "separate", keepItemIds: keep })).toBe("ok");
+      const done = await runJob(shop.workspace, jobId);
+
+      const items = await ws.items(jobId);
+      expect(write).toHaveBeenCalledTimes(2);
+      for (const [, photo, , , , one] of write.mock.calls) {
+        // the model sees one product cut out on white, never the whole photo of several
+        const item = items.find((i) => i.color === one?.color)!;
+        expect(one).toEqual({ of: 2, color: item.color });
+        expect(item.color).toBeTruthy();
+        expect(photo.equals((await readMedia(shop.workspace.id, item.cutout_media_id!))!.data)).toBe(true);
+      }
+      // so the two listings no longer share one title
+      const titles = done.listings.map((l) => l.title);
+      expect(new Set(titles).size).toBe(2);
+      for (const item of items.filter((i) => keep.includes(i.id))) expect(titles.join()).toContain(item.color!);
+
+      // one product in the photo: the whole photo, as before
+      write.mockClear();
+      await runJob(shop.workspace, await createTestJob(shop.workspace.id, await samplePhoto("saree.jpg")));
+      expect(write.mock.calls[0]![5] ?? null).toBeNull();
+    } finally {
+      write.mockRestore();
+    }
   });
 
   it("skips Bangla when the shop writes English only", async () => {
