@@ -793,7 +793,22 @@
       "test": "Test",
       "disconnect": "Disconnect",
       "disconnectHint": "Posts already made stay on Facebook and Instagram.",
-      "disconnectConfirm": "Disconnect Facebook and Instagram? Reels can’t be posted until you connect again."
+      "disconnectConfirm": "Disconnect Facebook and Instagram? Reels can’t be posted until you connect again.",
+      "connect": "Connect with Facebook",
+      "connectHint": "Facebook asks which Pages ListSnap may post to. Instagram posts go to the Instagram business account linked to the Page.",
+      "connected": "Facebook is connected.",
+      "reconnect": "Connect again",
+      "reconnectHint": "To add a Page or a newly linked Instagram account, connect again and choose it in Facebook.",
+      "choosePage": "Post reels to",
+      "usePage": "Use this Page",
+      "linkInstagram": "To post on Instagram too, link a professional Instagram account to this Page (in the Page's settings), then connect again.",
+      "errors": {
+        "demo": "Demo shops can't connect a Facebook Page.",
+        "denied": "Facebook wasn't connected: the login was cancelled.",
+        "expired": "That Facebook link expired or didn't match. Try connecting again.",
+        "noPages": "Facebook didn't give ListSnap any Page. Connect again and choose at least one Page.",
+        "failed": "Facebook couldn't be connected right now. Try again in a few minutes."
+      }
     },
     "disconnectConfirm": "Disconnect your store? ListSnap can’t save drafts to it until you connect it again.",
     "disconnectYes": "Yes, disconnect",
@@ -1332,7 +1347,15 @@
       "voiceNoteMissing": "The voice note file is missing.",
       "videoMissing": "The video file is missing.",
       "videoUnreadable": "We couldn't play this video. Try filming it again.",
-      "noProductsInVideo": "We couldn't find any products in this video. Film each product clearly for a few seconds."
+      "noProductsInVideo": "We couldn't find any products in this video. Film each product clearly for a few seconds.",
+      "metaAuth": "Facebook no longer accepts ListSnap's access. Connect Facebook again in Connections.",
+      "metaPermission": "Facebook didn't give ListSnap permission to post there. Connect Facebook again and allow every permission.",
+      "metaBusy": "Facebook is limiting posts right now. Try again in a few minutes.",
+      "metaSaid": "Facebook said: {message}",
+      "metaProblem": "Facebook had a problem (error {status}). Try again.",
+      "metaNoAnswer": "Facebook didn't answer. Try again in a moment.",
+      "metaVideo": "Facebook couldn't use this reel's video. Try making the reel again.",
+      "metaSlow": "Instagram is still working on the video. Try again in a minute; nothing was posted yet."
     },
     "details": {
       "lookingFor": "Looking for: \"{phrase}\"",

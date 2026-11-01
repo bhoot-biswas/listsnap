@@ -43,6 +43,8 @@ export interface Env {
   demoWoo: { url: string; key: string; secret: string } | null;
   /** Our public Shopify app. Empty values until it is registered; the mock needs none. */
   shopify: { clientId: string; clientSecret: string; apiVersion: string };
+  /** Our Meta app, for Facebook Login and posting. Empty values until it is set; the mocks need none. */
+  metaApp: { appId: string; appSecret: string; loginConfigId: string; graphVersion: string };
   /** Our Shopify demo store, reached with its own app's keys. Null until configured. */
   demoShopify: { shop: string; clientId: string; clientSecret: string } | null;
   /** Where a store downloads product images from: the site URL, unless the store can't reach it (local Docker). */
@@ -107,6 +109,13 @@ export function env(): Env {
       clientSecret: read("SHOPIFY_CLIENT_SECRET"),
       apiVersion: read("SHOPIFY_API_VERSION") || "2026-10",
     },
+    // Facebook Login for Business asks for a saved configuration (permissions) by its id
+    metaApp: {
+      appId: read("META_APP_ID"),
+      appSecret: read("META_APP_SECRET"),
+      loginConfigId: read("META_LOGIN_CONFIG_ID"),
+      graphVersion: read("META_GRAPH_VERSION") || "v24.0",
+    },
     // a dev store in our own Shopify organisation, reached with its app's keys (client credentials)
     demoShopify:
       read("DEMO_SHOPIFY_SHOP") && read("DEMO_SHOPIFY_CLIENT_ID") && read("DEMO_SHOPIFY_CLIENT_SECRET")
@@ -149,5 +158,10 @@ export function configProblems(e = env()): string[] {
   if (e.providers.baseten === "live" && !e.basetenApiKey) problems.push("BASETEN_API_KEY");
   if (e.providers.shopify === "live" && !(e.shopify.clientId && e.shopify.clientSecret))
     problems.push("SHOPIFY_CLIENT_ID/SECRET");
+  if (
+    (e.providers.facebook === "live" || e.providers.instagram === "live") &&
+    !(e.metaApp.appId && e.metaApp.appSecret)
+  )
+    problems.push("META_APP_ID/SECRET");
   return problems;
 }

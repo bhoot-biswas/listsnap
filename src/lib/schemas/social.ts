@@ -6,7 +6,16 @@ export const DESTINATIONS = ["facebook", "instagram"] as const;
 export const Destination = z.enum(DESTINATIONS);
 export type Destination = z.infer<typeof Destination>;
 
-/** The "meta" connection's settings: the Page and its linked Instagram account, if any. */
+/** A Page the seller let ListSnap use, as the Page picker shows it. Its token is kept apart, encrypted. */
+export const MetaPageChoice = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  igUserId: z.string().min(1).nullable(),
+  igUsername: z.string().min(1).nullable(),
+});
+export type MetaPageChoice = z.infer<typeof MetaPageChoice>;
+
+/** The "meta" connection's settings: the Page reels post to and its linked Instagram account, if any. */
 export const MetaSettings = z.object({
   pageId: z.string().min(1),
   pageName: z.string().min(1),
@@ -14,6 +23,8 @@ export const MetaSettings = z.object({
   igUsername: z.string().min(1).nullable(),
   /** A made-up Page and account for trying posting without a Meta app. */
   test: z.boolean(),
+  /** Every Page from the last Facebook login, so the seller can switch without logging in again. */
+  pages: z.array(MetaPageChoice).default([]),
 });
 export type MetaSettings = z.infer<typeof MetaSettings>;
 

@@ -26,7 +26,7 @@ export async function postStep(ctx: ListingStepContext, req: PostRequest): Promi
   const live = env().providers[req.destination] === "live";
   if (conn.settings.test && live) throw new StepError("testConnection");
   const account = conn.account(req.destination);
-  if (!account) throw new StepError("noInstagram");
+  if (!account) throw new StepError(req.destination === "facebook" ? "connectFacebook" : "noInstagram");
 
   const call = { workspaceId: ws.id, jobId: listing.job_id, step: "post" };
   const videoUrl = signedMediaUrl(ws.id, reel.data.mediaId, "video/mp4", VIDEO_LINK_TTL_S);

@@ -14,6 +14,7 @@ import { WooDetail } from "../_components/woo-detail";
 import { ShopifyDetail } from "../_components/shopify-detail";
 import { MetaDetail } from "../_components/meta-detail";
 import { ShopifyNotice } from "../_components/shopify-notice";
+import { MetaNotice } from "../_components/meta-notice";
 
 export async function generateMetadata({ params }: PageProps<"/connections/[service]">): Promise<Metadata> {
   const service = Service.safeParse((await params).service);
@@ -32,10 +33,17 @@ export default async function ServicePage({ params, searchParams }: PageProps<"/
   const s = services.find((x) => x.service === service);
   // demo shops only have our WooCommerce test store
   if (!s) redirect("/connections");
-  const notice = (await searchParams).shopify;
+  const query = await searchParams;
+  const notice = query.shopify;
+  const metaNotice = query.meta;
   // not connected (any more): the page to connect it, keeping Shopify's answer
   if (s.status === "none") {
-    const q = typeof notice === "string" ? `?shopify=${encodeURIComponent(notice)}` : "";
+    const q =
+      typeof notice === "string"
+        ? `?shopify=${encodeURIComponent(notice)}`
+        : typeof metaNotice === "string"
+          ? `?meta=${encodeURIComponent(metaNotice)}`
+          : "";
     redirect(`/connections/add/${service}${q}` as Route);
   }
 
@@ -49,6 +57,7 @@ export default async function ServicePage({ params, searchParams }: PageProps<"/
       {/* room at the bottom so the camera button never covers Disconnect */}
       <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-4 md:px-6 md:pb-6">
         {service === "shopify" && <ShopifyNotice value={notice} />}
+        {service === "meta" && <MetaNotice value={metaNotice} />}
         {meta ? (
           <MetaDetail s={s} meta={meta} />
         ) : service === "woo" ? (

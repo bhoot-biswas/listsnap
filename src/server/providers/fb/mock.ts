@@ -3,9 +3,34 @@ import { randomInt } from "node:crypto";
 import { logged } from "../log";
 import type { FacebookProvider } from "../types";
 
-/** Pretends to post a Page reel; returns a fake video id and link. */
+/**
+ * Pretends to log in and post a Page reel. Login returns two made-up Pages, one with an
+ * Instagram account and one without, so the Page picker can be tried.
+ */
 export const mockFacebook: FacebookProvider = {
   mode: "mock",
+  exchangeCode: (ctx) =>
+    logged(
+      ctx,
+      { provider: "facebook", model: "graph-api (mock)", endpoint: "oauth/access_token", mode: "mock" },
+      async () => "mock-user-token",
+      () => ({ summary: "login", costUsd: 0 }),
+    ),
+  pages: (ctx) =>
+    logged(
+      ctx,
+      { provider: "facebook", model: "graph-api (mock)", endpoint: "me/accounts", mode: "mock" },
+      async () => [
+        {
+          id: "100000000000001",
+          name: "Rupkotha Fashion",
+          token: "mock-page-token-1",
+          instagram: { id: "17800000000000001", username: "@rupkotha.fashion" },
+        },
+        { id: "100000000000002", name: "Rupkotha Outlet", token: "mock-page-token-2", instagram: null },
+      ],
+      (r) => ({ summary: `${r.length} pages`, costUsd: 0 }),
+    ),
   postReel: (ctx, input) =>
     logged(
       ctx,

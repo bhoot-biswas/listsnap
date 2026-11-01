@@ -7,7 +7,9 @@ import { liveWoo } from "./woo/live";
 import { mockShopify } from "./shopify/mock";
 import { liveShopify } from "./shopify/live";
 import { mockInstagram } from "./ig/mock";
+import { liveInstagram } from "./ig/live";
 import { mockFacebook } from "./fb/mock";
+import { liveFacebook } from "./fb/live";
 import { mockVideo } from "./video/mock";
 import { mockBaseten } from "./baseten/mock";
 import { liveBaseten } from "./baseten/live";
@@ -26,6 +28,7 @@ export type {
   CallContext,
   FacebookProvider,
   InstagramProvider,
+  MetaPage,
   MetaProvider,
   SavedDraft,
   ShopifyProvider,
@@ -36,18 +39,9 @@ export type {
   WooStore,
 } from "./types";
 
-/** Thrown when a provider is set to live before its live client exists. */
-class NotBuiltYet extends Error {
-  constructor(name: string, envVar: string, phase: string) {
-    super(`The live ${name} client arrives in ${phase}. Set ${envVar}=mock for now.`);
-  }
-}
-
 /**
- * Picks mock or live per provider from PROVIDER_MODE_*. Live clients land in later
- * phases (Instagram in Phase 6); until then asking for one
- * fails loudly instead of quietly falling back to fake data. Live Meta is built call by
- * call; see meta/live.ts for which calls are still mocked.
+ * Picks mock or live per provider from PROVIDER_MODE_*. Live Meta is built call by call;
+ * see meta/live.ts for which calls are still mocked.
  */
 export function meta(): MetaProvider {
   return env().providers.meta === "live" ? liveMeta : mockMeta;
@@ -71,11 +65,9 @@ export function video(): VideoProvider {
 }
 
 export function instagram(): InstagramProvider {
-  if (env().providers.instagram === "live") throw new NotBuiltYet("Instagram", "PROVIDER_MODE_INSTAGRAM", "Phase R");
-  return mockInstagram;
+  return env().providers.instagram === "live" ? liveInstagram : mockInstagram;
 }
 
 export function facebook(): FacebookProvider {
-  if (env().providers.facebook === "live") throw new NotBuiltYet("Facebook", "PROVIDER_MODE_FACEBOOK", "Phase R");
-  return mockFacebook;
+  return env().providers.facebook === "live" ? liveFacebook : mockFacebook;
 }
