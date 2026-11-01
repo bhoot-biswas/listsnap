@@ -97,13 +97,15 @@ export function useJobRunner(initial: JobState) {
     };
   }, [drive]);
 
-  /** "Try again" on a step that ran out of attempts. */
+  /** "Try again" on a step that ran out of attempts. A dropped request leaves the button ready to tap again. */
   const retry = useCallback(
     async (step: StepView) => {
-      await fetch(retryUrl(id, step), { method: "POST" });
+      const res = await fetch(retryUrl(id, step), { method: "POST" }).catch(() => null);
+      if (res?.status === 401) return router.push("/sign-in");
+      if (!res) setStalled(navigator.onLine);
       await drive();
     },
-    [id, drive],
+    [id, drive, router],
   );
 
   /** The seller's answer on Choose items. */
@@ -113,11 +115,15 @@ export function useJobRunner(initial: JobState) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode, keepItemIds }),
-      });
+      }).catch(() => null);
+      if (res?.status === 401) {
+        router.push("/sign-in");
+        return false;
+      }
       await drive();
-      return res.ok;
+      return !!res?.ok;
     },
-    [id, drive],
+    [id, drive, router],
   );
 
   return { state, offline, stalled, retry, choose, resume: drive };

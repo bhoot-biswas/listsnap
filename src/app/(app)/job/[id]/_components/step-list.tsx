@@ -144,12 +144,14 @@ function StepRow({ row, onRetry }: { row: Row; onRetry: (s: StepView) => Promise
                   <Button
                     size="sm"
                     variant="outline"
-
                     disabled={retrying}
                     onClick={async () => {
                       setRetrying(true);
-                      await onRetry(row.step!);
-                      setRetrying(false);
+                      try {
+                        await onRetry(row.step!);
+                      } finally {
+                        setRetrying(false);
+                      }
                     }}
                   >
                     <RotateCcw />
