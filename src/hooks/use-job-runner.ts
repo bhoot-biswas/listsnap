@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JobState, StepView } from "@/lib/job-state";
+import { loadState } from "./load-state";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -23,23 +24,20 @@ export function useJobRunner(initial: JobState) {
   const alive = useRef(true);
   const id = initial.id;
 
+
   const load = useCallback(async (): Promise<JobState | null> => {
-    const res = await fetch(`/api/jobs/${id}`, { cache: "no-store" }).catch(() => null);
-    if (res?.status === 401) {
-      router.push("/sign-in");
+    const r = await loadState<JobState>(`/api/jobs/${id}`);
+    if ("error" in r) {
+      if (r.error === "signed-out") router.push("/sign-in");
+      // without a state there's nothing to call next; say so instead of spinning forever
+      else if (alive.current) (r.error === "offline" ? setOffline : setStalled)(true);
       return null;
     }
-    // without a state there's nothing to call next; say so instead of spinning forever
-    if (!res?.ok) {
-      if (alive.current) setStalled(navigator.onLine);
-      return null;
-    }
-    const next = (await res.json()) as JobState;
     if (alive.current) {
-      setState(next);
+      setState(r.state);
       setStalled(false);
     }
-    return next;
+    return r.state;
   }, [id, router]);
 
   const drive = useCallback(async () => {

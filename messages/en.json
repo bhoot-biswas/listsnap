@@ -1034,6 +1034,7 @@
     "pause": "Pause",
     "resume": "Resume",
     "pausedBanner": "{count, plural, one {Paused, # photo left.} other {Paused, # photos left.}}",
+    "stalled": "Couldn’t reach ListSnap, so your photos have stopped for now.",
     "allDone": "All photos are done.",
     "leftChoosing": "{count, plural, one {# photo needs your choice: tap it to pick the items.} other {# photos need your choice: tap each to pick the items.}}",
     "leftStuck": "{count, plural, one {# photo failed: open it to try again.} other {# photos failed: open each to try again.}}",
