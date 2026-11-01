@@ -10,11 +10,13 @@ import { relativeTime } from "@/lib/relative-time";
 export async function UsageToday({
   listings,
   images,
+  reels,
   limits,
 }: {
   listings: number;
   images: number;
-  limits: { listings: number; images: number };
+  reels: number;
+  limits: { listings: number; images: number; reels: number };
 }) {
   const t = await getTranslations("dashboard.usage");
   const format = await getFormatter();
@@ -27,6 +29,7 @@ export async function UsageToday({
       </h2>
       <UsageMeter label={t("listings")} used={listings} limit={limits.listings} />
       <UsageMeter label={t("images")} used={images} limit={limits.images} />
+      <UsageMeter label={t("reels")} used={reels} limit={limits.reels} />
       <p className="text-xs text-muted-foreground">{t("resets", { when: relativeTime(format, reset, now) })}</p>
     </section>
   );

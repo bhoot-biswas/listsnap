@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
-import { Download } from "lucide-react";
+import { ChevronDown, Download } from "lucide-react";
 import { ButtonLink } from "@/components/app/button-link";
 import { TopBar } from "@/components/app/top-bar";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { CallLog } from "./_components/call-log";
 import { DayTable, MonthChart } from "./_components/month";
 import { StepCosts } from "./_components/step-costs";
 import { relativeTime } from "@/lib/relative-time";
+import { REELS_PER_DAY } from "@/server/db/limits";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("usage") };
@@ -61,20 +62,11 @@ export default async function UsagePage() {
             <h2 id="today" className="text-base font-semibold">
               {t("today")}
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <UsageMeter label={t("listings")} used={used.listings} limit={limits.listings} />
               <UsageMeter label={t("photos")} used={used.images} limit={limits.images} />
+              <UsageMeter label={t("reels")} used={used.reels} limit={REELS_PER_DAY} />
             </div>
-            <dl className="grid grid-cols-2 gap-4 border-t pt-4">
-              <div>
-                <dt className="text-xs text-muted-foreground">{t("aiCost")}</dt>
-                <dd className="text-xl font-semibold tabular-nums">{money(today.cost)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">{t("aiCalls")}</dt>
-                <dd className="text-xl font-semibold tabular-nums">{format.number(today.calls)}</dd>
-              </div>
-            </dl>
             <p className="text-xs text-muted-foreground">
               {t("resets", {
                 time: format.dateTime(nextReset(), { hour: "numeric", minute: "2-digit" }),
@@ -89,7 +81,7 @@ export default async function UsagePage() {
             </h2>
             <p className="text-2xl font-semibold">{t("plan.free")}</p>
             <p className="text-sm text-muted-foreground">
-              {t("plan.limits", { listings: limits.listings, photos: limits.images })}
+              {t("plan.limits", { listings: limits.listings, photos: limits.images, reels: REELS_PER_DAY })}
             </p>
             <p className="text-sm text-muted-foreground">{t("plan.pro")}</p>
             <ButtonLink href="/pricing" variant="outline" className="h-11 md:h-9">
@@ -98,10 +90,37 @@ export default async function UsagePage() {
           </section>
         </div>
 
-        <MonthChart days={days} totals={{ ...total, cost: money(total.cost) }} />
-        <StepCosts steps={steps} money={money} />
-        <CallLog calls={calls} />
+        <MonthChart days={days} totals={total} />
         <DayTable days={days} money={money} />
+
+        {/* what the AI cost and each call: for the curious and for judges, not a seller's daily view */}
+        <details className="group rounded-xl border bg-card">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 md:px-5 [&::-webkit-details-marker]:hidden">
+            <span className="space-y-0.5 py-3">
+              <span className="block text-base font-semibold">{t("behind.title")}</span>
+              <span className="block text-xs text-muted-foreground">{t("behind.hint")}</span>
+            </span>
+            <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="space-y-6 px-4 pb-4 md:px-5 md:pb-5">
+            <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("aiCost")}</dt>
+                <dd className="text-xl font-semibold tabular-nums">{money(today.cost)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("aiCalls")}</dt>
+                <dd className="text-xl font-semibold tabular-nums">{format.number(today.calls)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("monthCost")}</dt>
+                <dd className="text-xl font-semibold tabular-nums">{money(total.cost)}</dd>
+              </div>
+            </dl>
+            <StepCosts steps={steps} money={money} />
+            <CallLog calls={calls} />
+          </div>
+        </details>
       </div>
     </>
   );

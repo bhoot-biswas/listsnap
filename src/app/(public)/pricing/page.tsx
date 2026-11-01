@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ButtonLink } from "@/components/app/button-link";
 import { PublicHeader } from "../_components/public-header";
+import { DEFAULT_LIMITS } from "@/server/db/limits";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("pricing"))("title") };
@@ -18,7 +19,7 @@ export default async function PricingPage() {
         <h1 className="text-3xl font-bold">{t("title")}</h1>
         <div className="grid gap-4 md:grid-cols-2">
           {[
-            [t("free"), t("freeBody")],
+            [t("free"), t("freeBody", DEFAULT_LIMITS)],
             [t("pro"), t("proBody")],
           ].map(([name, body]) => (
             <section key={name} className="rounded-xl border bg-card p-6">
