@@ -10,7 +10,8 @@ export function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/media/")) return NextResponse.next();
   if (!getSessionCookie(request, { cookiePrefix: "listsnap" })) {
     const url = new URL("/sign-in", request.url);
-    url.searchParams.set("next", request.nextUrl.pathname);
+    // the query too: a Review link names its listing with ?l=
+    url.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
   return NextResponse.next();

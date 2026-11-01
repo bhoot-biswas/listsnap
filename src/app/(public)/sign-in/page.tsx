@@ -5,6 +5,8 @@ import { Logo } from "@/components/app/logo";
 import { LanguageSwitch } from "@/components/app/language-switch";
 import { optionalViewer } from "@/server/auth/session";
 import { env, signInOptions } from "@/server/env";
+import { safeNext } from "@/lib/safe-next";
+import type { Route } from "next";
 import { SignInForm } from "./_components/sign-in-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,13 +15,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * S1 Sign in: Google, an email link, or the demo shop. A signed-in seller goes
- * straight to the dashboard; someone in the demo stays, since the demo banner sends
- * them here to switch to their own account.
+ * straight on; someone in the demo stays, since the demo banner sends them here to
+ * switch to their own account. `next` is the page the seller was opening, so signing
+ * in lands there instead of on the dashboard.
  */
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
-  const viewer = await optionalViewer();
-  if (viewer && !viewer.user.isDemo) redirect("/dashboard");
   const params = await searchParams;
+  const next = safeNext(params.next);
+  const viewer = await optionalViewer();
+  if (viewer && !viewer.user.isDemo) redirect((next ?? "/dashboard") as Route);
   const t = await getTranslations("signIn");
   const options = signInOptions();
   const error = typeof params.error === "string" ? params.error : null;
@@ -40,6 +44,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
         devMail={options.email && !env().smtp}
         demoExpired={params.demo === "expired"}
         error={error}
+        next={next}
       />
       <p className="text-xs text-muted-foreground">{t("terms")}</p>
     </main>
