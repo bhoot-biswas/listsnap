@@ -14,6 +14,8 @@ export interface WorkspaceSettings {
   timeZone: string;
   currency: "BDT";
   brandKit: BrandKit;
+  /** The shop's website or Facebook Page; exported catalog files link each product to it. */
+  website: string | null;
 }
 
 export const DEFAULT_SETTINGS: WorkspaceSettings = {
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: WorkspaceSettings = {
   timeZone: "Asia/Dhaka",
   currency: "BDT",
   brandKit: EMPTY_BRAND_KIT,
+  website: null,
 };
 
 /** The tone and note the writer gets with every listing and AI help call. */

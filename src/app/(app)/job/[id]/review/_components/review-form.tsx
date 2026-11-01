@@ -12,6 +12,7 @@ import type { ListingEdit } from "@/lib/schemas/review";
 import { parseAmount } from "@/lib/amount";
 import { cn } from "@/lib/utils";
 import { SaveToStore } from "@/components/app/save-to-store";
+import { ExportMenu } from "@/components/app/export-menu";
 import { Autosaver, type SaveState } from "./autosave";
 import { CheckPanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
 import { LooksPanel } from "./looks-panel";
@@ -42,6 +43,7 @@ export function ReviewForm({
   voiceNote,
   status,
   inStore,
+  hasWebsite,
   storeBehind,
   archived,
   others,
@@ -65,6 +67,8 @@ export function ReviewForm({
   voiceNote: VoiceNoteView | null;
   status: ListingStatus;
   inStore: boolean;
+  /** The shop has a website set, which an exported Facebook catalog needs. */
+  hasWebsite: boolean;
   /** Edited since the store draft was saved. */
   storeBehind: boolean;
   archived: boolean;
@@ -355,14 +359,22 @@ export function ReviewForm({
                     ? t("saveInvalid")
                     : t("saveError")}
           </p>
-          <SaveToStore
-            jobId={jobId}
-            listingIds={[listingId]}
-            label={inStore ? t("updateStore") : t("saveToStore")}
-            update={inStore}
-            beforeSave={saver.flush}
-            className="w-auto max-sm:flex-1"
-          />
+          <div className="flex items-center gap-2 max-sm:flex-1">
+            <ExportMenu
+              listingIds={[listingId]}
+              hasWebsite={hasWebsite}
+              unchecked={status === "needs_review"}
+              beforeExport={saver.flush}
+            />
+            <SaveToStore
+              jobId={jobId}
+              listingIds={[listingId]}
+              label={inStore ? t("updateStore") : t("saveToStore")}
+              update={inStore}
+              beforeSave={saver.flush}
+              className="w-auto max-sm:flex-1"
+            />
+          </div>
         </div>
       </div>
     </div>

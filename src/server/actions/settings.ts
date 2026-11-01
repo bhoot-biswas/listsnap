@@ -23,6 +23,7 @@ export async function saveSettings(_prev: SettingsState, form: FormData): Promis
     scenes: f.scenes,
     priceRounding: f.priceRounding,
     listingLanguages: f.bangla ? ["en", "bn"] : ["en"],
+    website: f.website,
   });
   // the shop name shows in the sidebar on every page
   revalidatePath("/", "layout");

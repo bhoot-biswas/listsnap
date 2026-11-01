@@ -89,6 +89,7 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
                   key={listingsHref(filter)}
                   rows={rows.map((r) => ({ id: r.id, jobId: r.job_id, status: r.status }))}
                   archived={archived}
+                  hasWebsite={!!viewer.workspace.settings.website}
                 >
                   <ListingTable rows={rows} rounding={viewer.workspace.settings.priceRounding} archived={archived} />
                 </ListingSelection>

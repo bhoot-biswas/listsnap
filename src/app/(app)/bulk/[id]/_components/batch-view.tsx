@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { CircleAlert, Pause, Play } from "lucide-react";
 import { TopBar } from "@/components/app/top-bar";
 import { SaveToStore } from "@/components/app/save-to-store";
+import { ExportMenu } from "@/components/app/export-menu";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { JOBS_AT_ONCE, useBatchRunner } from "@/hooks/use-batch-runner";
@@ -12,8 +13,19 @@ import type { BatchState } from "@/lib/batch-state";
 import { BatchTable, SAVABLE, isStuck } from "./batch-table";
 import { WatchPanel } from "./watch-panel";
 
+const EXPORTABLE = new Set(["ready", "needs_review", "in_store", "posted"]);
+
 /** One bulk upload: progress, pause and resume, the rows, and saving the chosen ones to the store. */
-export function BatchView({ initial, autoStart }: { initial: BatchState; autoStart: boolean }) {
+export function BatchView({
+  initial,
+  autoStart,
+  hasWebsite,
+}: {
+  initial: BatchState;
+  autoStart: boolean;
+  /** The shop has a website set, which an exported Facebook catalog needs. */
+  hasWebsite: boolean;
+}) {
   const t = useTranslations("bulk");
   const tCommon = useTranslations("common");
   const { state, running, paused, offline, stalled, resume, pause, reload } = useBatchRunner(initial, autoStart);
@@ -41,6 +53,9 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
     .map((r) => r.listing)
     .filter((l): l is NonNullable<typeof l> => !!l && selected.has(l.id) && SAVABLE.has(l.status))
     .map((l) => l.id);
+  // the ticked ones, or with none ticked, every finished listing in the batch
+  const finished = rows.flatMap((r) => (r.listing && EXPORTABLE.has(r.listing.status) ? [r.listing.id] : []));
+  const toExport = chosen.length ? chosen : finished;
 
   return (
     <>
@@ -73,6 +88,13 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
                 {t("resume")}
               </Button>
             ))}
+          {toExport.length > 0 && (
+            <ExportMenu
+              listingIds={toExport}
+              hasWebsite={hasWebsite}
+              label={t("exportSelected", { count: toExport.length })}
+            />
+          )}
           {chosen.length > 0 && (
             <SaveToStore
               jobId={rows[0]!.jobId}

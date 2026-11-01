@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CircleCheck, Clapperboard, ExternalLink } from "lucide-react";
 import { TopBar } from "@/components/app/top-bar";
 import { ButtonLink } from "@/components/app/button-link";
+import { ExportMenu } from "@/components/app/export-menu";
 import { buttonVariants } from "@/components/ui/button";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
@@ -106,6 +107,13 @@ export default async function DonePage({ params }: PageProps<"/job/[id]/done">) 
                   <ExternalLink aria-hidden="true" />
                 </a>
               ))}
+            <ExportMenu
+              listingIds={saved.map((s) => s.listing.id)}
+              hasWebsite={!!viewer.workspace.settings.website}
+              label={t("export")}
+              size="lg"
+              className="w-full"
+            />
             {saved.length === 1 && (
               <ButtonLink
                 href={`/job/${id}/review?l=${saved[0]!.listing.id}#extras`}

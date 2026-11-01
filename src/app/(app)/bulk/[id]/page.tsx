@@ -16,5 +16,11 @@ export default async function BatchPage({ params, searchParams }: PageProps<"/bu
   const { id } = await params;
   const state = await loadBatchState(viewer.workspace, id, await requestLocale());
   if (!state) notFound();
-  return <BatchView initial={state} autoStart={(await searchParams).start === "1"} />;
+  return (
+    <BatchView
+      initial={state}
+      autoStart={(await searchParams).start === "1"}
+      hasWebsite={!!viewer.workspace.settings.website}
+    />
+  );
 }

@@ -132,6 +132,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
         voiceNote={voiceNote}
         status={listing.status}
         inStore={listing.status === "in_store" || listing.status === "posted"}
+        hasWebsite={!!viewer.workspace.settings.website}
         archived={!!listing.archived_at}
         storeBehind={!!listing.sent_at && !!listing.edited_at && listing.edited_at > listing.sent_at}
         looks={{

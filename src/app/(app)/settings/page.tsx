@@ -29,6 +29,7 @@ export default async function SettingsPage() {
             scenes: settings.scenes,
             priceRounding: settings.priceRounding,
             bangla: settings.listingLanguages.includes("bn"),
+            website: settings.website ?? "",
           }}
         />
         <div className="mt-8 border-t pt-8">

@@ -38,6 +38,7 @@ export interface ProductSetPlan {
 }
 
 export const listingSku = (listingId: string) => `listsnap-${listingId}`;
+export const variantSku = (listingId: string, itemId: string) => `${listingSku(listingId)}-${itemId.slice(0, 8)}`;
 
 /** Spark's text in Shopify's single description field: the short one first, then the details. */
 export function descriptionHtml(input: ShopifyDraftInput, withColours: boolean): string {
@@ -116,7 +117,7 @@ export function productSetInput(
         ...(id
           ? { id }
           : {
-              sku: `${listingSku(input.listingId)}-${v.itemId.slice(0, 8)}`,
+              sku: variantSku(input.listingId, v.itemId),
               metafields: [{ namespace: NS, key: "item_id", type: "single_line_text_field", value: v.itemId }],
             }),
         optionValues: [{ optionName: COLOR, name: v.color }],

@@ -10,10 +10,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const TIPS = ["clutter", "distance", "light"] as const;
+const EXPORT_STEPS = ["kit", "post", "many", "shopify", "website"] as const;
 const FAQ = ["keys", "draft", "edit", "labels", "limits", "missed", "data"] as const;
 const REPO = "https://github.com/bhoot-biswas/listsnap";
 
-/** S17 Help: photo tips, answers to the usual questions, shortcuts, and where to get in touch. */
+/** S17 Help: photo tips, selling on Marketplace with an export, answers to the usual questions, shortcuts, and where to get in touch. */
 export default async function HelpPage() {
   await requireWorkspace();
   const t = await getTranslations("help");
@@ -37,6 +38,15 @@ export default async function HelpPage() {
               </li>
             ))}
           </ul>
+        </FormSection>
+
+        <FormSection id="export" title={t("export.title")} intro={t("export.intro")}>
+          <ol className="list-decimal space-y-2 rounded-xl border bg-card py-4 pr-4 pl-9 text-sm">
+            {EXPORT_STEPS.map((k) => (
+              <li key={k}>{t(`export.steps.${k}`)}</li>
+            ))}
+          </ol>
+          <p className="text-sm text-muted-foreground">{t("export.note")}</p>
         </FormSection>
 
         <FormSection id="faq" title={t("faq.title")}>

@@ -7,10 +7,13 @@ import { toast } from "sonner";
 import { Archive, ArchiveRestore, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SaveToStore } from "@/components/app/save-to-store";
+import { ExportMenu } from "@/components/app/export-menu";
 import { setListingsArchived } from "@/server/actions/archive";
 
 /** Statuses a draft can be saved from; In store and Posted ones are updated from their own page. */
 const SAVABLE = new Set(["ready", "needs_review"]);
+/** Every finished listing exports, whether or not it is in a store yet. */
+const EXPORTABLE = new Set(["ready", "needs_review", "in_store", "posted"]);
 
 type Row = { id: string; jobId: string; status: string };
 type Selection = {
@@ -30,10 +33,13 @@ const useSelection = () => useContext(Ctx)!;
 export function ListingSelection({
   rows,
   archived,
+  hasWebsite,
   children,
 }: {
   rows: Row[];
   archived: boolean;
+  /** The shop has a website set, which an exported Facebook catalog needs. */
+  hasWebsite: boolean;
   children: React.ReactNode;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -47,7 +53,7 @@ export function ListingSelection({
   return (
     <Ctx.Provider value={{ selected, toggle, rows, setSelected }}>
       {children}
-      <SelectionBar archived={archived} />
+      <SelectionBar archived={archived} hasWebsite={hasWebsite} />
     </Ctx.Provider>
   );
 }
@@ -90,7 +96,7 @@ export function SelectAllBox({ withText = false }: { withText?: boolean }) {
 }
 
 /** What can be done with the ticked listings; sits at the foot of the screen while any are ticked. */
-function SelectionBar({ archived }: { archived: boolean }) {
+function SelectionBar({ archived, hasWebsite }: { archived: boolean; hasWebsite: boolean }) {
   const t = useTranslations("listings");
   const tArchive = useTranslations("archive");
   const router = useRouter();
@@ -99,6 +105,7 @@ function SelectionBar({ archived }: { archived: boolean }) {
   if (!selected.size) return null;
   const chosen = rows.filter((r) => selected.has(r.id));
   const savable = chosen.filter((r) => SAVABLE.has(r.status));
+  const exportable = chosen.filter((r) => EXPORTABLE.has(r.status));
 
   const archive = async (ids: string[], to: boolean) => {
     setBusy(true);
@@ -125,7 +132,7 @@ function SelectionBar({ archived }: { archived: boolean }) {
       <p className="px-2 text-sm font-medium max-md:w-full" aria-live="polite">
         {t("selectedCount", { count: chosen.length })}
       </p>
-      <div className="flex items-center gap-2 md:ml-auto">
+      <div className="flex flex-wrap items-center gap-2 md:ml-auto">
         {archived ? (
           <Button type="button" disabled={busy} onClick={() => void archive([...selected], false)}>
             {busy ? <Loader2 className="animate-spin" /> : <ArchiveRestore />}
@@ -145,6 +152,13 @@ function SelectionBar({ archived }: { archived: boolean }) {
                 }}
                 // the saved ones show In store; the failed stay ticked for Try again
                 onPartial={(failed) => setSelected(new Set(failed))}
+              />
+            )}
+            {exportable.length > 0 && (
+              <ExportMenu
+                listingIds={exportable.map((r) => r.id)}
+                hasWebsite={hasWebsite}
+                label={t("exportCount", { count: exportable.length })}
               />
             )}
             <Button type="button" variant="outline" disabled={busy} onClick={() => void archive([...selected], true)}>
