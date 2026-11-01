@@ -3,6 +3,29 @@ import { spawn } from "node:child_process";
 import { fail } from "@/server/http";
 import { VOICE_NOTE_MAX_S } from "@/lib/schemas/voice-note";
 
+/**
+ * Words Muse Voice Transcribe should hear right in a Bangladeshi clothes or crafts shop.
+ * Bangla script only: the spike found English keywords pulled the whole transcript into
+ * Latin letters.
+ */
+export const SHOP_WORDS = [
+  "জামদানি",
+  "থ্রি-পিস",
+  "কুর্তি",
+  "শাড়ি",
+  "কাতান",
+  "মসলিন",
+  "সুতি",
+  "সিল্ক",
+  "জর্জেট",
+  "পাঞ্জাবি",
+  "লেহেঙ্গা",
+  "ওড়না",
+  "সালোয়ার",
+  "কামিজ",
+  "টাকা",
+];
+
 /** A minute of Opus from a phone is well under 1 MB; this leaves room for M4A and WAV. */
 const MAX_BYTES = 10 * 1024 * 1024;
 const RATE = 24_000;

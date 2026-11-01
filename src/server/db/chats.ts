@@ -158,6 +158,15 @@ export function chatQueries(ws: string) {
       return Number(row?.n ?? 0);
     },
 
+    /** Messages spoken into a chat box today; each one is a logged Transcribe request. */
+    async dictationsToday(): Promise<number> {
+      const row = await selectOne<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM api_calls WHERE workspace_id = ? AND step = 'dictate' AND created_at >= UTC_DATE()",
+        [ws],
+      );
+      return Number(row?.n ?? 0);
+    },
+
     /** Chat model calls today; each one is a logged Spark request. */
     async chatCallsToday(): Promise<number> {
       const row = await selectOne<{ n: number }>(

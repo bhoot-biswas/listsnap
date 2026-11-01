@@ -1,16 +1,18 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ImagePlus, Loader2, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CHAT_MESSAGE_MAX, CHAT_PHOTOS_MAX } from "@/lib/schemas/chat";
 import type { Chat } from "@/hooks/use-chat";
+import { ChatMic } from "./chat-mic";
 
 /**
- * The message box: one rounded card with the text on top and the photo and send buttons
- * below. Enter sends, Shift+Enter starts a new line.
+ * The message box: one rounded card with the text on top and the photo, microphone and
+ * send buttons below. Enter sends, Shift+Enter starts a new line. Spoken words join the
+ * text, so the seller sees them before they're sent.
  */
 export function ChatComposer({
   chat,
@@ -28,9 +30,10 @@ export function ChatComposer({
 }) {
   const t = useTranslations("chat");
   const picker = useRef<HTMLInputElement>(null);
+  const [dictating, setDictating] = useState(false);
   const { busy, uploading, photos } = chat;
 
-  const submit = () => chat.send(chat.draft, newChat);
+  const submit = () => !dictating && chat.send(chat.draft, newChat);
 
   return (
     <form
@@ -84,7 +87,7 @@ export function ChatComposer({
         }}
         className="field-sizing-content max-h-48 min-h-11 w-full resize-none bg-transparent px-2 pt-1 text-base outline-none placeholder:text-muted-foreground md:text-sm"
       />
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-1">
         <input
           ref={picker}
           type="file"
@@ -107,11 +110,16 @@ export function ChatComposer({
           <ImagePlus className="size-4" aria-hidden="true" />
           <span className="sr-only">{t("attach")}</span>
         </Button>
+        <ChatMic
+          disabled={busy}
+          onWorking={setDictating}
+          onText={(text) => chat.setDraft((cur) => (cur.trim() ? `${cur.trimEnd()} ${text}` : text))}
+        />
         <Button
           type="submit"
           size="icon"
-          className="size-11 rounded-full md:size-9"
-          disabled={busy || uploading > 0 || (!chat.draft.trim() && !photos.length)}
+          className="size-11 shrink-0 rounded-full md:size-9"
+          disabled={busy || dictating || uploading > 0 || (!chat.draft.trim() && !photos.length)}
         >
           <SendHorizontal className="size-4" aria-hidden="true" />
           <span className="sr-only">{t("send")}</span>
