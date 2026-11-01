@@ -4,6 +4,7 @@ import { decryptSecret, encryptSecret } from "@/server/crypto";
 import type { WorkspaceScope } from "@/server/db/scope";
 import type { SocialAccount } from "@/server/providers";
 import { MetaSettings, type Destination } from "@/lib/schemas/social";
+import { catalogAccess } from "@/lib/meta-access";
 
 /**
  * The seller's Facebook Page and linked Instagram account, read from the "meta"
@@ -55,10 +56,12 @@ export async function metaConnection(ws: WorkspaceScope): Promise<MetaConnection
 
 /**
  * The catalog listings can be saved to right now, or null: it needs the seller's token
- * with catalog access, a chosen catalog, and the shop's website (Meta links items to it).
+ * with catalog access and not yet expired, a chosen catalog, and the shop's website (Meta
+ * links items to it).
  */
 export function readyCatalog(c: MetaConnection | null, website: string | null): { id: string; name: string } | null {
   if (!c?.userToken() || !c.settings.catalogAccess || !website) return null;
+  if (catalogAccess(c.settings.userTokenExpiresAt).state === "expired") return null;
   return c.settings.catalogs.find((x) => x.id === c.settings.catalogId) ?? null;
 }
 

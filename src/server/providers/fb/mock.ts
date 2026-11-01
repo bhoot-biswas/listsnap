@@ -13,7 +13,7 @@ export const mockFacebook: FacebookProvider = {
     logged(
       ctx,
       { provider: "facebook", model: "graph-api (mock)", endpoint: "oauth/access_token", mode: "mock" },
-      async () => "mock-user-token",
+      async () => ({ token: "mock-user-token", expiresAt: new Date(Date.now() + 60 * 24 * 3600 * 1000) }),
       () => ({ summary: "login", costUsd: 0 }),
     ),
   pages: (ctx) =>

@@ -1,15 +1,20 @@
-import { getTranslations } from "next-intl/server";
+import { getFormatter, getTranslations } from "next-intl/server";
 import { ConfirmButton, PendingButton } from "@/components/app/form-buttons";
 import { chooseMetaCatalog, chooseMetaPage, disconnectMeta } from "@/server/actions/meta-connection";
 import { metaLoginOffered } from "@/server/social/meta-connect";
 import type { ServiceOverview } from "@/server/connections/overview";
 import type { MetaSettings } from "@/lib/schemas/social";
+import { catalogAccess } from "@/lib/meta-access";
+import { cn } from "@/lib/utils";
 import { DetailHeader, DetailSection } from "./detail-header";
 import { MetaLoginButton } from "./meta-login-button";
 
 /** Facebook and Instagram's page: the Page and account reels post to. */
 export async function MetaDetail({ s, meta }: { s: ServiceOverview; meta: MetaSettings }) {
   const t = await getTranslations("connections");
+  const format = await getFormatter();
+  const access = meta.catalogAccess ? catalogAccess(meta.userTokenExpiresAt) : null;
+  const accessDate = access?.until ? format.dateTime(access.until, { dateStyle: "medium" }) : null;
   return (
     <div className="space-y-6">
       <DetailHeader s={s} />
@@ -50,6 +55,17 @@ export async function MetaDetail({ s, meta }: { s: ServiceOverview; meta: MetaSe
       {!meta.test && (
         <DetailSection id="meta-catalog" title={t("meta.catalogTitle")}>
           <p className="text-sm text-muted-foreground">{t("meta.catalogIntro")}</p>
+          {access && accessDate && (
+            <p
+              role={access.state === "ok" ? undefined : "status"}
+              className={cn(
+                "text-sm",
+                access.state === "expired" ? "text-destructive" : access.state === "soon" && "text-warning",
+              )}
+            >
+              {t(`meta.access.${access.state}`, { date: accessDate })}
+            </p>
+          )}
           {meta.catalogs.length > 1 ? (
             <form action={chooseMetaCatalog} className="space-y-2">
               <label htmlFor="meta-catalog-choice" className="text-sm font-medium">

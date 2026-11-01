@@ -89,7 +89,8 @@ export type MetaConnectError = "noPages" | "failed";
 export async function finishLogin(workspaceId: string, code: string): Promise<MetaConnectError | null> {
   const ws = forWorkspace(workspaceId);
   const ctx = { workspaceId, jobId: null, step: "connect" };
-  const userToken = await facebook().exchangeCode(ctx, { code, redirectUri: redirectUri() });
+  const login = await facebook().exchangeCode(ctx, { code, redirectUri: redirectUri() });
+  const userToken = login.token;
   const [pages, catalogs] = await Promise.all([facebook().pages(ctx, userToken), facebook().catalogs(ctx, userToken)]);
   if (!pages.length) return "noPages";
 
@@ -110,6 +111,7 @@ export async function finishLogin(workspaceId: string, code: string): Promise<Me
       catalogs: found,
       catalogId,
       catalogAccess: catalogs !== null,
+      userTokenExpiresAt: login.expiresAt?.toISOString() ?? null,
     },
   });
   return null;
@@ -125,10 +127,11 @@ export const choiceOf = (p: MetaPage): MetaPageChoice => ({
 export function settingsFor(
   c: MetaPageChoice,
   pages: MetaPageChoice[],
-  catalogs: Pick<MetaSettings, "catalogs" | "catalogId" | "catalogAccess"> = {
+  catalogs: Pick<MetaSettings, "catalogs" | "catalogId" | "catalogAccess" | "userTokenExpiresAt"> = {
     catalogs: [],
     catalogId: null,
     catalogAccess: false,
+    userTokenExpiresAt: null,
   },
 ): MetaSettings {
   return {

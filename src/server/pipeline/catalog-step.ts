@@ -7,6 +7,7 @@ import { catalogItems } from "@/server/export/formats";
 import { facebook } from "@/server/providers";
 import { metaConnection } from "@/server/social/connection";
 import { listingProduct } from "@/server/stores/listing-product";
+import { catalogAccess } from "@/lib/meta-access";
 import { runStep, StepError, type StepOutcome } from "./run-step";
 
 /**
@@ -66,7 +67,9 @@ async function send(
   const ws = forWorkspace(workspace.id);
   const conn = await metaConnection(ws);
   const userToken = conn?.userToken();
-  if (!conn || !userToken) throw new StepError("connectCatalog");
+  // an expired login would only get Meta's refusal, so ask for a new one straight away
+  if (!conn || !userToken || catalogAccess(conn.settings.userTokenExpiresAt).state === "expired")
+    throw new StepError("connectCatalog");
   const catalog = conn.settings.catalogs.find((c) => c.id === conn.settings.catalogId);
   if (!catalog) throw new StepError("chooseCatalog");
   // Meta refuses an item without a page to buy it on, and a store draft has no public page

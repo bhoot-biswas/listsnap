@@ -29,6 +29,7 @@ export async function connectTestMeta(): Promise<void> {
     catalogs: [],
     catalogId: null,
     catalogAccess: false,
+    userTokenExpiresAt: null,
   };
   await forWorkspace(viewer.workspace.id).saveConnection("meta", {
     baseUrl: null,

@@ -309,8 +309,14 @@ export type CatalogBatch = { done: false } | { done: true; errors: { id: string;
 
 export interface FacebookProvider {
   readonly mode: "mock" | "live";
-  /** Spends Facebook Login's code for a long-lived user token, which then lists the Pages. */
-  exchangeCode(ctx: CallContext, input: { code: string; redirectUri: string }): Promise<string>;
+  /**
+   * Spends Facebook Login's code for a long-lived user token, which then lists the Pages.
+   * `expiresAt` is when Meta stops accepting it (about 60 days), null when Meta didn't say.
+   */
+  exchangeCode(
+    ctx: CallContext,
+    input: { code: string; redirectUri: string },
+  ): Promise<{ token: string; expiresAt: Date | null }>;
   /** The Pages the seller let ListSnap use. Their tokens don't expire, unlike the user token. */
   pages(ctx: CallContext, userToken: string): Promise<MetaPage[]>;
   /** The catalogs in the seller's business portfolios; null when catalog access wasn't given. */

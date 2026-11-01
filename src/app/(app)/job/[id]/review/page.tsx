@@ -22,6 +22,7 @@ import type { CatalogState } from "./_components/catalog-panel";
 import { StillMaking } from "./_components/still-making";
 import type { VoiceNoteView } from "./_components/voice-note-card";
 import { ListenResult } from "@/lib/schemas/voice-note";
+import { catalogAccess } from "@/lib/meta-access";
 import { localTitle } from "@/lib/titles";
 import { numberRepeats, REVIEWABLE } from "@/lib/review-next";
 
@@ -33,16 +34,20 @@ function catalogState(
 ): CatalogState {
   const catalog = meta?.settings.catalogs.find((c) => c.id === meta.settings.catalogId) ?? null;
   const result = CatalogSaved.safeParse(saved);
+  const access = catalogAccess(meta?.settings.userTokenExpiresAt ?? null);
   return {
     catalogName: catalog?.name ?? null,
+    reconnectBy: access.state === "soon" ? access.until.toISOString() : null,
     blocked:
       !meta?.userToken() || !meta.settings.catalogAccess
         ? "connect"
-        : !catalog
-          ? "choose"
-          : !website
-            ? "website"
-            : null,
+        : access.state === "expired"
+          ? "expired"
+          : !catalog
+            ? "choose"
+            : !website
+              ? "website"
+              : null,
     saved: result.success && result.data.catalogId === catalog?.id ? result.data : null,
   };
 }

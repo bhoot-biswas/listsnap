@@ -34,6 +34,8 @@ export const MetaSettings = z.object({
   catalogId: z.string().nullable().default(null),
   /** The seller gave catalog access at the last login, whether or not they have a catalog. */
   catalogAccess: z.boolean().default(false),
+  /** When Meta stops accepting the seller's own token, which catalogs need (ISO time); null if unknown. */
+  userTokenExpiresAt: z.string().nullable().default(null),
 });
 export type MetaSettings = z.infer<typeof MetaSettings>;
 

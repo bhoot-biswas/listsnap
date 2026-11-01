@@ -59,6 +59,9 @@ describe.skipIf(!enabled)("Facebook catalog (MariaDB)", async () => {
     // Listings offers the catalog only once it can be used: chosen, with access, and a website
     expect(readyCatalog(conn, "https://rupkotha.example")).toMatchObject({ name: "Rupkotha products" });
     expect(readyCatalog(conn, null)).toBeNull();
+    // the login's end date is kept, about 60 days out
+    const ends = Date.parse(conn.settings.userTokenExpiresAt!) - Date.now();
+    expect(ends).toBeGreaterThan(59 * 24 * 3600 * 1000);
     // the token never reaches the settings a page renders
     expect(JSON.stringify((await A.storeConnection("meta"))?.settings_json)).not.toContain("mock-user-token");
   });
@@ -102,5 +105,22 @@ describe.skipIf(!enabled)("Facebook catalog (MariaDB)", async () => {
     });
     const r = await saveToCatalog(a.workspace, listingId, { update: true }, noWait);
     expect(r.found && "outcome" in r && r.outcome.state === "failed" && r.outcome.error).toMatch(/Image too small/);
+  });
+
+  it("treats an expired login as connect again, before calling Meta", async () => {
+    const row = (await A.storeConnection("meta"))!;
+    const settings = row.settings_json as Record<string, unknown>;
+    await A.setConnectionSettings("meta", {
+      ...settings,
+      userTokenExpiresAt: new Date(Date.now() - 1000).toISOString(),
+    });
+    const conn = (await metaConnection(A))!;
+    expect(readyCatalog(conn, "https://rupkotha.example")).toBeNull();
+    const send = vi.spyOn(mockFacebook, "saveCatalogItems");
+    send.mockClear();
+    const r = await saveToCatalog(a.workspace, listingId, { update: true }, noWait);
+    expect(r.found && "outcome" in r && r.outcome.state === "failed" && r.outcome.error).toMatch(/connectCatalog/);
+    expect(send).not.toHaveBeenCalled();
+    await A.setConnectionSettings("meta", settings);
   });
 });
