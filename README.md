@@ -59,7 +59,13 @@ Next.js 16 (App Router) · React 19 · TypeScript · MariaDB/MySQL via `mysql2` 
 
 ## Pre-existing code
 
-Parts of the setup are adapted from the author's earlier project, SOHOZ TOOLS: the MySQL pool, the migration runner (`scripts/db-migrate.mjs`), and the Better Auth and email configuration. Everything else was written during the hackathon.
+A few setup files are adapted from my earlier project, SOHOZ TOOLS, which lives in its own private repository; none of its code history is in this one:
+
+- the migration runner (`scripts/db-migrate.mjs`), mostly as it was
+- parts of the Better Auth setup (`src/server/auth/auth.ts`): the session and token cleanup, and some of the options
+- the SMTP sender and parts of the email layout (`src/server/auth/mail.ts`)
+
+Everything else, including the database pool, the pipeline, the providers and every Meta model integration, was written during the hackathon, from October 27, 2026.
 
 ## License
 
