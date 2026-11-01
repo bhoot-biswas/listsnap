@@ -5,13 +5,7 @@ import { cn } from "@/lib/utils";
 const dayDate = (day: string) => new Date(`${day}T00:00:00Z`);
 
 /** Listings per day for 30 days as plain bars, with the month's totals above. */
-export async function MonthChart({
-  days,
-  totals,
-}: {
-  days: UsageDay[];
-  totals: { listings: number; photos: number; cost: string };
-}) {
+export async function MonthChart({ days, totals }: { days: UsageDay[]; totals: { listings: number; photos: number } }) {
   const t = await getTranslations("usage.month");
   const format = await getFormatter();
   const max = Math.max(1, ...days.map((d) => d.listings));
@@ -26,7 +20,6 @@ export async function MonthChart({
           {t("totals", {
             listings: format.number(totals.listings),
             photos: format.number(totals.photos),
-            cost: totals.cost,
           })}
         </p>
       </div>

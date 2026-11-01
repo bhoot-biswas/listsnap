@@ -74,7 +74,6 @@ export interface DashboardStats {
   listedYesterday: number;
   waiting: number;
   inStoreWeek: number;
-  costToday: number;
   /** Photo in to listing written, averaged over the last 7 days' finished jobs. */
   avgSeconds: number | null;
 }
@@ -175,17 +174,13 @@ export function overviewQueries(ws: string) {
     },
 
     async dashboardStats(): Promise<DashboardStats> {
-      const [listings, usage, timing] = await Promise.all([
+      const [listings, timing] = await Promise.all([
         selectOne<Record<string, number | null>>(
           `SELECT SUM(created_at >= UTC_DATE()) AS today,
                   SUM(created_at >= UTC_DATE() - INTERVAL 1 DAY AND created_at < UTC_DATE()) AS yesterday,
                   SUM(status = 'needs_review' AND archived_at IS NULL) AS waiting,
                   SUM(sent_at >= UTC_TIMESTAMP() - INTERVAL 7 DAY) AS in_store_week
              FROM listings WHERE workspace_id = ?`,
-          [ws],
-        ),
-        selectOne<{ cost: number | null }>(
-          "SELECT SUM(cost_usd) AS cost FROM api_calls WHERE workspace_id = ? AND created_at >= UTC_DATE()",
           [ws],
         ),
         // photo in to listing written: the job's steps before the seller's own review and save
@@ -205,7 +200,6 @@ export function overviewQueries(ws: string) {
         listedYesterday: n(listings?.yesterday),
         waiting: n(listings?.waiting),
         inStoreWeek: n(listings?.in_store_week),
-        costToday: n(usage?.cost),
         avgSeconds: timing?.s == null ? null : Math.round(Number(timing.s)),
       };
     },

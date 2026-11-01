@@ -4,6 +4,7 @@ import { Check, ChevronDown, X } from "lucide-react";
 import { FormSection } from "@/components/app/form-section";
 import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
+import { REELS_PER_DAY } from "@/server/db/limits";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("nav"))("help") };
@@ -16,7 +17,7 @@ const REPO = "https://github.com/bhoot-biswas/listsnap";
 
 /** S17 Help: photo tips, selling on Marketplace with an export, answers to the usual questions, shortcuts, and where to get in touch. */
 export default async function HelpPage() {
-  await requireWorkspace();
+  const { workspace } = await requireWorkspace();
   const t = await getTranslations("help");
   const tNav = await getTranslations("nav");
   return (
@@ -60,7 +61,13 @@ export default async function HelpPage() {
                     aria-hidden="true"
                   />
                 </summary>
-                <p className="px-4 pb-4 text-sm text-muted-foreground">{t(`faq.items.${k}.a`)}</p>
+                <p className="px-4 pb-4 text-sm text-muted-foreground">
+                  {t(`faq.items.${k}.a`, {
+                    listings: workspace.limits.listings,
+                    photos: workspace.limits.images,
+                    reels: REELS_PER_DAY,
+                  })}
+                </p>
               </details>
             ))}
           </div>

@@ -58,7 +58,7 @@ export async function StatTiles({ stats }: { stats: DashboardStats }) {
       <Tile
         label={t("avgTime")}
         value={stats.avgSeconds == null ? "–" : t("seconds", { s: format.number(stats.avgSeconds) })}
-        note={t("costToday", { cost: format.number(stats.costToday, { style: "currency", currency: "USD" }) })}
+        note={t("avgTimeNote")}
       />
     </section>
   );

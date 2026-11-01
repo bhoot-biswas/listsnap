@@ -13,6 +13,12 @@ type Counter = "listings" | "images" | "reels";
 /** Reels a shop can make each day. Rendering costs no AI money, only server time. */
 export const REELS_PER_DAY = 10;
 
+/**
+ * What a new shop starts with: the columns' defaults in 0002_workspaces.sql, for pages
+ * shown before there is a shop (Pricing). A shop's own limits are on its workspace row.
+ */
+export const DEFAULT_LIMITS = { listings: 20, images: 60, reels: REELS_PER_DAY } as const;
+
 async function reserve(table: "usage_daily" | "ip_daily", key: string, counter: Counter, limit: number) {
   const keyColumn = table === "usage_daily" ? "workspace_id" : "ip_hash";
   await execute(`INSERT IGNORE INTO ${table} (${keyColumn}, date) VALUES (?, UTC_DATE())`, [key]);

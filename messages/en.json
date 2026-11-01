@@ -97,7 +97,7 @@
   "pricing": {
     "title": "Pricing",
     "free": "Free",
-    "freeBody": "20 listings a day, 60 images. Nothing to pay during the beta.",
+    "freeBody": "{listings, number} listings, {images, number} AI photos and {reels, number} reels a day. Nothing to pay during the beta.",
     "pro": "Pro",
     "proBody": "Pay per listing, about the cost of a cup of tea. Coming later."
   },
@@ -140,8 +140,8 @@
       "inStoreWeek": "In store this week",
       "asDrafts": "Saved as drafts",
       "avgTime": "Time per listing",
-      "seconds": "{s} s",
-      "costToday": "AI cost today {cost}"
+      "avgTimeNote": "From photo to finished listing",
+      "seconds": "{s} s"
     },
     "attention": {
       "title": "Needs your attention",
@@ -160,6 +160,7 @@
       "title": "Usage today",
       "listings": "Listings",
       "images": "AI photos",
+      "reels": "Reels",
       "resets": "Resets {when}"
     },
     "getStarted": {
@@ -238,19 +239,25 @@
     "today": "Today",
     "listings": "Listings",
     "photos": "AI photos",
+    "reels": "Reels",
     "aiCost": "AI cost today",
     "aiCalls": "AI calls today",
+    "monthCost": "AI cost, last 30 days",
+    "behind": {
+      "title": "Behind the scenes",
+      "hint": "What the AI cost, step by step and call by call"
+    },
     "resets": "Limits reset at {time}, {when}.",
     "plan": {
       "title": "Your plan",
       "free": "Free",
-      "limits": "{listings, number} listings and {photos, number} AI photos a day, 1 store, English and বাংলা.",
-      "pro": "Pro is coming soon: pay per listing, bigger bulk uploads, several stores.",
+      "limits": "{listings, number} listings, {photos, number} AI photos and {reels, number} reels a day, WooCommerce and Shopify, English and বাংলা.",
+      "pro": "Pro is coming soon: pay per listing and bigger bulk uploads.",
       "pricing": "See pricing"
     },
     "month": {
       "title": "Last 30 days",
-      "totals": "{listings} listings · {photos} AI photos · {cost} AI cost",
+      "totals": "{listings} listings · {photos} AI photos",
       "chart": "Listings per day",
       "bar": "{day}: {count, plural, =0 {no listings} one {# listing} other {# listings}}"
     },
@@ -511,7 +518,7 @@
         },
         "limits": {
           "q": "What are the daily limits?",
-          "a": "Each shop can start 20 listings and make 60 AI photos a day. They start again at 6:00 AM Bangladesh time. Usage shows where you are."
+          "a": "Each shop can start {listings, number} listings and make {photos, number} AI photos and {reels, number} reels a day. They start again at 6:00 AM Bangladesh time. Usage shows where you are."
         },
         "missed": {
           "q": "The AI didn't find my product. What now?",

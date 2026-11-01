@@ -14,6 +14,7 @@ import { AskBox } from "./_components/ask-box";
 import { NeedsAttention } from "./_components/needs-attention";
 import { GetStarted, UsageToday, WeekBars } from "./_components/side-panels";
 import { StatTiles } from "./_components/stat-tiles";
+import { REELS_PER_DAY } from "@/server/db/limits";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("dashboard"))("title") };
@@ -111,7 +112,12 @@ export default async function DashboardPage() {
             <Activity rows={activity} />
           </div>
           <div className="space-y-6">
-            <UsageToday listings={used.listings} images={used.images} limits={viewer.workspace.limits} />
+            <UsageToday
+              listings={used.listings}
+              images={used.images}
+              reels={used.reels}
+              limits={{ ...viewer.workspace.limits, reels: REELS_PER_DAY }}
+            />
             {!allDone && <GetStarted done={done} />}
             {!brandNew && <WeekBars days={days} />}
           </div>
