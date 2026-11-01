@@ -42,7 +42,7 @@ export async function NeedsAttention({ rows }: { rows: AttentionRow[] }) {
                     {t(r.kind)} · {relativeTime(format, r.created_at)}
                   </p>
                 </div>
-                <ButtonLink href={href} variant="outline" size="sm" className="h-11 md:h-8">
+                <ButtonLink href={href} variant="outline" size="sm">
                   {t(failed ? "open" : paused ? "continue" : "check")}
                 </ButtonLink>
               </li>

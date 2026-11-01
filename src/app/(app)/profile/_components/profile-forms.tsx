@@ -198,7 +198,7 @@ export function LinkGoogleButton() {
     <Button
       variant="outline"
       size="sm"
-      className="h-11 md:h-8"
+
       onClick={() => void authClient.linkSocial({ provider: "google", callbackURL: "/profile" })}
     >
       {t("linkGoogle")}

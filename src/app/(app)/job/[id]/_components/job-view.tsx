@@ -67,7 +67,7 @@ export function JobView({ initial, archived }: { initial: JobState; archived: bo
         >
           <CircleAlert className="size-4 text-destructive" aria-hidden="true" />
           {t("stalled")}
-          <Button variant="outline" size="sm" className="h-11 md:h-8" onClick={() => void resume()}>
+          <Button variant="outline" size="sm" onClick={() => void resume()}>
             {tCommon("tryAgain")}
           </Button>
         </div>

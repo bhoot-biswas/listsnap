@@ -110,7 +110,7 @@ export default async function ProfilePage() {
                     <Badge variant="secondary">{t("devices.this")}</Badge>
                   ) : (
                     <form action={signOutDevice.bind(null, s.id)}>
-                      <Button type="submit" variant="ghost" size="sm" className="h-11 md:h-8">
+                      <Button type="submit" variant="ghost" size="sm">
                         {tNav("signOut")}
                       </Button>
                     </form>

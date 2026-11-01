@@ -148,13 +148,13 @@ export function SignInForm(props: {
               <Button
                 variant="secondary"
                 size="sm"
-                className="h-11 md:h-8"
+
                 onClick={() => sendLink()}
                 disabled={cooldown > 0 || !!busy}
               >
                 {cooldown > 0 ? t("resendIn", { seconds: cooldown }) : t("resend")}
               </Button>
-              <Button variant="ghost" size="sm" className="h-11 md:h-8" onClick={() => setSentTo(null)}>
+              <Button variant="ghost" size="sm" onClick={() => setSentTo(null)}>
                 {t("differentEmail")}
               </Button>
             </div>
