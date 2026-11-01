@@ -597,6 +597,8 @@
     "saveOne": "Save as draft in store",
     "saveAll": "Save all {count} as drafts",
     "saving": "Saving to your store…",
+    "savingCount": "Saving {current, number} of {total, number}…",
+    "savedSome": "{saved, number} saved to your store, {failed, number} didn’t save.",
     "saveFailed": "Your store didn’t answer. Your listing is safe here. Try again.",
     "editsOffline": "You’re offline. Your changes will save when you’re back; then save to the store again.",
     "editsNotSaved": "Your latest changes aren’t saved yet, so nothing went to the store. Check the message beside the button.",
