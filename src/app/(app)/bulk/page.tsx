@@ -49,7 +49,8 @@ export default async function BulkPage() {
         ) : (
           <ul className="divide-y rounded-xl border bg-card">
             {batches.map((b) => {
-              const done = b.jobs - b.processing;
+              // a photo waiting for the seller's choice isn't done yet
+              const done = b.jobs - b.processing - b.waiting;
               return (
                 <li key={b.id}>
                   <Link href={`/bulk/${b.id}`} className="flex min-h-16 items-center gap-4 px-4 py-3 hover:bg-muted/60">
@@ -62,6 +63,7 @@ export default async function BulkPage() {
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {t("summary", { done, total: b.jobs })}
+                        {b.waiting > 0 && ` · ${t("choosingShort", { count: b.waiting })}`}
                         {b.ready > 0 && ` · ${b.ready} ${tStatus("ready")}`}
                         {b.needs_review > 0 && ` · ${b.needs_review} ${tStatus("needs_review")}`}
                         {b.in_store > 0 && ` · ${b.in_store} ${tStatus("in_store")}`}

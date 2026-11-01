@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { JOBS_AT_ONCE, useBatchRunner } from "@/hooks/use-batch-runner";
 import type { BatchState } from "@/lib/batch-state";
-import { BatchTable, SAVABLE } from "./batch-table";
+import { BatchTable, SAVABLE, isStuck } from "./batch-table";
 import { WatchPanel } from "./watch-panel";
 
 /** One bulk upload: progress, pause and resume, the rows, and saving the chosen ones to the store. */
@@ -30,8 +30,12 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
   );
   // a video batch's rows appear only once its video is watched
   const watching = !!state.watch && state.watch.status !== "done";
-  const left = rows.filter((r) => r.jobStatus === "processing").length + (watching && !state.watch?.exhausted ? 1 : 0);
-  const done = rows.filter((r) => r.jobStatus !== "processing").length;
+  // rows waiting on the seller aren't done, and the runner can't move them on either
+  const stuck = rows.filter(isStuck).length;
+  const choosing = rows.filter((r) => r.jobStatus === "awaiting_choice").length;
+  const working = rows.filter((r) => r.jobStatus === "processing" && !isStuck(r)).length;
+  const left = working + (watching && !state.watch?.exhausted ? 1 : 0);
+  const done = rows.length - working - stuck - choosing;
   const chosen = rows
     .map((r) => r.listing)
     .filter((l): l is NonNullable<typeof l> => !!l && selected.has(l.id) && SAVABLE.has(l.status))
@@ -87,7 +91,17 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
             {t("pausedBanner", { count: left })}
           </p>
         )}
-        {left === 0 && !watching && <p className="text-sm text-muted-foreground">{t("allDone")}</p>}
+        {left === 0 &&
+          !watching &&
+          (choosing || stuck ? (
+            <p role="status" className="rounded-lg border border-warning/40 bg-marigold-soft px-4 py-3 text-sm">
+              {[choosing > 0 && t("leftChoosing", { count: choosing }), stuck > 0 && t("leftStuck", { count: stuck })]
+                .filter(Boolean)
+                .join(" ")}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("allDone")}</p>
+          ))}
 
         <BatchTable
           rows={rows}
