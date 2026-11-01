@@ -6,6 +6,7 @@ import { Look } from "@/lib/schemas/looks";
 import { ReelLang, ReelTemplate } from "@/lib/schemas/reels";
 import { PostRequest } from "@/lib/schemas/social";
 import { saveToStores } from "@/server/pipeline/store-step";
+import { saveToCatalog } from "@/server/pipeline/catalog-step";
 import { StoreKind } from "@/lib/stores";
 import type { StepOutcome } from "@/server/pipeline/run-step";
 import { defineOp } from "./define-op";
@@ -51,6 +52,25 @@ export const saveDraftToStore = defineOp({
       value: { outcome: r.outcome as StepOutcome<unknown> },
       listingId,
       summary: `${update ? "update draft" : "save draft"}${stores ? ` (${stores.join(", ")})` : ""}`,
+    };
+  },
+});
+
+export const saveToFacebookCatalog = defineOp({
+  name: "saveToFacebookCatalog",
+  description:
+    "Save a finished listing to the shop's Facebook product catalog (the one chosen in Connections), for catalog ads and product tags. One item per colour for a colour-variants listing. With update, send the latest edits to the same items. Needs the seller's confirmation.",
+  input: z.object({ listingId: ListingId, update: z.boolean().default(false) }),
+  effect: "changes_store",
+  async run({ workspace }, { listingId, update }) {
+    const r = await saveToCatalog(workspace, listingId, { update });
+    if (!r.found) return { ok: false, error: "not_found" };
+    if ("invalid" in r) return { ok: false, error: "not_ready", message: r.invalid };
+    return {
+      ok: true,
+      value: { outcome: r.outcome as StepOutcome<unknown> },
+      listingId,
+      summary: update ? "update catalog" : "save to catalog",
     };
   },
 });

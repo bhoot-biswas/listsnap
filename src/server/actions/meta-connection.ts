@@ -26,6 +26,9 @@ export async function connectTestMeta(): Promise<void> {
     igUsername: `@${handle.slice(0, 20)}.test`,
     test: true,
     pages: [],
+    catalogs: [],
+    catalogId: null,
+    catalogAccess: false,
   };
   await forWorkspace(viewer.workspace.id).saveConnection("meta", {
     baseUrl: null,
@@ -42,7 +45,18 @@ export async function chooseMetaPage(formData: FormData): Promise<void> {
   const ws = forWorkspace(viewer.workspace.id);
   const current = MetaSettings.safeParse((await ws.storeConnection("meta"))?.settings_json);
   const page = current.success ? current.data.pages.find((p) => p.id === formData.get("pageId")) : undefined;
-  if (current.success && page) await ws.setConnectionSettings("meta", settingsFor(page, current.data.pages));
+  if (current.success && page)
+    await ws.setConnectionSettings("meta", settingsFor(page, current.data.pages, current.data));
+  redirect("/connections/meta");
+}
+
+/** Which catalog "Save to catalog" sends listings to. Only catalogs from the last login can be chosen. */
+export async function chooseMetaCatalog(formData: FormData): Promise<void> {
+  const viewer = await requireWorkspace();
+  const ws = forWorkspace(viewer.workspace.id);
+  const current = MetaSettings.safeParse((await ws.storeConnection("meta"))?.settings_json);
+  const catalog = current.success ? current.data.catalogs.find((c) => c.id === formData.get("catalogId")) : undefined;
+  if (current.success && catalog) await ws.setConnectionSettings("meta", { ...current.data, catalogId: catalog.id });
   redirect("/connections/meta");
 }
 

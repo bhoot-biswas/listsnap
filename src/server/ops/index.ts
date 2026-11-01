@@ -9,7 +9,7 @@ import {
   saveListingEdit,
   undoLast,
 } from "./listing-ops";
-import { makeReel, postReel, renderLook, renderScene, saveDraftToStore } from "./pipeline-ops";
+import { makeReel, postReel, renderLook, renderScene, saveDraftToStore, saveToFacebookCatalog } from "./pipeline-ops";
 import { setBrandKit } from "./brand-ops";
 import { findListings, getShopSummary, saveDraftsToStore, startListing } from "./shop-ops";
 
@@ -32,6 +32,7 @@ const base = {
   makeReel,
   postReel,
   saveDraftToStore,
+  saveToFacebookCatalog,
   setBrandKit,
   getShopSummary,
   findListings,

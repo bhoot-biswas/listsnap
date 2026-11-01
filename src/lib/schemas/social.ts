@@ -15,6 +15,10 @@ export const MetaPageChoice = z.object({
 });
 export type MetaPageChoice = z.infer<typeof MetaPageChoice>;
 
+/** A product catalog the seller can save listings to. */
+export const MetaCatalogChoice = z.object({ id: z.string().min(1), name: z.string(), business: z.string() });
+export type MetaCatalogChoice = z.infer<typeof MetaCatalogChoice>;
+
 /** The "meta" connection's settings: the Page reels post to and its linked Instagram account, if any. */
 export const MetaSettings = z.object({
   pageId: z.string().min(1),
@@ -25,6 +29,11 @@ export const MetaSettings = z.object({
   test: z.boolean(),
   /** Every Page from the last Facebook login, so the seller can switch without logging in again. */
   pages: z.array(MetaPageChoice).default([]),
+  /** The catalogs in the seller's business portfolios at the last login, and the one listings go to. */
+  catalogs: z.array(MetaCatalogChoice).default([]),
+  catalogId: z.string().nullable().default(null),
+  /** The seller gave catalog access at the last login, whether or not they have a catalog. */
+  catalogAccess: z.boolean().default(false),
 });
 export type MetaSettings = z.infer<typeof MetaSettings>;
 

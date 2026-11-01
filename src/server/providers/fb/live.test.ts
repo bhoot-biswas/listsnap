@@ -179,3 +179,73 @@ describe("Instagram", () => {
     expect(sent[2]!.body).toMatchObject({ media_type: "CAROUSEL", children: "c1,c2" });
   });
 });
+
+describe("Facebook catalog", () => {
+  const item = {
+    id: "ls-1",
+    itemGroupId: null,
+    title: "Red saree",
+    description: "Soft.",
+    availability: "in stock" as const,
+    condition: "new" as const,
+    price: "4650 BDT",
+    link: "https://rupkotha.example",
+    images: ["https://app/media/1.jpg", "https://app/media/2.jpg"],
+    brand: "Rupkotha",
+    color: null,
+  };
+
+  it("lists catalogs across business portfolios, and none when access wasn't given", async () => {
+    answers = [
+      () =>
+        json({
+          data: [
+            { id: "b1", name: "Rupkotha Crafts", owned_product_catalogs: { data: [{ id: "c1", name: "Products" }] } },
+            { id: "b2", name: "Other" },
+          ],
+        }),
+    ];
+    expect(await fb.catalogs(ctx, "ut")).toEqual([{ id: "c1", name: "Products", business: "Rupkotha Crafts" }]);
+    answers = [() => json({ error: { message: "Missing permission", code: 200 } }, 403)];
+    expect(await fb.catalogs(ctx, "ut")).toBeNull();
+  });
+
+  it("sends items as upserts with Meta's field names, and reads the batch", async () => {
+    answers = [() => json({ handles: ["h1"] })];
+    expect(await fb.saveCatalogItems(ctx, { catalogId: "c1", userToken: "ut", items: [item] })).toBe("h1");
+    expect(sent[0]!.url).toContain("/c1/items_batch");
+    expect(sent[0]!.body).toMatchObject({ item_type: "PRODUCT_ITEM", allow_upsert: "true" });
+    const [req] = JSON.parse(sent[0]!.body.requests!);
+    expect(req).toEqual({
+      method: "UPDATE",
+      data: {
+        id: "ls-1",
+        title: "Red saree",
+        description: "Soft.",
+        availability: "in stock",
+        condition: "new",
+        price: "4650 BDT",
+        link: "https://rupkotha.example",
+        image: [{ url: "https://app/media/1.jpg" }, { url: "https://app/media/2.jpg" }],
+        brand: "Rupkotha",
+      },
+    });
+
+    answers = [
+      () => json({ data: [{ status: "in_progress" }] }),
+      () => json({ data: [{ status: "finished", errors: [{ id: "ls-1", message: "Image too small" }] }] }),
+    ];
+    expect(await fb.catalogBatch(ctx, { catalogId: "c1", userToken: "ut", handle: "h1" })).toEqual({ done: false });
+    expect(await fb.catalogBatch(ctx, { catalogId: "c1", userToken: "ut", handle: "h1" })).toEqual({
+      done: true,
+      errors: [{ id: "ls-1", message: "Image too small" }],
+    });
+  });
+
+  it("fails when Meta takes the batch but returns no handle", async () => {
+    answers = [() => json({ handles: [] })];
+    await expect(fb.saveCatalogItems(ctx, { catalogId: "c1", userToken: "ut", items: [item] })).rejects.toMatchObject({
+      key: "metaProblem",
+    });
+  });
+});

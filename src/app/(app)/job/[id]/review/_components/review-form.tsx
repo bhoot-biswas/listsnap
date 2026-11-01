@@ -19,6 +19,7 @@ import { Autosaver, type SaveState } from "./autosave";
 import { CheckPanel, ReviewPhotos, type ReviewPhoto } from "./review-side";
 import { LooksPanel } from "./looks-panel";
 import { ReelPanel, type ReelsState } from "./reel-panel";
+import { CatalogPanel, type CatalogState } from "./catalog-panel";
 import type { Look } from "@/lib/schemas/looks";
 import { TextFields, type TextValue } from "./text-fields";
 import { VariantFields } from "./variant-fields";
@@ -51,6 +52,7 @@ export function ReviewForm({
   others,
   looks,
   reels,
+  catalog,
   chat,
 }: {
   jobId: string;
@@ -59,6 +61,7 @@ export function ReviewForm({
   photos: ReviewPhoto[];
   looks: { made: Look[]; imagesLeft: number };
   reels: ReelsState;
+  catalog: CatalogState;
   /** The stored conversation, and how many changes the chat has made to this listing. */
   chat: { items: ChatItem[]; revision: number };
   colorPhotos: Record<string, string>;
@@ -162,7 +165,9 @@ export function ReviewForm({
   };
 
   // extras start folded, unless something was made there or a link (Done's "Make a reel") points at them
-  const [extrasOpen, setExtrasOpen] = useState(looks.made.length > 0 || Object.values(reels.made).some(Boolean));
+  const [extrasOpen, setExtrasOpen] = useState(
+    looks.made.length > 0 || Object.values(reels.made).some(Boolean) || !!catalog.saved,
+  );
   const extras = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     // opening the element fires onToggle, which keeps the state in step
@@ -360,6 +365,7 @@ export function ReviewForm({
           <div className="mt-4 space-y-6">
             <LooksPanel listingId={listingId} made={looks.made} imagesLeft={looks.imagesLeft} />
             <ReelPanel listingId={listingId} reels={reels} priceSet={edit.priceBdt !== null} beforeMake={saver.flush} />
+            <CatalogPanel listingId={listingId} catalog={catalog} beforeSave={saver.flush} />
           </div>
         </details>
       </div>

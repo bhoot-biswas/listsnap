@@ -90,16 +90,27 @@ export async function finishLogin(workspaceId: string, code: string): Promise<Me
   const ws = forWorkspace(workspaceId);
   const ctx = { workspaceId, jobId: null, step: "connect" };
   const userToken = await facebook().exchangeCode(ctx, { code, redirectUri: redirectUri() });
-  const pages = await facebook().pages(ctx, userToken);
+  const [pages, catalogs] = await Promise.all([facebook().pages(ctx, userToken), facebook().catalogs(ctx, userToken)]);
   if (!pages.length) return "noPages";
 
-  const previous = (await ws.storeConnection("meta"))?.settings_json as { pageId?: string } | null;
+  const previous = (await ws.storeConnection("meta"))?.settings_json as {
+    pageId?: string;
+    catalogId?: string | null;
+  } | null;
+  // the catalog chosen before, while it's still there; a seller with just one gets it chosen
+  const found = catalogs ?? [];
+  const catalogId = found.find((c) => c.id === previous?.catalogId)?.id ?? (found.length === 1 ? found[0]!.id : null);
   const chosen = pages.find((p) => p.id === previous?.pageId) ?? pages.find((p) => p.instagram) ?? pages[0]!;
   await ws.saveConnection("meta", {
     baseUrl: null,
-    credentialsEnc: encryptPageTokens(Object.fromEntries(pages.map((p) => [p.id, p.token]))),
+    credentialsEnc: encryptPageTokens({ ...Object.fromEntries(pages.map((p) => [p.id, p.token])), user: userToken }),
     checks: null,
-    settings: settingsFor(choiceOf(chosen), pages.map(choiceOf)),
+    settings: {
+      ...settingsFor(choiceOf(chosen), pages.map(choiceOf)),
+      catalogs: found,
+      catalogId,
+      catalogAccess: catalogs !== null,
+    },
   });
   return null;
 }
@@ -111,6 +122,22 @@ export const choiceOf = (p: MetaPage): MetaPageChoice => ({
   igUsername: p.instagram?.username ?? null,
 });
 
-export function settingsFor(c: MetaPageChoice, pages: MetaPageChoice[]): MetaSettings {
-  return { pageId: c.id, pageName: c.name, igUserId: c.igUserId, igUsername: c.igUsername, test: false, pages };
+export function settingsFor(
+  c: MetaPageChoice,
+  pages: MetaPageChoice[],
+  catalogs: Pick<MetaSettings, "catalogs" | "catalogId" | "catalogAccess"> = {
+    catalogs: [],
+    catalogId: null,
+    catalogAccess: false,
+  },
+): MetaSettings {
+  return {
+    pageId: c.id,
+    pageName: c.name,
+    igUserId: c.igUserId,
+    igUsername: c.igUsername,
+    test: false,
+    pages,
+    ...catalogs,
+  };
 }

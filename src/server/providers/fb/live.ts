@@ -1,7 +1,7 @@
 import "server-only";
 import { env } from "@/server/env";
 import { GraphError, graph, wait as realWait } from "../graph";
-import type { FacebookProvider, MetaPage } from "../types";
+import type { FacebookProvider, MetaCatalog, MetaPage } from "../types";
 
 /**
  * Facebook Login and Page reels through the Graph API. A reel is three calls: reserve
@@ -81,6 +81,81 @@ export function makeLiveFacebook(wait = realWait): FacebookProvider {
             ]
           : [],
       );
+    },
+
+    async catalogs(ctx, userToken) {
+      try {
+        const res = await graph<{
+          data?: { id: string; name: string; owned_product_catalogs?: { data?: { id: string; name: string }[] } }[];
+        }>(ctx, {
+          provider: "facebook",
+          endpoint: "me/businesses",
+          method: "GET",
+          path: "/me/businesses",
+          params: { fields: "name,owned_product_catalogs.limit(50){id,name}", limit: 50 },
+          token: userToken,
+        });
+        return (res.data ?? []).flatMap((b): MetaCatalog[] =>
+          (b.owned_product_catalogs?.data ?? []).map((c) => ({ id: c.id, name: c.name, business: b.name })),
+        );
+      } catch (err) {
+        // a seller who didn't give catalog access still connects their Page
+        if (err instanceof GraphError && err.key === "metaPermission") return null;
+        throw err;
+      }
+    },
+
+    async saveCatalogItems(ctx, { catalogId, userToken, items }) {
+      const requests = items.map((i) => ({
+        method: "UPDATE",
+        data: {
+          id: i.id,
+          title: i.title.slice(0, 100),
+          description: i.description.slice(0, 5000),
+          availability: i.availability,
+          condition: i.condition,
+          price: i.price,
+          link: i.link,
+          image: i.images.map((url) => ({ url })),
+          brand: i.brand,
+          ...(i.itemGroupId && { item_group_id: i.itemGroupId }),
+          ...(i.color && { color: i.color }),
+        },
+      }));
+      const res = await graph<{ handles?: string[] }>(ctx, {
+        provider: "facebook",
+        endpoint: "catalog items_batch",
+        method: "POST",
+        path: `/${catalogId}/items_batch`,
+        // UPDATE with upsert: a new item is created, one sent before is changed, never copied
+        params: { item_type: "PRODUCT_ITEM", allow_upsert: true, requests: JSON.stringify(requests) },
+        token: userToken,
+      });
+      const handle = res.handles?.[0];
+      if (!handle) throw new GraphError(200, 0, "metaProblem", { status: 200 });
+      return handle;
+    },
+
+    async catalogBatch(ctx, { catalogId, userToken, handle }) {
+      const res = await graph<{
+        data?: { status?: string; errors?: { id?: string; retailer_id?: string; message?: string }[] }[];
+      }>(ctx, {
+        provider: "facebook",
+        endpoint: "catalog batch status",
+        method: "GET",
+        path: `/${catalogId}/check_batch_request_status`,
+        params: { handle },
+        token: userToken,
+      });
+      const batch = res.data?.[0];
+      if (!batch || batch.status === "in_progress" || batch.status === "dispatched") return { done: false };
+      return {
+        done: true,
+        errors: (batch.errors ?? []).map((e) => ({
+          id: e.id ?? e.retailer_id ?? "",
+          message: (e.message ?? "").slice(0, 200),
+        })),
+      };
     },
 
     async postReel(ctx, { page, videoUrl, caption }) {

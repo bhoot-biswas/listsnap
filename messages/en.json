@@ -283,7 +283,8 @@
         "post": "Posting to Facebook and Instagram",
         "chat": "Assistant",
         "listen": "Listening to the voice note",
-        "watch": "Watching a video"
+        "watch": "Watching a video",
+        "catalog": "Saving to the Facebook catalog"
       }
     },
     "log": {
@@ -808,7 +809,15 @@
         "expired": "That Facebook link expired or didn't match. Try connecting again.",
         "noPages": "Facebook didn't give ListSnap any Page. Connect again and choose at least one Page.",
         "failed": "Facebook couldn't be connected right now. Try again in a few minutes."
-      }
+      },
+      "catalogTitle": "Product catalog",
+      "catalogIntro": "Listings saved to a catalog can be used in catalog ads and, where Meta offers it, product tags.",
+      "chooseCatalog": "Save listings to",
+      "useCatalog": "Use this catalog",
+      "catalogIs": "Listings are saved to {name}",
+      "noCatalog": "None of your business portfolios has a catalog yet. Make one in Commerce Manager, then connect again.",
+      "noCatalogAccess": "ListSnap can't see your catalogs yet. Connect again and allow catalog access.",
+      "commerceManager": "Open Commerce Manager"
     },
     "disconnectConfirm": "Disconnect your store? ListSnap can’t save drafts to it until you connect it again.",
     "disconnectYes": "Yes, disconnect",
@@ -984,8 +993,8 @@
     "checkHint": "Tick each one once you've checked it. When all are ticked, the listing is Ready.",
     "allChecked": "All checked.",
     "checkFailed": "That tick wasn't saved. Try again.",
-    "extras": "Extras: looks and reel",
-    "extrasHint": "Optional. Campaign photos, and a short video for social posts.",
+    "extras": "Extras: looks, reel and catalog",
+    "extrasHint": "Optional. Campaign photos, a short video for social posts, and your Facebook catalog.",
     "saving": "Saving…",
     "saved": "Saved",
     "saveError": "Couldn’t save. Retrying…",
@@ -1086,6 +1095,24 @@
       "material": "Material",
       "note": "Note",
       "titleVideo": "What you said in the video"
+    },
+    "catalog": {
+      "title": "Facebook catalog",
+      "intro": "For catalog ads and product tags. One item per colour; saving again updates the same items.",
+      "save": "Save to {catalog}",
+      "update": "Update the catalog",
+      "sending": "Saving to the catalog…",
+      "saved": "In {catalog}",
+      "items": "{count, plural, one {# item} other {# items}}",
+      "checking": "Meta is still checking it",
+      "failed": "Couldn't save to the catalog. Try again.",
+      "blocked": {
+        "connect": "Connect Facebook with catalog access first.",
+        "choose": "Choose a catalog first.",
+        "website": "Add the shop's website first; Meta links each product to it."
+      },
+      "openConnections": "Open Connections",
+      "openSettings": "Open Settings"
     }
   },
   "bulk": {
@@ -1355,7 +1382,10 @@
       "metaProblem": "Facebook had a problem (error {status}). Try again.",
       "metaNoAnswer": "Facebook didn't answer. Try again in a moment.",
       "metaVideo": "Facebook couldn't use this reel's video. Try making the reel again.",
-      "metaSlow": "Instagram is still working on the video. Try again in a minute; nothing was posted yet."
+      "metaSlow": "Instagram is still working on the video. Try again in a minute; nothing was posted yet.",
+      "connectCatalog": "Connect Facebook again in Connections and allow catalog access, then try again.",
+      "chooseCatalog": "Choose a Facebook catalog in Connections first.",
+      "catalogNeedsWebsite": "Meta needs a page where each product can be bought. Add the shop's website in Settings first."
     },
     "details": {
       "lookingFor": "Looking for: \"{phrase}\"",

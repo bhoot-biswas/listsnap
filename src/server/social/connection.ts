@@ -13,14 +13,20 @@ export interface MetaConnection {
   settings: MetaSettings;
   /** The account each destination posts as; null when that destination isn't linked. */
   account: (destination: Destination) => SocialAccount | null;
+  /**
+   * The seller's own token, which catalogs need (a Page token can't reach them). It lasts
+   * about 60 days; after that Meta refuses it and the seller connects again.
+   */
+  userToken: () => string | null;
 }
 
-// a login keeps every Page's token, so switching Page needs no new login
+// a login keeps every Page's token, so switching Page needs no new login; "user" is the seller's own
 const PageTokens = z.record(z.string(), z.string());
+const USER_KEY = "user";
 
 export const encryptPageTokens = (tokens: Record<string, string>) => encryptSecret(JSON.stringify(tokens));
 
-/** The token for one Page. A test connection stores a single made-up token instead of a map. */
+/** A token from the map: a Page's by its id, or the seller's own. A test connection stores a single made-up token instead. */
 function pageToken(enc: string, pageId: string): string | null {
   const plain = decryptSecret(enc);
   if (!plain.startsWith("{")) return plain;
@@ -37,6 +43,7 @@ export async function metaConnection(ws: WorkspaceScope): Promise<MetaConnection
   const token = () => pageToken(enc, s.pageId);
   return {
     settings: s,
+    userToken: () => (s.test ? null : pageToken(enc, USER_KEY)),
     account: (destination) => {
       const t = token();
       if (!t) return null;
