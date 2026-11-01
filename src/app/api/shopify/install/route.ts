@@ -9,12 +9,13 @@ import { normaliseShopDomain } from "@/lib/shopify-connection";
 /**
  * "Connect Shopify": sends the seller to their store to approve ListSnap. Also the app's
  * URL in Shopify, which an install from the Shopify admin opens with ?shop=; a seller
- * who isn't signed in signs in first and connects from Connections.
+ * who isn't signed in signs in first and comes back here, shop and all.
  */
 export async function GET(request: Request) {
   const viewer = await apiViewer();
-  if (!viewer) redirect("/sign-in");
-  const query = new URL(request.url).searchParams;
+  const url = new URL(request.url);
+  if (!viewer) redirect(`/sign-in?next=${encodeURIComponent(url.pathname + url.search)}` as Route);
+  const query = url.searchParams;
   const next = query.get("next") === "onboarding" ? "onboarding" : "connections";
   const back = next === "onboarding" ? "/onboarding?step=store&" : "/connections/add/shopify?";
   if (viewer.workspace.isDemo) redirect(`${back}shopify=demo` as Route);

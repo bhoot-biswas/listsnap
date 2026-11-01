@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Loader2, Mail, Store } from "lucide-react";
@@ -38,7 +39,10 @@ export function SignInForm(props: {
   devMail: boolean;
   demoExpired: boolean;
   error: string | null;
+  /** The same-site page to land on once signed in (already checked by the page). */
+  next: string | null;
 }) {
+  const after = props.next ?? "/dashboard";
   const t = useTranslations("signIn");
   const tDemo = useTranslations("demo");
   const router = useRouter();
@@ -67,7 +71,7 @@ export function SignInForm(props: {
     setError(null);
     const r = await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/dashboard",
+      callbackURL: after,
       errorCallbackURL: "/sign-in",
     });
     if (r.error) {
@@ -84,7 +88,7 @@ export function SignInForm(props: {
     setError(null);
     const r = await authClient.signIn.magicLink({
       email: address,
-      callbackURL: "/dashboard",
+      callbackURL: after,
       errorCallbackURL: "/sign-in?error=expired",
     });
     setBusy(null);
@@ -103,7 +107,7 @@ export function SignInForm(props: {
       setBusy(null);
       return;
     }
-    router.push("/dashboard");
+    router.push(after as Route);
     router.refresh();
   };
 
