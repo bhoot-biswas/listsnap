@@ -9,6 +9,7 @@ import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { cn } from "@/lib/utils";
 import type { ChatItem } from "@/lib/schemas/chat";
 import { ChatText } from "./chat-text";
+import { MediaImg } from "@/components/app/media-img";
 
 const isBangla = (text: string) => /[ঀ-৿]/.test(text);
 
@@ -38,8 +39,13 @@ export function ChatEntry({
         {photos.length > 0 && (
           <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
             {photos.map((url) => (
-              // eslint-disable-next-line @next/next/no-img-element -- our own /media URL
-              <img key={url} src={url} alt={t("photoAlt")} className="size-24 rounded-lg border object-cover" />
+              <MediaImg
+                key={url}
+                src={url}
+                sizes="96px"
+                alt={t("photoAlt")}
+                className="size-24 rounded-lg border object-cover"
+              />
             ))}
           </div>
         )}
@@ -126,8 +132,13 @@ export function Made({ item }: { item: Extract<ChatItem, { kind: "tool" | "appro
         (item.media.video ? (
           <video src={item.media.url} controls playsInline className="max-h-72 rounded-lg border bg-black" />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- our own /media URL, already sized
-          <img src={item.media.url} alt="" className="max-h-56 rounded-lg border object-contain" />
+          // at most 224 px tall: a square photo is drawn 224 px wide, a wide banner across the chat
+          <MediaImg
+            src={item.media.url}
+            sizes="(max-width: 512px) 85vw, 448px"
+            alt=""
+            className="max-h-56 rounded-lg border object-contain"
+          />
         ))}
       {item.link && (
         <a

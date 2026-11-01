@@ -11,6 +11,7 @@ import { setListingChecked } from "@/server/actions/review";
 import { cn } from "@/lib/utils";
 import { lookOf } from "@/lib/schemas/looks";
 import { sized } from "@/lib/media-size";
+import { MediaImg } from "@/components/app/media-img";
 
 export interface ReviewPhoto {
   id: string;
@@ -58,14 +59,12 @@ export function ReviewPhotos({
       {main && (
         // smaller on a phone, so the checks below it start on the first screen
         <div className="relative mx-auto aspect-square w-full max-w-60 overflow-hidden rounded-xl border bg-white sm:max-w-none">
-          <Image
+          <MediaImg
             src={main.url}
             alt={title}
-            fill
-            sizes="(max-width: 1024px) 100vw, 360px"
-            className="object-contain"
-            unoptimized
-            priority
+            sizes="(max-width: 640px) 240px, (max-width: 1024px) 100vw, 360px"
+            className="absolute inset-0 size-full object-contain"
+            eager
           />
         </div>
       )}

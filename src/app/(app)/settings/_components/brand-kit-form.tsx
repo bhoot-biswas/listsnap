@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { saveBrandKit, type BrandKitState } from "@/server/actions/settings";
 import { BRAND_COLORS_MAX, BRAND_PHOTO_MAX_BYTES } from "@/lib/schemas/brand-kit";
+import { MediaImg } from "@/components/app/media-img";
 
 export interface BrandKitValues {
   colors: string[];
@@ -88,9 +89,9 @@ export function BrandKitForm({ initial }: { initial: BrandKitValues }) {
           </p>
           <input type="hidden" name="settingMediaId" value={setting.id ?? ""} />
           {setting.url && (
-            // eslint-disable-next-line @next/next/no-img-element -- a private /media URL, not an optimisable asset
-            <img
+            <MediaImg
               src={setting.url}
+              sizes="384px"
               alt={t("settingAlt")}
               className="aspect-video w-full max-w-sm rounded-lg border object-cover"
             />

@@ -8,9 +8,9 @@ import { ConfidenceDots } from "@/components/app/confidence-dots";
 import { StatusBadge } from "@/components/app/status-badge";
 import { quickEditListing } from "@/server/actions/review";
 import { parseAmount } from "@/lib/amount";
-import { sized } from "@/lib/media-size";
 import type { BatchRow } from "@/lib/batch-state";
 import { cn } from "@/lib/utils";
+import { MediaImg } from "@/components/app/media-img";
 
 /** Listing statuses that can go to the store from the table. */
 export const SAVABLE = new Set(["ready", "needs_review"]);
@@ -122,9 +122,9 @@ export function BatchTable({
   const allOn = savable.length > 0 && savable.every((id) => selected.has(id));
 
   const thumb = (r: BatchRow) => (
-    // eslint-disable-next-line @next/next/no-img-element -- small private /media thumbnails
-    <img
-      src={sized(r.thumbUrl ?? r.photoUrl ?? "", 96)}
+    <MediaImg
+      src={r.thumbUrl ?? r.photoUrl ?? ""}
+      sizes="48px"
       alt=""
       className="size-12 rounded-md border bg-white object-cover"
     />
