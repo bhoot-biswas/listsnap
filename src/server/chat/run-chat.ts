@@ -23,6 +23,11 @@ const maxMedia = (scope: ChatScope) => (scope.listingId ? 2 : 4);
 export const CHAT_CALLS_PER_DAY = 300;
 
 const DECLINED = { ok: false, declined: true, message: "The seller said no. Nothing was sent." };
+const STOPPED = {
+  ok: false,
+  stopped: true,
+  message: "The seller pressed Stop before this ran. Nothing was done.",
+};
 const MOVED_ON = {
   ok: false,
   declined: true,
@@ -56,6 +61,19 @@ export async function runChat(
   };
   let changed = false;
   const done = () => emit({ type: "done", changed, ...(chatId && { chatId }) });
+  /** Stored, and only then the turn may be stopped: the next steps check for the seller's Stop. */
+  const received = async (id: string) => {
+    await ws.clearChatStop(id);
+    emit({ type: "received", chatId: id });
+  };
+  const stopRequested = () => ws.chatStopRequested(chatId!);
+  /** Ends the turn at the seller's Stop; calls the model asked for but that never ran say so. */
+  const stop = async (skipped: ToolCall[]) => {
+    for (const call of skipped) await add({ role: "tool", toolCallId: call.id, name: call.name, result: STOPPED });
+    await add({ role: "assistant", content: null, toolCalls: [], stopped: true });
+    emit({ type: "item", item: { kind: "stopped", id: randomUUID() } });
+    done();
+  };
 
   if ("message" in req) {
     if ((await ws.chatCallsToday()) >= CHAT_CALLS_PER_DAY) return emit({ type: "error", code: "limit" });
@@ -73,10 +91,11 @@ export async function runChat(
       emit({ type: "item", item: approvalItem(call, "declined") });
     }
     await add({ role: "user", content: req.message, ...(photoIds.length && { photoIds }) });
-    emit({ type: "received" });
+    await received(chatId);
   } else {
     const call = pendingCalls(history).find((c) => c.id === req.approve.toolCallId);
     if (!call) return emit({ type: "error", code: "answered" });
+    await received(chatId!);
     let result: Record<string, unknown> = DECLINED;
     if (req.approve.yes) {
       emit({ type: "working", name: call.name });
@@ -97,8 +116,11 @@ export async function runChat(
   let media = 0;
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
+      if (await stopRequested()) return await stop([]);
       emit({ type: "working", name: null });
-      const answer = await meta().chat(ctx, { system, messages: history, tools, images });
+      // a Stop mark is ours, not something the model said
+      const messages = history.filter((m) => !(m.role === "assistant" && m.stopped));
+      const answer = await meta().chat(ctx, { system, messages, tools, images });
       // our own ids: the model's may repeat across turns, and an id is an op's idempotency key
       const checked = await Promise.all(
         answer.toolCalls.map(async (c) => ({
@@ -119,6 +141,8 @@ export async function runChat(
 
       let waiting = false;
       for (const [i, call] of calls.entries()) {
+        // a photo or a reel already running can't be cut short, so Stop takes effect between steps
+        if (await stopRequested()) return await stop(calls.slice(i));
         const check = checked[i]!.check;
         let result: Record<string, unknown>;
         if (!check.ok) result = { ok: false, message: check.error };

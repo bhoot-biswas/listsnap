@@ -220,6 +220,40 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     }
   });
 
+  it("stops between steps at the seller's Stop, and a dropped stream alone stops nothing", async () => {
+    const reels = () =>
+      select<{ n: number }>("SELECT COUNT(*) AS n FROM op_runs WHERE workspace_id = ? AND op = 'makeReel'", [
+        a.workspace.id,
+      ]).then((r) => Number(r[0]!.n));
+    const before = await reels();
+    const events: ChatEvent[] = [];
+    let chatId = "";
+    let stopped: Promise<boolean> | undefined;
+    await runChat(a.workspace, { listingId }, { message: "Make an English reel", newChat: true, photoIds: [] }, (e) => {
+      events.push(e);
+      if (e.type === "received") chatId = e.chatId;
+      // Stop pressed while the model thinks: the reel it then asks for never starts
+      if (e.type === "working" && e.name === null) stopped ??= A.requestChatStop(chatId);
+    });
+    expect(await stopped).toBe(true);
+    expect(events.find((e) => e.type === "received")).toEqual({ type: "received", chatId });
+    expect(items(events)).toMatchObject([{ kind: "stopped" }]);
+    expect(events.at(-1)).toMatchObject({ type: "done", changed: false });
+    expect(await reels()).toBe(before);
+    // a reload shows the Stop, and no line for the step that never ran
+    const stored = await A.chatMessages(chatId);
+    const { chatItems } = await import("@/server/chat/view");
+    expect(chatItems(stored).map((i) => i.kind)).toEqual(["user", "stopped"]);
+
+    // the next message starts unstopped and runs, without the model seeing the Stop mark
+    const next = await chat({ message: "Make an English reel", chatId });
+    expect(items(next)[0]).toMatchObject({ kind: "tool", name: "makeReel", ok: true });
+    expect(await reels()).toBe(before + 1);
+    expect(await A.chatStopRequested(chatId)).toBe(false);
+    expect(await A.requestChatStop("not-a-chat")).toBe(false);
+    expect(await forWorkspace(b.workspace.id).requestChatStop(chatId)).toBe(false);
+  });
+
   it("renames, deletes and pages the shop's conversations, never a listing's", async () => {
     const shopChats: string[] = [];
     for (let i = 0; i < 32; i++) shopChats.push(await A.startChat(null, `Shop question ${i}`));

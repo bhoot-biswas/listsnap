@@ -122,6 +122,29 @@ export function chatQueries(ws: string) {
       return start < 0 ? [] : messages.slice(start);
     },
 
+    /** Marks the seller's Stop on a chat; false when it isn't this shop's. */
+    async requestChatStop(chatId: string): Promise<boolean> {
+      const r = await execute(
+        "UPDATE chats SET stop_requested_at = CURRENT_TIMESTAMP(3) WHERE id = ? AND workspace_id = ?",
+        [chatId, ws],
+      );
+      return r.affectedRows > 0;
+    },
+
+    /** Whether the seller pressed Stop since this turn began. */
+    async chatStopRequested(chatId: string): Promise<boolean> {
+      const row = await selectOne<{ stop: unknown }>(
+        "SELECT stop_requested_at AS stop FROM chats WHERE id = ? AND workspace_id = ?",
+        [chatId, ws],
+      );
+      return row?.stop != null;
+    },
+
+    /** A new turn starts unstopped; a Stop pressed after the last turn ended means nothing now. */
+    async clearChatStop(chatId: string): Promise<void> {
+      await execute("UPDATE chats SET stop_requested_at = NULL WHERE id = ? AND workspace_id = ?", [chatId, ws]);
+    },
+
     /** Adds a message to one of this shop's chats; a chat id from another shop adds nothing. */
     async addChatMessage(chatId: string, message: ChatMessage): Promise<void> {
       await execute(

@@ -27,6 +27,8 @@ export const ChatMessage = z.discriminatedUnion("role", [
     role: z.literal("assistant"),
     content: z.string().nullable(),
     toolCalls: z.array(ToolCall).default([]),
+    /** Not the model's: marks where the seller pressed Stop, so a reload still shows it. */
+    stopped: z.literal(true).optional(),
   }),
   z.object({ role: z.literal("tool"), toolCallId: z.string(), name: z.string(), result: z.unknown() }),
 ]);
@@ -67,6 +69,8 @@ export interface ToolExtras {
 export type ChatItem =
   | { kind: "user"; id: string; text: string; photos?: string[] }
   | { kind: "assistant"; id: string; text: string }
+  /** Where the seller pressed Stop. */
+  | { kind: "stopped"; id: string }
   | ({ kind: "tool"; id: string; name: string; ok: boolean } & ToolExtras)
   | ({
       kind: "approval";
@@ -85,8 +89,11 @@ export type ChatItem =
  */
 export type ChatEvent =
   | { type: "chat"; chatId: string }
-  /** The seller's message is stored, so a later failure mustn't hand it back to the box. */
-  | { type: "received" }
+  /**
+   * The seller's message or answer is stored, so a later failure mustn't hand it back to
+   * the box, and the turn can be stopped from now on; it names the conversation for Stop.
+   */
+  | { type: "received"; chatId: string }
   | { type: "item"; item: ChatItem }
   | { type: "working"; name: string | null }
   | { type: "error"; code: "busy" | "limit" | "steps" | "answered" | "generic"; message?: string }

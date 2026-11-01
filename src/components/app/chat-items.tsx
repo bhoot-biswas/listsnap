@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ArrowRight, Check, ExternalLink, X } from "lucide-react";
+import { ArrowRight, Check, ExternalLink, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,13 @@ export function ChatEntry({
   onAnswer: (id: string, yes: boolean) => void;
 }) {
   const t = useTranslations("chat");
+  if (item.kind === "stopped")
+    return (
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Square className="size-3" aria-hidden="true" />
+        {t("stopped")}
+      </p>
+    );
   if (item.kind === "user" || item.kind === "assistant") {
     const mine = item.kind === "user";
     const photos = item.kind === "user" ? (item.photos ?? []) : [];

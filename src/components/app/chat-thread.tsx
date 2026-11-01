@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronRight, Loader2, RotateCw } from "lucide-react";
+import { Check, ChevronRight, Loader2, RotateCw, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChatItem } from "@/lib/schemas/chat";
@@ -60,10 +60,19 @@ export function ChatThread({
         ),
       )}
       {status && (
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-          {status}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+            {status}
+            {chat.since !== null && <Elapsed since={chat.since} />}
+          </p>
+          {chat.canStop && (
+            <Button type="button" variant="outline" size="sm" onClick={chat.stop}>
+              <Square aria-hidden="true" />
+              {t("stop")}
+            </Button>
+          )}
+        </div>
       )}
       {error && (
         <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -78,6 +87,23 @@ export function ChatThread({
       )}
       <div ref={end} />
     </div>
+  );
+}
+
+/** Time so far, so a reel's minute doesn't look stuck; quick replies never show it. */
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(since);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const s = Math.floor((now - since) / 1000);
+  if (s < 3) return null;
+  // the log reads new lines aloud; a clock ticking every second would drown them
+  return (
+    <span aria-hidden="true" className="tabular-nums">
+      {Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")}
+    </span>
   );
 }
 
