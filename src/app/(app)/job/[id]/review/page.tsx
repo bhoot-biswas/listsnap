@@ -15,6 +15,7 @@ import { REELS_PER_DAY } from "@/server/db/limits";
 import { DESTINATIONS, PostResult } from "@/lib/schemas/social";
 import { defaultCaption } from "@/server/social/caption";
 import { metaConnection, publicMeta } from "@/server/social/connection";
+import { text } from "@/server/step-text";
 import { chatItems, chatRevision } from "@/server/chat/view";
 import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
 import type { CatalogState } from "./_components/catalog-panel";
@@ -214,6 +215,13 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
               }),
             },
           },
+        }}
+        marketplace={{
+          lang: viewer.workspace.settings.marketplaceLang ?? (locale === "bn" ? "bn" : "en"),
+          coloursLabel: { en: text("en", "export.text.colours"), bn: text("bn", "export.text.colours") },
+          posted: listing.marketplace_posted_at
+            ? { at: listing.marketplace_posted_at.toISOString(), url: listing.marketplace_url }
+            : null,
         }}
         catalog={catalogState(meta, viewer.workspace.settings.website, savedCatalog)}
         chat={{ items: chatItems(history), revision: chatRevision(history) }}

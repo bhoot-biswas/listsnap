@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { usePhotoShare } from "./use-photo-share";
 import { Download, FileSpreadsheet, Package, Settings, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,19 +18,6 @@ import { cn } from "@/lib/utils";
 import { EXPORT_MAX } from "@/lib/export";
 
 const CSVS = ["facebook", "woocommerce", "shopify"] as const;
-
-type SharePayload = { name: string; urls: string[]; text: string };
-
-// whether the browser can share files never changes while the page is open
-const noSubscribe = () => () => {};
-function canShareFiles(): boolean {
-  try {
-    const probe = new File([new Uint8Array(1)], "probe.jpg", { type: "image/jpeg" });
-    return typeof navigator.canShare === "function" && navigator.canShare({ files: [probe] });
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Export for the given listings: a listing kit (photos and copy-paste text) or, for
@@ -61,10 +48,8 @@ export function ExportMenu({
 }) {
   const t = useTranslations("export");
   const router = useRouter();
-  const canShare = useSyncExternalStore(noSubscribe, canShareFiles, () => false);
-  const share = useRef<Promise<File[] | null> | null>(null);
-  const text = useRef("");
   const one = listingIds.length === 1;
+  const photos = usePhotoShare(one ? listingIds[0]! : null, beforeExport);
   const tooMany = listingIds.length > EXPORT_MAX;
 
   const url = (format: string) => `/api/export?format=${format}&ids=${listingIds.join(",")}`;
@@ -80,46 +65,9 @@ export function ExportMenu({
     a.remove();
   };
 
-  // Sharing must start within moments of the tap, so the photos are fetched as the menu opens.
-  const loadShare = () => {
-    if (!canShare || !one || share.current) return;
-    share.current = (async () => {
-      await beforeExport?.().catch(() => undefined);
-      const res = await fetch(url("photos"));
-      if (!res.ok) return null;
-      const p = (await res.json()) as SharePayload;
-      text.current = p.text;
-      const files = await Promise.all(
-        p.urls.map(async (u, i) => {
-          const blob = await (await fetch(u)).blob();
-          const ext = blob.type === "image/png" ? "png" : "jpg";
-          return new File([blob], `${p.name}-${String(i + 1).padStart(2, "0")}.${ext}`, { type: blob.type });
-        }),
-      );
-      return files;
-    })().catch(() => null);
-  };
-
-  const sharePhotos = async () => {
-    const files = await share.current;
-    share.current = null;
-    if (!files?.length) return void toast.error(t("shareFailed"));
-    // Facebook's app drops shared text, so the text goes to the clipboard for pasting
-    const copied = await navigator.clipboard?.writeText(text.current).then(
-      () => true,
-      () => false,
-    );
-    try {
-      await navigator.share({ files });
-      if (copied) toast.success(t("copied"));
-    } catch (err) {
-      if ((err as Error).name !== "AbortError") toast.error(t("shareFailed"));
-    }
-  };
-
   const item = "min-h-11 md:min-h-8";
   return (
-    <DropdownMenu onOpenChange={(open) => open && loadShare()}>
+    <DropdownMenu onOpenChange={(open) => open && photos.prepare()}>
       <DropdownMenuTrigger
         render={<Button type="button" variant="outline" size={size} className={cn("max-sm:px-3", className)} />}
       >
@@ -133,8 +81,8 @@ export function ExportMenu({
             <DropdownMenuSeparator />
           </>
         )}
-        {one && canShare && (
-          <DropdownMenuItem className={item} onClick={() => void sharePhotos()}>
+        {one && photos.canShare && (
+          <DropdownMenuItem className={item} onClick={() => void photos.share()}>
             <Share2 aria-hidden="true" />
             {t("share")}
           </DropdownMenuItem>
