@@ -145,6 +145,28 @@ export function chatQueries(ws: string) {
       await execute("UPDATE chats SET stop_requested_at = NULL WHERE id = ? AND workspace_id = ?", [chatId, ws]);
     },
 
+    /**
+     * Claims a chat for one turn until `ms` from now; false while another turn holds it.
+     * A claim that ran out (a server that died mid-turn) is free again.
+     */
+    async claimChat(chatId: string, token: string, ms: number): Promise<boolean> {
+      const r = await execute(
+        `UPDATE chats SET busy_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND, busy_token = ?
+          WHERE id = ? AND workspace_id = ?
+            AND (busy_until IS NULL OR busy_until < UTC_TIMESTAMP(3) OR busy_token = ?)`,
+        [ms * 1000, token, chatId, ws, token],
+      );
+      return r.affectedRows === 1;
+    },
+
+    /** Ends a turn's claim; a claim another turn took over after this one ran out is left alone. */
+    async releaseChat(chatId: string, token: string): Promise<void> {
+      await execute(
+        "UPDATE chats SET busy_until = NULL, busy_token = NULL WHERE id = ? AND workspace_id = ? AND busy_token = ?",
+        [chatId, ws, token],
+      );
+    },
+
     /** Adds a message to one of this shop's chats; a chat id from another shop adds nothing. */
     async addChatMessage(chatId: string, message: ChatMessage): Promise<void> {
       await execute(

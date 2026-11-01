@@ -75,15 +75,24 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
               <ShopifyConnectForm next="onboarding" />
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          {/* the way through for a seller without a store yet, so it isn't a small link beside Back */}
+          {(platform === "woo" || shopifyDemo) && (
+            <section aria-labelledby="no-store" className="space-y-3 rounded-lg border bg-muted/40 p-4">
+              <h2 id="no-store" className="text-sm font-medium">
+                {t("noStoreTitle")}
+              </h2>
+              <p className="text-sm text-muted-foreground">{t("noStoreBody")}</p>
+              {platform === "woo" ? (
+                <DemoStoreButton next="onboarding" label={t("useTestStore")} variant="outline" />
+              ) : (
+                <ShopifyDemoButton next="onboarding" label={t("useTestStore")} variant="outline" />
+              )}
+            </section>
+          )}
+          <div className="border-t pt-4">
             <ButtonLink href="/onboarding" variant="ghost">
               {t("back")}
             </ButtonLink>
-            {platform === "woo" ? (
-              <DemoStoreButton next="onboarding" />
-            ) : (
-              shopifyDemo && <ShopifyDemoButton next="onboarding" />
-            )}
           </div>
         </div>
       ) : (

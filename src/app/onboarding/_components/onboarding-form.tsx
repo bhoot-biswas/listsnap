@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,8 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
           </p>
         )}
       </div>
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <Button type="submit" size="lg" className="w-full" disabled={pending} aria-busy={pending}>
+        {pending && <Loader2 className="animate-spin" aria-hidden="true" />}
         {t("continue")}
       </Button>
     </form>

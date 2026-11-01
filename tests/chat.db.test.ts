@@ -111,9 +111,51 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
 
     const again = await chat({ message: "Save it to my store" });
     const store = items(again).find((i) => i.kind === "approval")!;
+    // the card says where the draft goes, and with which title and price
+    expect(store).toMatchObject({
+      name: "saveDraftToStore",
+      preview: { stores: ["woo"], prices: [{ bdt: 1250, suggested: false }] },
+    });
     const moved = await chat({ message: "Undo the last change" });
     expect(items(moved)[0]).toMatchObject({ id: store.id, state: "declined" });
     expect(await posts()).toBe(1);
+  });
+
+  it("runs one turn at a time: Approve tapped twice, or a second tab, runs it once", async () => {
+    const saves = () =>
+      select<{ n: number }>("SELECT COUNT(*) AS n FROM op_runs WHERE workspace_id = ? AND op = 'saveDraftToStore'", [
+        a.workspace.id,
+      ]).then((r) => Number(r[0]!.n));
+    const before = await saves();
+    const asked = await chat({ message: "Save it to my store" });
+    const card = items(asked).find((i) => i.kind === "approval")!;
+    const both = await Promise.all([
+      chat({ approve: { toolCallId: card.id, yes: true } }),
+      chat({ approve: { toolCallId: card.id, yes: true } }),
+    ]);
+    const approved = both.filter((events) => items(events).some((i) => i.id === card.id && i.kind === "approval"));
+    expect(approved).toHaveLength(1);
+    const other = both.find((events) => !approved.includes(events))!;
+    expect(other.find((e) => e.type === "error")).toMatchObject({
+      code: expect.stringMatching(/^(running|answered)$/),
+    });
+    expect(await saves()).toBe(before + 1);
+
+    // a turn still running elsewhere: the message isn't stored, so the box can send it again
+    const chatId = (await A.listingChat(listingId))!;
+    const stored = (await A.chatMessages(chatId)).length;
+    expect(await A.claimChat(chatId, "other-tab", 60_000)).toBe(true);
+    expect(await chat({ message: "Hello", chatId })).toEqual([{ type: "error", code: "running" }]);
+    expect((await A.chatMessages(chatId)).length).toBe(stored);
+    // only the claim's own turn can release it
+    await A.releaseChat(chatId, "someone-else");
+    expect(await A.claimChat(chatId, "third", 60_000)).toBe(false);
+    await A.releaseChat(chatId, "other-tab");
+
+    // a claim left by a server that died runs out, and the chat works again
+    expect(await A.claimChat(chatId, "crashed", -1)).toBe(true);
+    expect(items(await chat({ message: "Undo the last change", chatId })).length).toBeGreaterThan(0);
+    expect(await forWorkspace(b.workspace.id).claimChat(chatId, "b", 60_000)).toBe(false);
   });
 
   it("starts a new chat on request, keeping the old one stored", async () => {
@@ -207,6 +249,10 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
       const card = items(asked)[1] as Extract<ChatItem, { kind: "approval" }>;
       expect(card).toMatchObject({ name: "saveDraftsToStore", state: "pending" });
       expect(card.preview?.titles).toHaveLength(2);
+      expect(card.preview?.stores).toEqual(["woo"]);
+      // no price set yet, so each draft goes out with the suggestion, marked as one
+      expect(card.preview?.prices).toHaveLength(2);
+      for (const price of card.preview!.prices!) expect(price).toMatchObject({ suggested: true });
       expect((card.args.listingIds as string[]).sort()).toEqual([...ids].sort());
 
       const yes = await shop({ approve: { toolCallId: card.id, yes: true } });
