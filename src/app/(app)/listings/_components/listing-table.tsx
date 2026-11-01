@@ -77,7 +77,7 @@ export async function ListingTable({
     };
   });
   const store = (r: (typeof view)[number], align: "start" | "end") =>
-    (r.stores.length > 0 || r.behind) && (
+    (r.stores.length > 0 || r.behind || r.marketplace) && (
       <span className={cn("flex flex-col gap-0.5 text-xs", align === "end" ? "items-end" : "items-start")}>
         {r.stores.length > 0 && (
           <span className="text-muted-foreground">
@@ -85,6 +85,7 @@ export async function ListingTable({
             {r.stores.map((k) => STORE_NAMES[k]).join(" · ")}
           </span>
         )}
+        {r.marketplace && <span className="text-muted-foreground">{t("onMarketplace")}</span>}
         {r.behind && (
           <span className="inline-flex items-center gap-1 whitespace-nowrap text-warning">
             <RefreshCw className="size-3" aria-hidden="true" />

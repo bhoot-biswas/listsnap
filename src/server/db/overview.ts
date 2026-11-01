@@ -47,6 +47,8 @@ export interface ListingListRow {
   /** The stores holding a draft of it. */
   stores: StoreKind[];
   behind: boolean;
+  /** The seller marked it as posted on Facebook Marketplace. */
+  marketplace: boolean;
 }
 
 export interface AttentionRow {
@@ -122,7 +124,13 @@ export function overviewQueries(ws: string) {
       }
       const filter = where.join(" AND ");
       const [rows, total] = await Promise.all([
-        select<Omit<ListingListRow, "stores" | "behind"> & { stores: string | null; behind: number }>(
+        select<
+          Omit<ListingListRow, "stores" | "behind" | "marketplace"> & {
+            stores: string | null;
+            behind: number;
+            marketplace: number;
+          }
+        >(
           `SELECT l.id, l.job_id, l.status, l.price_bdt, l.confidence, l.created_at, ${TITLE} AS title, ${TITLE_BN} AS title_bn,
                   JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.en.category')) AS category,
                   CAST(JSON_VALUE(l.fields_json, '$.en.price_hint_bdt.low') AS SIGNED) AS hint_low,
@@ -131,7 +139,7 @@ export function overviewQueries(ws: string) {
                   ${CUTOUT} AS cutout_media_id,
                   (SELECT GROUP_CONCAT(sp.kind ORDER BY sp.kind) FROM listing_store_products sp
                     WHERE sp.listing_id = l.id AND sp.workspace_id = l.workspace_id) AS stores,
-                  ${BEHIND} AS behind
+                  ${BEHIND} AS behind, l.marketplace_posted_at IS NOT NULL AS marketplace
              FROM listings l JOIN jobs j ON j.id = l.job_id
             WHERE ${filter}
             ORDER BY ${ORDER[opts.sort ?? "newest"]} LIMIT ? OFFSET ?`,
@@ -144,6 +152,7 @@ export function overviewQueries(ws: string) {
           ...r,
           stores: (r.stores?.split(",") ?? []).filter((k): k is StoreKind => StoreKind.safeParse(k).success),
           behind: !!Number(r.behind),
+          marketplace: !!Number(r.marketplace),
         })),
         total: Number(total?.n ?? 0),
       };
