@@ -8,6 +8,7 @@ import { Archive, ArchiveRestore, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SaveToStore } from "@/components/app/save-to-store";
 import { ExportMenu } from "@/components/app/export-menu";
+import { SaveToCatalog } from "@/components/app/save-to-catalog";
 import { setListingsArchived } from "@/server/actions/archive";
 
 /** Statuses a draft can be saved from; In store and Posted ones are updated from their own page. */
@@ -34,12 +35,15 @@ export function ListingSelection({
   rows,
   archived,
   hasWebsite,
+  catalogName,
   children,
 }: {
   rows: Row[];
   archived: boolean;
   /** The shop has a website set, which an exported Facebook catalog needs. */
   hasWebsite: boolean;
+  /** The Facebook catalog listings can be saved to; null until it is connected, chosen and the website set. */
+  catalogName: string | null;
   children: React.ReactNode;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -53,7 +57,7 @@ export function ListingSelection({
   return (
     <Ctx.Provider value={{ selected, toggle, rows, setSelected }}>
       {children}
-      <SelectionBar archived={archived} hasWebsite={hasWebsite} />
+      <SelectionBar archived={archived} hasWebsite={hasWebsite} catalogName={catalogName} />
     </Ctx.Provider>
   );
 }
@@ -96,7 +100,15 @@ export function SelectAllBox({ withText = false }: { withText?: boolean }) {
 }
 
 /** What can be done with the ticked listings; sits at the foot of the screen while any are ticked. */
-function SelectionBar({ archived, hasWebsite }: { archived: boolean; hasWebsite: boolean }) {
+function SelectionBar({
+  archived,
+  hasWebsite,
+  catalogName,
+}: {
+  archived: boolean;
+  hasWebsite: boolean;
+  catalogName: string | null;
+}) {
   const t = useTranslations("listings");
   const tArchive = useTranslations("archive");
   const router = useRouter();
@@ -151,6 +163,15 @@ function SelectionBar({ archived, hasWebsite }: { archived: boolean; hasWebsite:
                   router.refresh();
                 }}
                 // the saved ones show In store; the failed stay ticked for Try again
+                onPartial={(failed) => setSelected(new Set(failed))}
+              />
+            )}
+            {exportable.length > 0 && catalogName && (
+              <SaveToCatalog
+                listingIds={exportable.map((r) => r.id)}
+                catalogName={catalogName}
+                onDone={() => setSelected(new Set())}
+                // the ones Meta refused stay ticked for Try again
                 onPartial={(failed) => setSelected(new Set(failed))}
               />
             )}

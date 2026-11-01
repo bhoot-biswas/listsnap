@@ -53,6 +53,15 @@ export async function metaConnection(ws: WorkspaceScope): Promise<MetaConnection
   };
 }
 
+/**
+ * The catalog listings can be saved to right now, or null: it needs the seller's token
+ * with catalog access, a chosen catalog, and the shop's website (Meta links items to it).
+ */
+export function readyCatalog(c: MetaConnection | null, website: string | null): { id: string; name: string } | null {
+  if (!c?.userToken() || !c.settings.catalogAccess || !website) return null;
+  return c.settings.catalogs.find((x) => x.id === c.settings.catalogId) ?? null;
+}
+
 /** What the browser may know about the connection: names only, never the token. */
 export function publicMeta(c: MetaConnection | null) {
   return c ? { pageName: c.settings.pageName, igUsername: c.settings.igUsername, test: c.settings.test } : null;

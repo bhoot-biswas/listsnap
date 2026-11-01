@@ -10,6 +10,7 @@ import { forWorkspace } from "@/server/db/scope";
 import { LISTING_PAGE_SIZE, LISTING_SORTS } from "@/server/db/overview";
 import { LISTING_VIEWS, ListingFilters, listingsHref } from "./_components/listing-filters";
 import { ListingTable } from "./_components/listing-table";
+import { metaConnection, readyCatalog } from "@/server/social/connection";
 import { ListingSelection } from "./_components/listing-selection";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -40,11 +41,12 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
   const archived = filter.status === "archived";
   const behind = filter.status === "behind";
   const status = filter.status === "archived" || filter.status === "behind" ? null : filter.status;
-  const [{ rows, total }, counts, shop] = await Promise.all([
+  const [{ rows, total }, counts, shop, meta] = await Promise.all([
     ws.listingPage({ ...filter, status, archived, behind }),
     ws.statusCounts(filter.q),
     // the counts follow the search, so whether the shop has listings at all is asked apart
     filter.q ? ws.statusCounts() : null,
+    metaConnection(ws),
   ]);
   // "All" means every listing still in use; archived ones have their own chip, and
   // listings with an out-of-date store draft are already counted under their status
@@ -90,6 +92,7 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
                   rows={rows.map((r) => ({ id: r.id, jobId: r.job_id, status: r.status }))}
                   archived={archived}
                   hasWebsite={!!viewer.workspace.settings.website}
+                  catalogName={readyCatalog(meta, viewer.workspace.settings.website)?.name ?? null}
                 >
                   <ListingTable rows={rows} rounding={viewer.workspace.settings.priceRounding} archived={archived} />
                 </ListingSelection>

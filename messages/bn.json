@@ -232,7 +232,14 @@
     "archivedCount": "{count, number}টি লিস্টিং আর্কাইভ হয়েছে।",
     "restoredCount": "{count, number}টি লিস্টিং ফিরিয়ে আনা হয়েছে।",
     "clearSelection": "বাছাই মুছুন",
-    "exportCount": "{count, number}টি এক্সপোর্ট"
+    "exportCount": "{count, number}টি এক্সপোর্ট",
+    "catalog": {
+      "button": "{count, plural, one {#টি ক্যাটালগে সেভ করুন} other {#টি ক্যাটালগে সেভ করুন}}",
+      "sending": "ক্যাটালগে সেভ হচ্ছে, {total}টির মধ্যে {current}…",
+      "saved": "{count, plural, one {#টি লিস্টিং {catalog}-এ সেভ হয়েছে।} other {#টি লিস্টিং {catalog}-এ সেভ হয়েছে।}}",
+      "savedSome": "{saved}টি ক্যাটালগে সেভ হয়েছে; {failed}টি যায়নি।",
+      "failed": "ক্যাটালগে সেভ করা গেল না। আবার চেষ্টা করুন।"
+    }
   },
   "usage": {
     "title": "ব্যবহার",
