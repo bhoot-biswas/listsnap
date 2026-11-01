@@ -37,6 +37,8 @@ export function useChat({
   const [error, setError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(0);
+  // the message box's text, here so a message that never started a chat can come back to it
+  const [draft, setDraft] = useState("");
   // undefined: the conversation used last; null: a new one not sent yet
   const [chatId, setChatId] = useState<string | null | undefined>(initialChatId);
 
@@ -52,7 +54,14 @@ export function useChat({
       cur.some((i) => i.id === item.id) ? cur.map((i) => (i.id === item.id ? item : i)) : [...cur, item],
     );
 
-  async function request(body: unknown) {
+  /**
+   * Sends one request and streams its events. `unsent` runs when a new chat's request
+   * failed before the server started the chat: nothing was stored, so the message can go
+   * back to the box to try again.
+   */
+  async function request(body: unknown, unsent?: () => void) {
+    let started = false;
+    let failed = false;
     setBusy(true);
     setError(null);
     setWorking(null);
@@ -75,17 +84,23 @@ export function useChat({
         for (const line of lines.filter(Boolean)) {
           const e = JSON.parse(line) as ChatEvent;
           if (e.type === "chat") {
+            started = true;
             setChatId(e.chatId);
             onStarted?.(e.chatId);
           } else if (e.type === "item") upsert(e.item);
           else if (e.type === "working") setWorking(e.name);
           else if (e.type === "done" && e.chatId) setChatId(e.chatId);
-          else if (e.type === "error") setError(e.message ?? t(`error.${e.code === "busy" ? "generic" : e.code}`));
+          else if (e.type === "error") {
+            failed = true;
+            setError(e.message ?? t(`error.${e.code === "busy" ? "generic" : e.code}`));
+          }
         }
       }
     } catch {
+      failed = true;
       setError(t("error.generic"));
     } finally {
+      if (failed && !started) unsent?.();
       setBusy(false);
       setWorking(undefined);
       router.refresh();
@@ -138,6 +153,10 @@ export function useChat({
   function send(message: string, newChat = false): boolean {
     const clean = message.trim();
     if ((!clean && !photos.length) || busy || uploading) return false;
+    const before = items;
+    const sent = photos;
+    // a suggestion tapped while typing leaves the typed text alone
+    if (message === draft) setDraft("");
     setPhotos([]);
     const mine: ChatItem = {
       kind: "user",
@@ -146,12 +165,23 @@ export function useChat({
       ...(photos.length && { photos: photos.map((p) => p.url) }),
     };
     setItems((cur) => (newChat ? [mine] : [...cur, mine]));
-    void request({ message: clean, photoIds: photos.map((p) => p.id), newChat, ...(!newChat && which()) });
+    void request(
+      { message: clean, photoIds: photos.map((p) => p.id), newChat, ...(!newChat && which()) },
+      newChat
+        ? () => {
+            setItems(before);
+            setDraft(clean);
+            setPhotos(sent);
+          }
+        : undefined,
+    );
     return true;
   }
 
   return {
     items,
+    draft,
+    setDraft,
     busy,
     error,
     photos,
