@@ -7,7 +7,6 @@ import { env } from "@/server/env";
  * every edit. Hostinger's shared MySQL caps connections per user, so 5 is the default.
  * `timezone: "Z"` makes mysql2 read and write DATETIME/TIMESTAMP as UTC, which Better
  * Auth requires and which keeps lock expiry comparisons honest on a Dhaka-time laptop.
- * Adapted from SOHOZ TOOLS (README → pre-existing code).
  */
 const g = globalThis as unknown as { __listsnapPool?: Pool };
 
