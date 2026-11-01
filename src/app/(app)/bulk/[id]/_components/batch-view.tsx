@@ -80,6 +80,11 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
                 setSelected(new Set());
                 void reload();
               }}
+              // the saved ones show In store; the failed stay ticked for Try again
+              onPartial={(failedIds) => {
+                setSelected(new Set(failedIds));
+                void reload();
+              }}
             />
           )}
         </div>
