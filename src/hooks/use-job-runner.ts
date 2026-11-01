@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JobState, StepView } from "@/lib/job-state";
 import { loadState } from "./load-state";
+import { useDoneCue } from "./use-done-cue";
+import { useWakeLock } from "./use-wake-lock";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -24,6 +26,9 @@ export function useJobRunner(initial: JobState) {
   const alive = useRef(true);
   const id = initial.id;
 
+  // while steps are left, a locked screen would freeze them; once none are, say so
+  useWakeLock(state.next.length > 0 && !offline);
+  useDoneCue(state.next.length ? false : state.status === "ready" ? "ready" : "needs-you");
 
   const load = useCallback(async (): Promise<JobState | null> => {
     const r = await loadState<JobState>(`/api/jobs/${id}`);

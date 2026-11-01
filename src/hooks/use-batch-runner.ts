@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BatchState } from "@/lib/batch-state";
 import { loadState } from "./load-state";
+import { useDoneCue } from "./use-done-cue";
+import { useWakeLock } from "./use-wake-lock";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -33,6 +35,10 @@ export function useBatchRunner(initial: BatchState, autoStart: boolean) {
   const alive = useRef(true);
   const id = initial.id;
 
+  useWakeLock(running);
+  // done when the runner stopped on its own with nothing left it can do
+  const settled = !running && !paused && !offline && !stalled && !hasWork(state);
+  useDoneCue(settled ? (state.rows.every((r) => r.jobStatus === "ready") ? "ready" : "needs-you") : false);
 
   const load = useCallback(async (): Promise<BatchState | null> => {
     const r = await loadState<BatchState>(`/api/batches/${id}`);
@@ -130,4 +136,10 @@ export function useBatchRunner(initial: BatchState, autoStart: boolean) {
   }, []);
 
   return { state, running, paused, offline, stalled, resume, pause, reload: load };
+}
+
+/** Whether the runner still has calls to make: a video to watch, or a photo with steps left. */
+function hasWork(s: BatchState): boolean {
+  if (s.watch?.url) return true;
+  return s.rows.some((r) => r.jobStatus === "processing" && r.next.length > 0);
 }
