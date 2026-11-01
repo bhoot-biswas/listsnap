@@ -9,6 +9,12 @@
     "mock": "Mock",
     "aiBackground": "AI background",
     "aiScene": "AI scene",
+    "ui": {
+      "close": "Close",
+      "menu": "Menu",
+      "menuHint": "ListSnap's pages.",
+      "toggleMenu": "Show or hide the menu"
+    },
     "pager": {
       "pages": "Pages",
       "range": "{from, number}–{to, number} of {total, number}",
