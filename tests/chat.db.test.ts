@@ -1,5 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { ChatEvent, ChatItem, ChatRequest } from "@/lib/schemas/chat";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { ChatRequest, type ChatEvent, type ChatItem } from "@/lib/schemas/chat";
 import { createTestJob, createTestWorkspace, dbEnv, runJob, samplePhoto } from "./db-helpers";
 
 /**
@@ -156,6 +156,30 @@ describe.skipIf(!enabled)("listing chat (MariaDB)", async () => {
     expect(await A.claimChat(chatId, "crashed", -1)).toBe(true);
     expect(items(await chat({ message: "Undo the last change", chatId })).length).toBeGreaterThan(0);
     expect(await forWorkspace(b.workspace.id).claimChat(chatId, "b", 60_000)).toBe(false);
+  });
+
+  it("posts with the caption the seller reworded on the card, and shows it after a reload", async () => {
+    const { facebook } = await import("@/server/providers");
+    const post = vi.spyOn(facebook(), "postReel");
+    try {
+      const asked = await chat({ message: "Post the reel to Facebook" });
+      const card = items(asked).find((i) => i.kind === "approval")!;
+      const mine = "Eid sale! Red jamdani, ৳1,250. Inbox to order.";
+      // checked like any caption: too long is refused before anything runs
+      expect(
+        ChatRequest.safeParse({ approve: { toolCallId: card.id, yes: true, caption: "x".repeat(2201) } }).success,
+      ).toBe(false);
+      const yes = await chat({ approve: { toolCallId: card.id, yes: true, caption: mine } });
+      expect(items(yes)[0]).toMatchObject({ kind: "approval", state: "approved", args: { caption: mine } });
+      expect(post).toHaveBeenCalledTimes(1);
+      expect(post.mock.calls[0]![1].caption).toBe(mine);
+      // a reload rebuilds the card from what was stored: the caption that went out
+      const { chatItems } = await import("@/server/chat/view");
+      const stored = chatItems(await A.chatMessages((await A.listingChat(listingId))!));
+      expect(stored.find((i) => i.id === card.id)).toMatchObject({ args: { caption: mine } });
+    } finally {
+      post.mockRestore();
+    }
   });
 
   it("starts a new chat on request, keeping the old one stored", async () => {

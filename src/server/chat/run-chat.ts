@@ -116,14 +116,20 @@ export async function runChat(
       await add({ role: "user", content: req.message, ...(photoIds.length && { photoIds }) });
       await received(chatId);
     } else {
-      const call = pendingCalls(history).find((c) => c.id === req.approve.toolCallId);
-      if (!call) return emit({ type: "error", code: "answered" });
+      const asked = pendingCalls(history).find((c) => c.id === req.approve.toolCallId);
+      if (!asked) return emit({ type: "error", code: "answered" });
+      // the seller may reword a reel's caption on the card: the post goes out with their words,
+      // which the result keeps, so a reload shows the caption that was posted
+      const caption = req.approve.caption;
+      const edited = req.approve.yes && asked.name === "postReel" && !!caption && caption !== asked.args.caption;
+      const call = edited ? { ...asked, args: { ...asked.args, caption } } : asked;
       await received(chatId!);
       let result: Record<string, unknown> = DECLINED;
       if (req.approve.yes) {
         emit({ type: "working", name: call.name });
         result = await runTool(workspace, scope, call, true, clientIp);
         changed = result.ok === true;
+        if (edited) result = { ...result, editedCaption: caption };
       }
       await add({ role: "tool", toolCallId: call.id, name: call.name, result });
       const state = !req.approve.yes ? "declined" : result.ok ? "approved" : "failed";

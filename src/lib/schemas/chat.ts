@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { StoreKind } from "@/lib/stores";
+import { CAPTION_MAX } from "@/lib/schemas/social";
 
 /** The longest message a seller can send; a chat turn is a request, not a document. */
 export const CHAT_MESSAGE_MAX = 1000;
@@ -64,7 +65,12 @@ export const ChatRequest = z.union([
     })
     .refine((m) => m.message.length > 0 || m.photoIds.length > 0),
   z.object({
-    approve: z.object({ toolCallId: z.string().min(1).max(100), yes: z.boolean() }),
+    approve: z.object({
+      toolCallId: z.string().min(1).max(100),
+      yes: z.boolean(),
+      /** A reel's caption as the seller reworded it on the card; the post goes out with it. */
+      caption: z.string().trim().min(1).max(CAPTION_MAX).optional(),
+    }),
     chatId: ChatId.optional(),
   }),
 ]);

@@ -4,7 +4,10 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { ArrowRight, Check, ExternalLink, Square, Store, X } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { CAPTION_MAX } from "@/lib/schemas/social";
 import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { cn } from "@/lib/utils";
 import type { ChatItem } from "@/lib/schemas/chat";
@@ -21,7 +24,7 @@ export function ChatEntry({
 }: {
   item: ChatItem;
   busy: boolean;
-  onAnswer: (id: string, yes: boolean) => void;
+  onAnswer: (id: string, yes: boolean, caption?: string) => void;
 }) {
   const t = useTranslations("chat");
   if (item.kind === "stopped")
@@ -163,7 +166,7 @@ function Approval({
 }: {
   item: Extract<ChatItem, { kind: "approval" }>;
   busy: boolean;
-  onAnswer: (id: string, yes: boolean) => void;
+  onAnswer: (id: string, yes: boolean, caption?: string) => void;
 }) {
   const t = useTranslations("chat.approval");
   const tReels = useTranslations("review.reels");
@@ -173,6 +176,7 @@ function Approval({
     caption?: string;
     update?: boolean;
   };
+  const [caption, setCaption] = useState(args.caption ?? "");
   const titles = item.preview?.titles ?? [];
   const prices = item.preview?.prices;
   const stores = item.preview?.stores ?? [];
@@ -208,17 +212,44 @@ function Approval({
           ))}
         </ul>
       )}
-      {args.caption && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">{t("caption")}</p>
-          <p lang={args.lang} className="max-h-40 overflow-y-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap">
-            {args.caption}
-          </p>
-        </div>
-      )}
+      {args.caption &&
+        (item.state === "pending" ? (
+          // the seller can change a word here instead of saying no and asking again
+          <div className="space-y-1">
+            <label htmlFor={`caption-${item.id}`} className="text-xs text-muted-foreground">
+              {t("captionEdit")}
+            </label>
+            <Textarea
+              id={`caption-${item.id}`}
+              lang={args.lang}
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              maxLength={CAPTION_MAX}
+              rows={5}
+              className="max-h-60 text-sm"
+            />
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">{t("caption")}</p>
+            <p
+              lang={args.lang}
+              className="max-h-40 overflow-y-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap"
+            >
+              {args.caption}
+            </p>
+          </div>
+        ))}
       {item.state === "pending" ? (
         <div className="flex gap-2">
-          <Button type="button" className="h-11 flex-1" disabled={busy} onClick={() => onAnswer(item.id, true)}>
+          <Button
+            type="button"
+            className="h-11 flex-1"
+            disabled={busy || (!!args.caption && !caption.trim())}
+            onClick={() =>
+              onAnswer(item.id, true, args.caption && caption.trim() !== args.caption ? caption.trim() : undefined)
+            }
+          >
             {yes}
           </Button>
           <Button

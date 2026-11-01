@@ -1189,6 +1189,7 @@
       "saveDraftToStore": "Save this listing to your store as a draft?",
       "updateDraft": "Send your latest edits to the store draft?",
       "caption": "Caption",
+      "captionEdit": "Caption: change it here if you like",
       "yes": {
         "postReel": "Post reel",
         "saveDraftToStore": "Save draft",
