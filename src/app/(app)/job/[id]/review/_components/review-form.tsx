@@ -88,11 +88,24 @@ export function ReviewForm({
   );
 
   useEffect(() => {
-    const online = () => void saver.flush();
-    window.addEventListener("online", online);
+    const flush = () => void saver.flush();
+    // a phone switching apps may never come back to this tab, so save before it hides
+    const hidden = () => document.visibilityState === "hidden" && flush();
+    // closing the tab cuts a request short, so ask the browser to hold the page while one is due
+    const leaving = (e: BeforeUnloadEvent) => {
+      if (!saver.pending) return;
+      flush();
+      e.preventDefault();
+    };
+    window.addEventListener("online", flush);
+    document.addEventListener("visibilitychange", hidden);
+    window.addEventListener("beforeunload", leaving);
     return () => {
-      window.removeEventListener("online", online);
-      saver.dispose();
+      window.removeEventListener("online", flush);
+      document.removeEventListener("visibilitychange", hidden);
+      window.removeEventListener("beforeunload", leaving);
+      // Back, or another listing's tab: the app stays loaded, so the last edit can still go
+      flush();
     };
   }, [saver]);
 
@@ -338,7 +351,9 @@ export function ReviewForm({
                 ? t("saving")
                 : state === "offline"
                   ? t("offline")
-                  : t("saveError")}
+                  : state === "invalid"
+                    ? t("saveInvalid")
+                    : t("saveError")}
           </p>
           <SaveToStore
             jobId={jobId}

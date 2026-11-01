@@ -1,4 +1,4 @@
-export type SaveState = "saved" | "saving" | "error" | "offline";
+export type SaveState = "saved" | "saving" | "error" | "offline" | "invalid";
 
 /**
  * Autosave for Review. Saves run one after another and always send the latest whole
@@ -9,6 +9,7 @@ export type SaveState = "saved" | "saving" | "error" | "offline";
 export class Autosaver<T> {
   private latest: T;
   private dirty = false;
+  private inFlight = false;
   private queue: Promise<boolean> = Promise.resolve(true);
   private timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -36,22 +37,25 @@ export class Autosaver<T> {
     return this.queue;
   };
 
-  dispose(): void {
-    this.clearTimer();
+  /** True while an edit hasn't reached the server yet. */
+  get pending(): boolean {
+    return this.dirty || this.inFlight;
   }
 
   private async persist(): Promise<boolean> {
     if (!this.dirty) return true;
     this.dirty = false;
     this.onState("saving");
+    this.inFlight = true;
     const result = await this.save(this.latest).catch(() => false as const);
+    this.inFlight = false;
     if (result === true) {
       this.onState(this.dirty ? "saving" : "saved");
       return true;
     }
     this.dirty = true;
     const online = typeof navigator === "undefined" || navigator.onLine !== false;
-    this.onState(online ? "error" : "offline");
+    this.onState(result === "invalid" ? "invalid" : online ? "error" : "offline");
     if (online && result === false) this.schedule(this.retryMs);
     return false;
   }

@@ -62,4 +62,30 @@ describe("Autosaver", () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(invalidCalls).toBe(1);
   });
+
+  it("is pending until the save has finished, and says when the server called it invalid", async () => {
+    const states: SaveState[] = [];
+    let finish: (v: true | "invalid") => void = () => {};
+    const s = new Autosaver<string>(
+      "",
+      () => new Promise((r) => (finish = r)),
+      (st) => states.push(st),
+      10,
+    );
+    expect(s.pending).toBe(false);
+    s.change("a");
+    expect(s.pending).toBe(true);
+    await vi.advanceTimersByTimeAsync(10);
+    // sent, but not answered yet: closing the tab now would still lose it
+    expect(s.pending).toBe(true);
+    finish(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(s.pending).toBe(false);
+
+    s.change("too long");
+    await vi.advanceTimersByTimeAsync(10);
+    finish("invalid");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(states.at(-1)).toBe("invalid");
+  });
 });

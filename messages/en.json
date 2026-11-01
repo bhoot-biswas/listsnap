@@ -905,6 +905,7 @@
     "saving": "Saving…",
     "saved": "Saved",
     "saveError": "Couldn’t save. Retrying…",
+    "saveInvalid": "Couldn’t save this. Check the price, stock and text lengths.",
     "offline": "Offline, will save",
     "saveToStore": "Save draft to store",
     "updateStore": "Update store draft",
