@@ -2,10 +2,12 @@ import "server-only";
 import { select, selectOne } from "./pool";
 import type { ListingStatus } from "./listings";
 import { StoreKind } from "@/lib/stores";
+import { dhakaDay } from "@/lib/dhaka-day";
+import { dhakaDate, dhakaDayStart } from "./dhaka-sql";
 
 /**
  * Read-only queries for the Listings page and the Dashboard, bound to one workspace.
- * Spread into forWorkspace(). Days are UTC, like the daily limits.
+ * Spread into forWorkspace(). Days are Dhaka days, from midnight in Bangladesh.
  */
 
 export const LISTING_PAGE_SIZE = 20;
@@ -185,8 +187,8 @@ export function overviewQueries(ws: string) {
     async dashboardStats(): Promise<DashboardStats> {
       const [listings, timing] = await Promise.all([
         selectOne<Record<string, number | null>>(
-          `SELECT SUM(created_at >= UTC_DATE()) AS today,
-                  SUM(created_at >= UTC_DATE() - INTERVAL 1 DAY AND created_at < UTC_DATE()) AS yesterday,
+          `SELECT SUM(created_at >= ${dhakaDayStart()}) AS today,
+                  SUM(created_at >= ${dhakaDayStart(1)} AND created_at < ${dhakaDayStart()}) AS yesterday,
                   SUM(status = 'needs_review' AND archived_at IS NULL) AS waiting,
                   SUM(sent_at >= UTC_TIMESTAMP() - INTERVAL 7 DAY) AS in_store_week
              FROM listings WHERE workspace_id = ?`,
@@ -213,16 +215,17 @@ export function overviewQueries(ws: string) {
       };
     },
 
-    /** Listings made on each of the last 7 days (UTC), oldest first, zero-filled. */
+    /** Listings made on each of the last 7 Dhaka days, oldest first, zero-filled. */
     async listingsPerDay(): Promise<{ day: string; n: number }[]> {
       const rows = await select<{ day: string; n: number }>(
-        `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS n FROM listings
-          WHERE workspace_id = ? AND created_at >= UTC_DATE() - INTERVAL 6 DAY GROUP BY day`,
+        `SELECT ${dhakaDate("created_at")} AS day, COUNT(*) AS n FROM listings
+          WHERE workspace_id = ? AND created_at >= ${dhakaDayStart(6)} GROUP BY day`,
         [ws],
       );
       const byDay = new Map(rows.map((r) => [r.day, Number(r.n)]));
+      const now = Date.now();
       return Array.from({ length: 7 }, (_, i) => {
-        const day = new Date(Date.now() - (6 - i) * 86_400_000).toISOString().slice(0, 10);
+        const day = dhakaDay(now, 6 - i);
         return { day, n: byDay.get(day) ?? 0 };
       });
     },

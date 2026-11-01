@@ -17,6 +17,7 @@ import {
 } from "@/server/export/build";
 import { marketplaceText } from "@/server/export/text";
 import { toWebStream, zipStream, type ZipEntry } from "@/server/export/zip";
+import { dhakaDay } from "@/lib/dhaka-day";
 
 const Query = z.object({
   ids: z
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
   if (!loaded.ok) return loaded.error === "not_found" ? notFound() : fail(409, "not_ready", "notFinished");
   const { listings } = loaded;
   const labels = kitLabels();
-  const day = new Date().toISOString().slice(0, 10);
+  const day = dhakaDay();
 
   if (format === "photos") {
     const first = listings[0]!;
