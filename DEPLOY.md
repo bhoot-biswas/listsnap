@@ -166,14 +166,17 @@ systemctl restart listsnap
 
 Only `NEXT_PUBLIC_SITE_URL` needs a rebuild (`deploy.sh`) when changed; everything else needs just the restart.
 
+In production the health check also checks these settings: the site URL must be `https`, `BETTER_AUTH_SECRET` at least 32 characters, `CREDENTIALS_KEY` 32 bytes in base64, and each live service needs its key. If one is missing, the health check answers `503` with `"config":"incomplete"`, and on the server it names the setting (never its value).
+
 ## 9. Backups
 
 ```bash
 install -m 755 /srv/listsnap/deploy/backup-db.sh /etc/cron.daily/listsnap-db
-/etc/cron.daily/listsnap-db && ls -lh /var/backups/listsnap
+install -m 755 /srv/listsnap/deploy/backup-media.sh /etc/cron.daily/listsnap-media
+/etc/cron.daily/listsnap-db && /etc/cron.daily/listsnap-media && ls -lh /var/backups/listsnap /var/backups/listsnap/media
 ```
 
-Both databases are dumped every night and kept for 7 days. Photos are in `/var/lib/listsnap/media`. Hostinger's VPS snapshots cover the whole disk.
+Both databases are dumped every night and kept for 7 days. Seller media (`/var/lib/listsnap/media`) gets a snapshot every night, also kept for 7; files that didn't change are hard links to the night before, so each night costs only what's new. Both are on the same disk: they cover mistakes and bad deploys, and Hostinger's VPS snapshots cover losing the disk.
 
 Demo shops expire after a day. Delete them, with their photos and their drafts in the demo store, every night after the backup. The same run deletes cutouts no listing uses any more (left behind when a photo is cut out again):
 
@@ -204,7 +207,7 @@ sshd -t && systemctl reload ssh
 
 ## 11. Check it works
 
-1. **Health:** `https://getlistsnap.com/api/health` should answer `200` with `"database":"ok"` and `"media":"ok"`. On the server, `curl -s localhost:3000/api/health` also shows the providers, which should read `live` for the ones you turned on, and the secrets; visitors see only the first three fields.
+1. **Health:** `https://getlistsnap.com/api/health` should answer `200` with `"database":"ok"`, `"media":"ok"` and `"config":"ok"`. On the server, `curl -s localhost:3000/api/health` also shows the providers, which should read `live` for the ones you turned on, and the secrets; visitors see only the first four fields.
 2. **Email sign-in:** the email should arrive from `MAIL_FROM`.
 3. **Store:** in shop setup, choose the demo store.
 4. **A real product:** snap one. It should cost about $0.06 on the Meta key.
