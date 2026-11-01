@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
@@ -19,12 +19,12 @@ import { ReviewForm, type ReviewPhoto } from "./_components/review-form";
 import { StillMaking } from "./_components/still-making";
 import type { VoiceNoteView } from "./_components/voice-note-card";
 import { ListenResult } from "@/lib/schemas/voice-note";
+import { localTitle } from "@/lib/titles";
+import { numberRepeats, REVIEWABLE } from "@/lib/review-next";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("review"))("title") };
 }
-
-const EDITABLE = new Set(["needs_review", "ready", "in_store", "posted"]);
 
 /** S7 Review: check and edit a listing, then save it to the store. `?l=` picks the listing. */
 export default async function ReviewPage({ params, searchParams }: PageProps<"/job/[id]/review">) {
@@ -35,7 +35,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
   const job = await ws.getJob(id);
   if (!job) notFound();
   const all = await ws.listings(id);
-  const listings = all.filter((x) => EDITABLE.has(x.status));
+  const listings = all.filter((x) => REVIEWABLE.has(x.status));
   // an old link, or a refresh while the Bangla and photos are still being made
   const asked = all.find((x) => x.id === l);
   if (asked?.status === "processing" || (!listings.length && all.some((x) => x.status === "processing")))
@@ -116,6 +116,28 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
   );
 
   const t = await getTranslations("review");
+  const locale = await getLocale();
+  const tabs = numberRepeats(
+    listings.map((x) => {
+      const title = localTitle(
+        {
+          title: (x.fields_json?.en as { title?: string } | undefined)?.title ?? null,
+          title_bn: (x.fields_json?.bn as { title?: string } | undefined)?.title ?? null,
+        },
+        locale,
+      );
+      const thumb = items.find((it) => it.id === x.item_ids_json[0])?.cutout_media_id;
+      return {
+        id: x.id,
+        status: x.status,
+        current: x.id === listing.id,
+        title: title.text,
+        lang: title.lang,
+        thumb: thumb ? mediaUrl(thumb) : null,
+      };
+    }),
+    (title, n) => t("titleN", { title, n }),
+  );
   return (
     <>
       <TopBar title={t("title")} />
@@ -167,12 +189,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
           },
         }}
         chat={{ items: chatItems(history), revision: chatRevision(history) }}
-        others={listings.map((x, i) => ({
-          id: x.id,
-          n: i + 1,
-          status: x.status,
-          current: x.id === listing.id,
-        }))}
+        others={tabs}
       />
     </>
   );

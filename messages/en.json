@@ -693,7 +693,9 @@
     "reelOrPost": "Make a reel or post",
     "reelOrPostMany": "Tap a product to make its reel or post it to Facebook and Instagram.",
     "openIn": "Open in {store}",
-    "export": "Export for Facebook Marketplace"
+    "export": "Export for Facebook Marketplace",
+    "next": "Next: {title}",
+    "moreToSave": "{count, plural, one {# more product from this photo isn't saved yet.} other {# more products from this photo aren't saved yet.}}"
   },
   "connect": {
     "url": "Store address",
@@ -911,6 +913,8 @@
     "stillMakingLink": "See progress",
     "back": "Back",
     "listingN": "Listing {n}",
+    "titleN": "{n}. {title}",
+    "next": "Next:",
     "photos": "Photos",
     "mainImage": "Main image",
     "photosHint": "Choose the photos to send to your store. The main image always goes.",
