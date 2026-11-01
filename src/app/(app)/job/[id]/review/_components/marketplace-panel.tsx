@@ -89,13 +89,11 @@ export function MarketplacePanel({
       else toast.error(t("notSaved"));
     });
 
-  const rows: { key: string; label: string; value: string; copy: boolean; empty?: string }[] = [
-    { key: "title", label: t("fields.title"), value: f.title, copy: true },
-    { key: "price", label: t("fields.price"), value: f.price, copy: true, empty: t("noPrice") },
-    { key: "category", label: t("fields.category"), value: f.category, copy: false },
-    { key: "condition", label: t("fields.condition"), value: t("conditionNew"), copy: false },
-    { key: "description", label: t("fields.description"), value: f.description, copy: true },
-    { key: "tags", label: t("fields.tags"), value: f.tags, copy: true },
+  const copyRows: { key: string; label: string; value: string; empty?: string }[] = [
+    { key: "title", label: t("fields.title"), value: f.title },
+    { key: "price", label: t("fields.price"), value: f.price, empty: t("noPrice") },
+    { key: "description", label: t("fields.description"), value: f.description },
+    { key: "tags", label: t("fields.tags"), value: f.tags },
   ];
 
   return (
@@ -133,41 +131,47 @@ export function MarketplacePanel({
         </div>
       )}
 
-      <dl className="space-y-3">
-        {rows.map((r) => (
-          <div key={r.key} className="space-y-1">
-            <dt className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
-              {r.label}
-              {r.copy && r.value && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-11 md:h-8"
-                  onClick={() => void copy(r.value)}
-                  aria-label={t("copyField", { field: r.label })}
-                >
-                  <Copy aria-hidden="true" />
-                  {t("copy")}
-                </Button>
-              )}
-            </dt>
-            <dd
-              lang={r.copy && lang === "bn" ? "bn" : undefined}
-              className={cn(
-                "text-sm whitespace-pre-wrap",
-                r.key === "description" && "max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-2",
-                !r.value && "text-muted-foreground",
-              )}
-            >
-              {r.value || r.empty || "—"}
-            </dd>
-          </div>
+      <ul className="space-y-2">
+        {copyRows.slice(0, 2).map((r) => (
+          <CopyRow
+            key={r.key}
+            label={r.label}
+            value={r.value}
+            empty={r.empty}
+            lang={lang}
+            onCopy={copy}
+            copyLabel={t("copyField", { field: r.label })}
+          />
         ))}
-      </dl>
-      <p className="text-xs text-muted-foreground">{t("pickHint")}</p>
+        {/* lists in Marketplace's form, so they are picked there, not pasted */}
+        <li className="space-y-2 rounded-lg border p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">{t("fields.category")}</p>
+              <p className="text-sm">{f.category}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">{t("fields.condition")}</p>
+              <p className="text-sm">{t("conditionNew")}</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("pickHint")}</p>
+        </li>
+        {copyRows.slice(2).map((r) => (
+          <CopyRow
+            key={r.key}
+            label={r.label}
+            value={r.value}
+            empty={r.empty}
+            lang={lang}
+            onCopy={copy}
+            copyLabel={t("copyField", { field: r.label })}
+          />
+        ))}
+      </ul>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      {/* stacked, because on desktop the card sits in Review's narrow left column */}
+      <div className="grid gap-2">
         {photos.canShare ? (
           <Button
             type="button"
@@ -249,7 +253,7 @@ export function MarketplacePanel({
             <div className="flex gap-2 max-sm:flex-col">
               <Input
                 id="marketplace-link"
-                type="url"
+                type="text"
                 inputMode="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -284,5 +288,52 @@ export function MarketplacePanel({
         </a>
       </p>
     </section>
+  );
+}
+
+/** One box of Marketplace's form: its label and text, with a copy button beside it. */
+function CopyRow({
+  label,
+  value,
+  empty,
+  lang,
+  onCopy,
+  copyLabel,
+}: {
+  label: string;
+  value: string;
+  empty?: string;
+  lang: "en" | "bn";
+  onCopy: (value: string) => Promise<void>;
+  copyLabel: string;
+}) {
+  return (
+    <li className="flex items-start gap-2 rounded-lg border p-3">
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p
+          lang={value && lang === "bn" ? "bn" : undefined}
+          className={cn(
+            "max-h-32 overflow-y-auto text-sm break-words whitespace-pre-wrap",
+            !value && "text-muted-foreground",
+          )}
+        >
+          {value || empty || "—"}
+        </p>
+      </div>
+      {value && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11 shrink-0 md:size-9"
+          onClick={() => void onCopy(value)}
+          aria-label={copyLabel}
+          title={copyLabel}
+        >
+          <Copy aria-hidden="true" />
+        </Button>
+      )}
+    </li>
   );
 }

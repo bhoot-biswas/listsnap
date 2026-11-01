@@ -50,12 +50,13 @@ describe("MarketplaceLink", () => {
     expect(MarketplaceLink.parse("https://m.facebook.com/marketplace/item/1")).toBeTruthy();
     expect(MarketplaceLink.parse("https://fb.me/abc")).toBeTruthy();
     expect(MarketplaceLink.parse("")).toBeNull();
+    expect(MarketplaceLink.parse("facebook.com/marketplace/item/9")).toBe("https://facebook.com/marketplace/item/9");
     for (const bad of [
       "http://www.facebook.com/x",
       "https://facebook.com.evil.example/x",
       "https://notfacebook.com/x",
       "javascript:alert(1)",
-      "facebook.com/x",
+      "evil.example/facebook.com",
     ])
       expect(MarketplaceLink.safeParse(bad).success, bad).toBe(false);
   });

@@ -48,7 +48,8 @@ export const MarketplaceLink = z
   .string()
   .trim()
   .max(500)
-  .transform((v) => v || null)
+  // "facebook.com/marketplace/item/1" as copied from the app's address bar
+  .transform((v) => (!v ? null : /^[a-z]+:/i.test(v) ? v : `https://${v}`))
   .refine((v) => {
     if (v === null) return true;
     try {
