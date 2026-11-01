@@ -16,6 +16,8 @@ export interface WorkspaceSettings {
   brandKit: BrandKit;
   /** The shop's website or Facebook Page; exported catalog files link each product to it. */
   website: string | null;
+  /** The language last picked on Review's Marketplace card, so it opens in it next time. */
+  marketplaceLang: "en" | "bn" | null;
 }
 
 export const DEFAULT_SETTINGS: WorkspaceSettings = {
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: WorkspaceSettings = {
   currency: "BDT",
   brandKit: EMPTY_BRAND_KIT,
   website: null,
+  marketplaceLang: null,
 };
 
 /** The tone and note the writer gets with every listing and AI help call. */
@@ -125,6 +128,14 @@ export async function saveWorkspaceSettings(workspaceId: string, name: string, s
  * a shop goes with it (the foreign keys cascade); the ids come back so the media folders
  * can be removed too. A shop someone else also belongs to is left alone.
  */
+/** Remembers one small choice without rewriting the rest of the settings the Settings page owns. */
+export async function setMarketplaceLang(workspaceId: string, lang: "en" | "bn"): Promise<void> {
+  await execute(
+    "UPDATE workspaces SET settings_json = JSON_SET(COALESCE(settings_json, '{}'), '$.marketplaceLang', ?) WHERE id = ?",
+    [lang, workspaceId],
+  );
+}
+
 export async function deleteSoleWorkspaces(userId: string): Promise<string[]> {
   return transaction(async (conn) => {
     const [rows] = await conn.query(

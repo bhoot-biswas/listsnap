@@ -27,6 +27,9 @@ export interface ListingRow {
   edited_at: Date | null;
   /** Hidden from the lists until restored. */
   archived_at: Date | null;
+  /** When the seller said they posted it on Facebook Marketplace themselves, and its link if given. */
+  marketplace_posted_at: Date | null;
+  marketplace_url: string | null;
   updated_at: Date;
 }
 
@@ -50,7 +53,7 @@ export interface RecentListingRow {
 }
 
 export const LISTING_COLUMNS =
-  "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, price_bdt, wc_product_id, sent_at, edited_at, archived_at, updated_at";
+  "id, job_id, sort, item_ids_json, status, fields_json, confidence, check_notes, stock_qty, price_bdt, wc_product_id, sent_at, edited_at, archived_at, marketplace_posted_at, marketplace_url, updated_at";
 
 export function listingQueries(ws: string) {
   return {
@@ -139,6 +142,16 @@ export function listingQueries(ws: string) {
 
     async setListingStatus(id: string, status: ListingStatus) {
       await execute("UPDATE listings SET status = ? WHERE id = ? AND workspace_id = ?", [status, id, ws]);
+    },
+
+    /** "I posted it" on Marketplace, with the link if the seller gave one; null undoes it. */
+    async setMarketplacePosted(id: string, posted: { url: string | null } | null): Promise<boolean> {
+      const r = await execute(
+        `UPDATE listings SET marketplace_posted_at = ${posted ? "COALESCE(marketplace_posted_at, UTC_TIMESTAMP(3))" : "NULL"},
+            marketplace_url = ? WHERE id = ? AND workspace_id = ?`,
+        [posted?.url ?? null, id, ws],
+      );
+      return r.affectedRows === 1;
     },
 
     /** Archives a listing on its own, or brings it back; false when it already was. */

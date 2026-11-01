@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 import type { ListingProduct } from "@/server/stores/listing-product";
 import { csv } from "./csv";
 import { catalogCsv, shopifyCsv, wooCsv, type CsvShop } from "./formats";
-import { fileSlug, marketplaceCategory, marketplaceText, type KitLabels } from "./text";
+import { fileSlug, marketplaceText, type KitLabels } from "./text";
+import { marketplaceCategory } from "@/lib/marketplace";
 import { zipStream, type ZipEntry } from "./zip";
 
 const ID = "a1b2c3d4-0000-4000-8000-000000000001";
