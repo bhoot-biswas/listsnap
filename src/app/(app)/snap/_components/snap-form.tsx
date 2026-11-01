@@ -19,10 +19,13 @@ const isPhoto = (f: File) => f.type.startsWith("image/") || /\.(heic|heif)$/i.te
 export function SnapForm({ samples = [] }: { samples?: { url: string; label: string }[] }) {
   const t = useTranslations("snap");
   const tLimits = useTranslations("limits");
+  const tBulk = useTranslations("bulk");
   const router = useRouter();
   const [files, setFiles] = useState<{ file: File; url: string }[]>([]);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // "One listing each" sends the photos one by one, as Bulk does, so it can say how far it is
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [voice, setVoice] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -64,12 +67,15 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
   /** Several different products: one job each, run together as a bulk batch. */
   const uploadEach = async () => {
     setUploading(true);
+    const total = files.length;
+    setProgress({ done: 0, total });
     const r = await uploadBatch(
       files.map((f) => f.file),
-      () => {},
+      (done) => setProgress({ done, total }),
     );
     if (!r.ok) {
       setUploading(false);
+      setProgress(null);
       if (r.status === 401) return router.push("/sign-in");
       if (r.code === "limit_reached" || r.code === "over_limit") {
         toast.error(tLimits("toast"));
@@ -77,6 +83,8 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
       }
       return toast.error(t("uploadFailed"));
     }
+    // the batch goes on with the photos that made it; the seller hears about the rest
+    if (r.failed) toast.error(tBulk("someFailed", { count: r.failed }));
     if (r.limited) toast.error(tLimits("leftOut", { count: r.limited }));
     router.push(`/bulk/${r.batchId}?start=1`);
   };
@@ -247,7 +255,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
               {uploading && (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  {t("uploading")}
+                  {progress ? tBulk("uploading", progress) : t("uploading")}
                 </p>
               )}
             </fieldset>
