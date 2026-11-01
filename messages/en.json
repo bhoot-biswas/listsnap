@@ -112,6 +112,9 @@
     "storeTitle": "Connect your online store",
     "storeBody": "ListSnap saves every listing to your store as a draft. Nothing is published without you.",
     "back": "Back",
+    "noStoreTitle": "No online store yet?",
+    "noStoreBody": "Use our test store for now: your drafts go there, so you can try everything. Connect your own store any time in Connections.",
+    "useTestStore": "Use the test store",
     "woo": "WooCommerce",
     "shopify": "Shopify"
   },
@@ -1185,12 +1188,20 @@
       "declined": "Not sent",
       "failed": "It didn't work",
       "view": "View post",
-      "saveDraftsToStore": "{n, plural, one {Save this listing to your store as a draft?} other {Save these # listings to your store as drafts?}}"
+      "saveDraftsToStore": "{n, plural, one {Save this listing to your store as a draft?} other {Save these # listings to your store as drafts?}}",
+      "to": {
+        "woo": "To WooCommerce",
+        "shopify": "To Shopify",
+        "both": "To WooCommerce and Shopify"
+      },
+      "suggested": "suggested",
+      "noPrice": "no price yet"
     },
     "error": {
       "limit": "You've used today's assistant. It comes back at midnight.",
       "steps": "I stopped before finishing. Ask again, one step at a time.",
       "answered": "That was already answered.",
+      "running": "This chat is still answering, maybe in another tab. Try again in a moment.",
       "generic": "Something went wrong. Nothing else changed; try again."
     },
     "shopSuggestions": {

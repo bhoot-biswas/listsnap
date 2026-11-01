@@ -2,8 +2,8 @@
 
 import type { Route } from "next";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { ArrowRight, Check, ExternalLink, Square, X } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
+import { ArrowRight, Check, ExternalLink, Square, Store, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type ListingStatus } from "@/components/app/status-badge";
 import { cn } from "@/lib/utils";
@@ -163,6 +163,8 @@ function Approval({
     update?: boolean;
   };
   const titles = item.preview?.titles ?? [];
+  const prices = item.preview?.prices;
+  const stores = item.preview?.stores ?? [];
   const question =
     item.name === "postReel"
       ? t("postReel", {
@@ -179,10 +181,19 @@ function Approval({
   return (
     <div className="space-y-2 rounded-lg border p-3">
       <p className="text-sm font-medium">{question}</p>
+      {stores.length > 0 && (
+        <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
+          <Store className="size-3.5" aria-hidden="true" />
+          {t(`to.${stores.length > 1 ? "both" : stores[0]!}`)}
+        </p>
+      )}
       {titles.length > 0 && (
         <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-xs">
           {titles.map((title, i) => (
-            <li key={i}>{title}</li>
+            <li key={i}>
+              {title}
+              {prices && <Price price={prices[i] ?? null} />}
+            </li>
           ))}
         </ul>
       )}
@@ -225,5 +236,18 @@ function Approval({
       )}
       <Made item={item} />
     </div>
+  );
+}
+
+/** The price a draft gets; the AI's guess is marked, so the seller knows to set one. */
+function Price({ price }: { price: { bdt: number; suggested: boolean } | null }) {
+  const t = useTranslations("chat.approval");
+  const format = useFormatter();
+  if (!price) return <span className="text-muted-foreground"> · {t("noPrice")}</span>;
+  return (
+    <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+      {" · "}
+      {price.suggested ? `~৳${format.number(price.bdt)} (${t("suggested")})` : `৳${format.number(price.bdt)}`}
+    </span>
   );
 }

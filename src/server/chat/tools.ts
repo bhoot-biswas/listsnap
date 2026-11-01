@@ -5,11 +5,14 @@ import type { Workspace } from "@/server/db/workspaces";
 import { forWorkspace } from "@/server/db/scope";
 import { BanglaText, ListingText } from "@/lib/schemas/pipeline";
 import { CAPTION_MAX } from "@/lib/schemas/social";
+import { suggestedPrice } from "@/lib/schemas/review";
 import type { ToolCall } from "@/lib/schemas/chat";
 import type { StepOutcome } from "@/server/pipeline/run-step";
 import { defaultCaption } from "@/server/social/caption";
 import type { ChatTool } from "@/server/providers/types";
 import { errorText } from "@/server/step-text";
+import { storeTargets } from "@/server/stores/targets";
+import type { StoreKind } from "@/lib/stores";
 
 /**
  * The chat's tools are ops from the registry, so they keep every op rule: auth by
@@ -116,12 +119,21 @@ export async function checkArgs(
     if (!caption) return { ok: false, error: "This listing has no text in that language to write a caption from." };
     args.caption = caption;
   }
-  if (scope.listingId || !needsApproval(name)) return { ok: true, args };
+  const savesToStore = name === "saveDraftToStore" || name === "saveDraftsToStore";
+  // a listing's chat shows its own listing; a reel card already says where it goes
+  if (!needsApproval(name) || (scope.listingId && !savesToStore)) return { ok: true, args };
   const ids = name === "saveDraftsToStore" ? [...new Set(args.listingIds as string[])] : [listingId!];
-  const titles = await listingTitles(workspace, ids);
-  if (!titles) return { ok: false, error: "One of those listings isn't in this shop. Find it with findListings." };
-  return { ok: true, args, preview: { titles } };
+  const listings = await listingPreview(workspace, ids);
+  if (!listings) return { ok: false, error: "One of those listings isn't in this shop. Find it with findListings." };
+  if (!savesToStore) return { ok: true, args, preview: { titles: listings.titles } };
+  const stores = (args.stores as StoreKind[] | undefined) ?? (await storeTargets(workspace));
+  if (!stores.length) return { ok: false, error: NO_STORE };
+  return { ok: true, args, preview: { ...listings, stores: [...new Set(stores)] } };
 }
+
+/** What the model hears when the shop has no store that takes new drafts. */
+export const NO_STORE =
+  "This shop has no online store that takes new drafts. The seller can connect one in Connections.";
 
 /** What the model hears when it tries to post a reel that isn't made yet. */
 export const NO_REEL = "There's no reel in that language yet. Make it with makeReel first, then post it.";
@@ -132,11 +144,24 @@ async function hasReel(workspace: Workspace, listingId: string, lang: "en" | "bn
   return !!listing && !!(await ws.stepResult(listing.job_id, "reel", `${listingId}:showcase:${lang}`));
 }
 
-async function listingTitles(workspace: Workspace, ids: string[]): Promise<string[] | null> {
+async function listingPreview(
+  workspace: Workspace,
+  ids: string[],
+): Promise<{ titles: string[]; prices: ({ bdt: number; suggested: boolean } | null)[] } | null> {
   const ws = forWorkspace(workspace.id);
   const listings = await Promise.all(ids.map((id) => ws.getListing(id)));
   if (listings.some((l) => !l)) return null;
-  return listings.map((l) => (l!.fields_json?.en as { title?: string } | undefined)?.title ?? l!.id);
+  return {
+    titles: listings.map((l) => (l!.fields_json?.en as { title?: string } | undefined)?.title ?? l!.id),
+    // what the store save will send: the seller's price, or else the suggestion from the hint
+    prices: listings.map((l) => {
+      if (l!.price_bdt !== null) return { bdt: l!.price_bdt, suggested: false };
+      const hint = (l!.fields_json?.en as { price_hint_bdt?: { low: number; high: number } } | undefined)
+        ?.price_hint_bdt;
+      const bdt = hint ? suggestedPrice(hint, workspace.settings.priceRounding) : null;
+      return bdt === null ? null : { bdt, suggested: true };
+    }),
+  };
 }
 
 async function listingCaption(workspace: Workspace, listingId: string, lang: "en" | "bn") {

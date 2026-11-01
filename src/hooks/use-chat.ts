@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { resizeForUpload } from "@/lib/resize-image";
@@ -32,6 +32,9 @@ export function useChat({
   const router = useRouter();
   const [items, setItems] = useState(initial);
   const [busy, setBusy] = useState(false);
+  // set the moment a request starts: `busy` only takes effect on the next render, so a
+  // quick second tap of Approve would otherwise send the answer twice
+  const inFlight = useRef(false);
   // undefined: idle; null: the model is thinking; a name: that tool is running
   const [working, setWorking] = useState<string | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +74,8 @@ export function useChat({
    * the box to try again, instead of vanishing on flaky phone data.
    */
   async function request(body: unknown, giveBack?: () => void) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     let started = false;
     let failed = false;
     setBusy(true);
@@ -123,6 +128,7 @@ export function useChat({
       }
       // a stored message makes this the conversation used last, so the page's copy is this one again
       if (started) setElsewhere(false);
+      inFlight.current = false;
       setBusy(false);
       setWorking(undefined);
       setSince(null);
@@ -194,7 +200,7 @@ export function useChat({
   /** Sends a message; returns false when there's nothing to send or a request is running. */
   function send(message: string, newChat = false): boolean {
     const clean = message.trim();
-    if ((!clean && !photos.length) || busy || uploading) return false;
+    if ((!clean && !photos.length) || busy || inFlight.current || uploading) return false;
     const before = items;
     const sent = photos;
     // a suggestion tapped while typing leaves the typed text alone
