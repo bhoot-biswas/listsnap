@@ -2,8 +2,11 @@
 
 import { useTranslations } from "next-intl";
 import type { ItemView } from "@/lib/job-state";
+import { MediaImg } from "@/components/app/media-img";
 
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
+/** Across the screen on a phone; the 320 px photo column from tablet width up (job-view). */
+const STAGE = "(max-width: 767px) 100vw, 320px";
 
 /**
  * The photo with what SAM found. Once segment is done the photo dims and each item's
@@ -25,15 +28,15 @@ export function PhotoStage({
         className="relative overflow-hidden rounded-xl border bg-muted"
         style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- a private /media file, sized by the box above */}
-        <img src={photo.url} alt="" className="absolute inset-0 size-full object-cover" />
+        <MediaImg src={photo.url} sizes={STAGE} eager alt="" className="absolute inset-0 size-full object-cover" />
         {found && <div className="absolute inset-0 bg-black/55" style={{ animation: "sam-dim 600ms ease-out both" }} />}
         {items.map((item, i) =>
           item.png ? (
-            // eslint-disable-next-line @next/next/no-img-element -- the cutout must sit exactly on its box
-            <img
+            <MediaImg
               key={item.id}
               src={item.png}
+              sizes={STAGE}
+              eager
               alt=""
               className="absolute object-fill"
               style={{

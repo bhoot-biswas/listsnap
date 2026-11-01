@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { CHAT_MESSAGE_MAX, CHAT_PHOTOS_MAX } from "@/lib/schemas/chat";
 import type { Chat } from "@/hooks/use-chat";
 import { ChatMic } from "./chat-mic";
+import { MediaImg } from "@/components/app/media-img";
 
 /**
  * The message box: one rounded card with the text on top and the photo, microphone and
@@ -55,8 +56,7 @@ export function ChatComposer({
               className="group relative size-16 overflow-hidden rounded-md border"
               onClick={() => chat.removePhoto(p.id)}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- our own /media URL */}
-              <img src={p.url} alt="" className="size-full object-cover" />
+              <MediaImg src={p.url} sizes="64px" alt="" className="size-full object-cover" />
               <span className="absolute top-0.5 right-0.5 rounded-full bg-background/90 p-0.5">
                 <X className="size-3.5" aria-hidden="true" />
               </span>

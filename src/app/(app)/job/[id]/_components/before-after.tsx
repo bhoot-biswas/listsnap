@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { MediaImg } from "@/components/app/media-img";
+
+/** Across the screen on a phone; the 320 px photo column from tablet width up (job-view). */
+const SIZES = "(max-width: 767px) 100vw, 320px";
 
 /**
  * The seller's photo and the result, one over the other, with a slider between them.
@@ -21,11 +25,11 @@ export function BeforeAfter({
   return (
     <figure className="space-y-2">
       <div className="relative aspect-square overflow-hidden rounded-xl border bg-white">
-        {/* eslint-disable-next-line @next/next/no-img-element -- private /media files layered for the comparison */}
-        <img src={after} alt="" className="absolute inset-0 size-full object-cover" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- the "before" layer, clipped by the slider */}
-        <img
+        <MediaImg src={after} sizes={SIZES} alt="" className="absolute inset-0 size-full object-cover" />
+        {/* the "before" layer, clipped by the slider */}
+        <MediaImg
           src={before}
+          sizes={SIZES}
           alt=""
           className="absolute inset-0 size-full object-cover"
           style={{ objectPosition: `${focus.x}% ${focus.y}%`, clipPath: `inset(0 ${100 - split}% 0 0)` }}

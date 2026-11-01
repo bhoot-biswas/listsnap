@@ -106,8 +106,17 @@ export async function saveMedia(
   return { id, kind, mime: meta.mime, width: meta.width, height: meta.height, bytes: data.length };
 }
 
-/** Where a media file is on disk, but only if it belongs to the given workspace. */
-async function locate(workspaceId: string, id: string): Promise<{ abs: string; mime: string } | null> {
+/** A media file on disk: where it is and what it is. */
+export interface MediaFile {
+  abs: string;
+  mime: string;
+}
+
+/**
+ * Where a media file is on disk, but only if it belongs to the given workspace. It reads
+ * no file, so /media can answer a cached copy's check with a 304 for a database lookup.
+ */
+export async function locateMedia(workspaceId: string, id: string): Promise<MediaFile | null> {
   const row = await selectOne<{ path: string; mime: string }>(
     "SELECT path, mime FROM media WHERE id = ? AND workspace_id = ?",
     [id, workspaceId],
@@ -121,7 +130,7 @@ async function locate(workspaceId: string, id: string): Promise<{ abs: string; m
 
 /** Reads a media file, but only from the given workspace. */
 export async function readMedia(workspaceId: string, id: string): Promise<{ data: Buffer; mime: string } | null> {
-  const file = await locate(workspaceId, id);
+  const file = await locateMedia(workspaceId, id);
   if (!file) return null;
   try {
     return { data: await readFile(file.abs), mime: file.mime };
@@ -135,16 +144,12 @@ export async function readMedia(workspaceId: string, id: string): Promise<{ data
  * of 48 px thumbnails otherwise downloads every 1200 px photo in full, which is slow on
  * phone data. WebP keeps a cutout's transparency at a fraction of the PNG's size.
  */
-export async function readMediaSized(
-  workspaceId: string,
-  id: string,
-  width: MediaWidth,
-): Promise<{ data: Buffer; mime: string } | null> {
-  const file = await locate(workspaceId, id);
-  if (!file?.mime.startsWith("image/")) return null;
-  const copy = `${file.abs}.w${width}.webp`;
+export async function sizedMedia(file: MediaFile, width: MediaWidth): Promise<MediaFile | null> {
+  if (!file.mime.startsWith("image/")) return null;
+  const copy = { abs: `${file.abs}.w${width}.webp`, mime: "image/webp" };
   try {
-    return { data: await readFile(copy), mime: "image/webp" };
+    await access(copy.abs, constants.R_OK);
+    return copy;
   } catch {
     // not made yet
   }
@@ -153,9 +158,8 @@ export async function readMediaSized(
       .resize({ width, withoutEnlargement: true })
       .webp({ quality: 80 })
       .toBuffer();
-    // a failed write only means the next request resizes again
-    await writeFile(copy, data).catch(() => undefined);
-    return { data, mime: "image/webp" };
+    await writeFile(copy.abs, data);
+    return copy;
   } catch {
     return null;
   }
