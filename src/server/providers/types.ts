@@ -14,6 +14,14 @@ import type { AssistRequest } from "@/lib/schemas/assist";
 import type { ReelTemplate, ReelVariables } from "@/lib/schemas/reels";
 import type { ChatMessage } from "@/lib/schemas/chat";
 import type { SellerFacts } from "@/lib/schemas/voice-note";
+
+/** One of several products in a photo, each listed on its own. */
+export interface OneOfSeveral {
+  /** How many listings the photo became. */
+  of: number;
+  /** The colour the grouping step named for this item, if any. */
+  color: string | null;
+}
 import type { VideoProduct } from "@/lib/schemas/video";
 
 /**
@@ -49,13 +57,18 @@ export interface MetaProvider {
     colors: string[];
     reason: string;
   }>;
-  /** `said` is what the seller said in a voice note; it outranks what the photo suggests. */
+  /**
+   * `said` is what the seller said in a voice note; it outranks what the photo suggests.
+   * `one` is set when the photo became several separate listings: `photo` is then this
+   * listing's own product, cut out on white, and the plan's guess is for the whole photo.
+   */
   write(
     ctx: CallContext,
     photo: Buffer,
     plan: PlanResult,
     voice: BrandVoice,
     said: SellerFacts | null,
+    one?: OneOfSeveral | null,
   ): Promise<ListingText>;
   /**
    * Muse Voice Transcribe: a mono 24 kHz WAV into words, in Bangla, English or both.

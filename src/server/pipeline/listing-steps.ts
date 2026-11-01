@@ -5,7 +5,7 @@ import { StepError } from "./run-step";
 import { compositeOnBackground, dimensions, fillsFrame, squarePhoto } from "@/server/image-ops";
 import { readMedia, saveMedia } from "@/server/media/store";
 import { meta } from "@/server/providers";
-import type { SceneKit } from "@/server/providers/types";
+import type { OneOfSeveral, SceneKit } from "@/server/providers/types";
 import type { ListingRow, WorkspaceScope } from "@/server/db/scope";
 import { brandVoice, type Workspace } from "@/server/db/workspaces";
 import {
@@ -69,6 +69,21 @@ async function itemImages(
 }
 
 /**
+ * When the photo became several separate listings, each is written from its own product:
+ * from the whole photo, every one of them got the same text, describing whichever product
+ * the model noticed first. A single listing (or a set, or colour options) keeps the whole
+ * photo, whose surroundings help. Null also when the cutout is missing, so the step still runs.
+ */
+async function ownProduct(ctx: ListingStepContext): Promise<{ photo: Buffer; one: OneOfSeveral } | null> {
+  const of = (await ctx.ws.listings(ctx.listing.job_id)).length;
+  if (of < 2) return null;
+  const item = (await ctx.ws.items(ctx.listing.job_id)).find((i) => i.id === ctx.listing.item_ids_json[0]);
+  const cutout = item?.cutout_media_id ? await readMedia(ctx.ws.id, item.cutout_media_id) : null;
+  if (!cutout) return null;
+  return { photo: cutout.data, one: { of, color: item!.color || null } };
+}
+
+/**
  * What the seller said in their voice note, for this listing. One note describes one
  * product, so a photo that became several separate listings uses it for none of them.
  */
@@ -82,8 +97,16 @@ export async function writeStep(ctx: ListingStepContext): Promise<ListingText> {
   const p = await plan(ctx);
   const heard = await spoken(ctx);
   const said: SellerFacts | null = heard?.facts ?? null;
+  const own = await ownProduct(ctx);
   const written = ListingText.parse(
-    await meta().write(call(ctx, "write"), await originalPhoto(ctx), p, brandVoice(ctx.workspace.settings), said),
+    await meta().write(
+      call(ctx, "write"),
+      own?.photo ?? (await originalPhoto(ctx)),
+      p,
+      brandVoice(ctx.workspace.settings),
+      said,
+      own?.one ?? null,
+    ),
   );
   // heard from the audio alone, the price can be wrong (the spike's was), so it isn't filled in
   const guessed = heard?.heardBy === "audio" && said?.price_bdt != null;
