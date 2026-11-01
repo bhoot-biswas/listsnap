@@ -131,3 +131,23 @@ export interface SignInOptions {
 export function signInOptions(e = env()): SignInOptions {
   return { google: !!e.google, email: !!e.smtp || !e.prod };
 }
+
+/**
+ * Settings a production server can't work without, by name only (never values). The app
+ * still starts without them, so the health check reports them and a deploy that would go
+ * live with any of them missing switches back instead. Empty outside production.
+ */
+export function configProblems(e = env()): string[] {
+  if (!e.prod) return [];
+  const problems: string[] = [];
+  if (!e.databaseUrl) problems.push("DATABASE_URL");
+  if (!/^https:\/\//.test(e.siteUrl) || /localhost|127\.0\.0\.1/.test(e.siteUrl)) problems.push("NEXT_PUBLIC_SITE_URL");
+  if (e.authSecret.length < 32) problems.push("BETTER_AUTH_SECRET");
+  // store keys are encrypted with it; the wrong length fails only when a seller connects a store
+  if (Buffer.from(e.credentialsKey, "base64").length !== 32) problems.push("CREDENTIALS_KEY");
+  if (e.providers.meta === "live" && !e.modelApiKey) problems.push("MODEL_API_KEY");
+  if (e.providers.baseten === "live" && !e.basetenApiKey) problems.push("BASETEN_API_KEY");
+  if (e.providers.shopify === "live" && !(e.shopify.clientId && e.shopify.clientSecret))
+    problems.push("SHOPIFY_CLIENT_ID/SECRET");
+  return problems;
+}

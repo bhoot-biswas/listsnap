@@ -16,7 +16,7 @@ describe.skipIf(!enabled)("health route (MariaDB)", async () => {
   it("tells a visitor only whether the deploy works", async () => {
     const res = await GET(new Request("http://test/api/health", { headers: { [env().ipHeader]: "203.0.113.7" } }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, database: "ok", media: "ok" });
+    expect(await res.json()).toEqual({ ok: true, database: "ok", media: "ok", config: "ok" });
   });
 
   it("shows the providers and secrets to a request made on the server itself", async () => {
