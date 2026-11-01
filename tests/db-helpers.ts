@@ -134,3 +134,19 @@ export async function runJob(workspace: Workspace, jobId: string, maxRounds = 20
   }
   throw new Error(`job ${jobId} didn't settle in ${maxRounds} rounds`);
 }
+
+/**
+ * A few seconds of test-pattern video with a tone, made by ffmpeg (on the PATH here and on
+ * GitHub's runners): enough for the watch step's sound, small copy and frames.
+ */
+export async function sampleVideo(seconds = 3): Promise<Buffer> {
+  const { execFileSync } = await import("node:child_process");
+  return execFileSync(
+    "ffmpeg",
+    ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", `testsrc=size=640x360:rate=15:duration=${seconds}`]
+      .concat(["-f", "lavfi", "-i", `sine=frequency=440:duration=${seconds}`, "-shortest"])
+      .concat(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "frag_keyframe+empty_moov"])
+      .concat(["-f", "mp4", "pipe:1"]),
+    { maxBuffer: 50 * 1024 * 1024 },
+  );
+}

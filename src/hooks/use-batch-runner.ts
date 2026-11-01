@@ -10,7 +10,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const JOBS_AT_ONCE = 2;
 
 /**
- * Drives a bulk batch from the browser, two photos at a time. Like the single-job
+ * Drives a bulk batch from the browser, two photos at a time, after watching its video
+ * when it comes from one. Like the single-job
  * runner it only makes the calls the server lists as next, so pausing, a refresh or a
  * second tab never repeats finished work. Closing the tab pauses the batch; it starts
  * by itself only right after the upload (`autoStart`), otherwise it waits for Resume.
@@ -43,6 +44,19 @@ export function useBatchRunner(initial: BatchState, autoStart: boolean) {
     try {
       let s = await load();
       while (alive.current && wanted.current && s) {
+        // a video batch has no jobs until its video is watched, which makes them
+        if (s.watch?.url) {
+          const st = await fetch(s.watch.url, { method: "POST" })
+            .then((r) => r.status)
+            .catch(() => 0);
+          if (st === 401) {
+            router.push("/sign-in");
+            return;
+          }
+          if (st === 202 || st === 422 || st === 0) await sleep(2000);
+          s = await load();
+          continue;
+        }
         const active = s.rows.filter((r) => r.jobStatus === "processing" && r.next.length > 0).slice(0, JOBS_AT_ONCE);
         if (!active.length) break;
         const statuses = await Promise.all(

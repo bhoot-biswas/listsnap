@@ -6,6 +6,7 @@ import { GroupMode, Scene, writtenStatus } from "@/lib/schemas/pipeline";
 import { runStep, type StepOutcome } from "./run-step";
 import { groupStep, planStep, segmentStep } from "./job-steps";
 import { listenStep } from "./listen-step";
+import { watchStep } from "./watch-step";
 import { lookStep, renderStep, translateStep, writeStep } from "./listing-steps";
 import { reelStep } from "./reel-step";
 import { postStep } from "./post-step";
@@ -25,6 +26,8 @@ const LOCK_MS = 45_000;
 const RENDER_LOCK_MS = 150_000;
 // a reel waits its turn behind another render on this server, then takes about a minute
 const REEL_LOCK_MS = 360_000;
+// a video: its sound and a small copy (up to a minute on this server), Transcribe, then Spark Open watching
+const WATCH_LOCK_MS = 300_000;
 // Instagram processes a reel before it can be published; the provider waits for that
 const POST_LOCK_MS = 180_000;
 
@@ -56,6 +59,28 @@ export async function executeJobStep(
           : groupStep(ctx);
   const outcome = await runStep(sqlStepStore(ws.id), { jobId, step, target: "-" }, { lockMs: LOCK_MS, force }, work);
   await settleJob(ws, workspace, jobId);
+  return { found: true, outcome };
+}
+
+/**
+ * Watching the video a batch comes from, which makes the batch's jobs. A batch-level step,
+ * under the same rules: a second tab waits for the same watch instead of starting another.
+ */
+export async function executeWatchStep(
+  workspace: Workspace,
+  batchId: string,
+  ip: string,
+  force = false,
+): Promise<ExecuteResult> {
+  const ws = forWorkspace(workspace.id);
+  const batch = await ws.getBatch(batchId);
+  if (!batch?.video_media_id) return { found: false };
+  const outcome = await runStep(
+    sqlStepStore(ws.id, "batch_steps"),
+    { jobId: batchId, step: "watch", target: "-" },
+    { lockMs: WATCH_LOCK_MS, force },
+    () => watchStep({ ws, workspace, batchId, ip }),
+  );
   return { found: true, outcome };
 }
 

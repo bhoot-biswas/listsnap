@@ -23,7 +23,9 @@ export type MediaKind =
   // a 9:16 MP4 of one listing in one language
   | "reel"
   // the seller's voice note, a mono WAV
-  | "voice";
+  | "voice"
+  // a video of the seller's products, which a bulk batch is made from
+  | "video";
 
 export interface MediaRecord {
   id: string;
@@ -72,7 +74,14 @@ export async function saveMedia(
   },
 ): Promise<MediaRecord> {
   const id = randomUUID();
-  const ext = { "image/png": "png", "video/mp4": "mp4", "audio/wav": "wav" }[meta.mime] ?? "jpg";
+  const ext =
+    {
+      "image/png": "png",
+      "video/mp4": "mp4",
+      "video/quicktime": "mov",
+      "video/webm": "webm",
+      "audio/wav": "wav",
+    }[meta.mime] ?? "jpg";
   const rel = path.join(/*turbopackIgnore: true*/ workspaceId, new Date().toISOString().slice(0, 7), `${id}.${ext}`);
   const abs = path.join(/*turbopackIgnore: true*/ env().mediaDir, rel);
   await mkdir(path.dirname(/*turbopackIgnore: true*/ abs), { recursive: true });

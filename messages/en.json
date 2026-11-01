@@ -245,7 +245,8 @@
         "reel": "Making reels",
         "post": "Posting to Facebook and Instagram",
         "chat": "Assistant",
-        "listen": "Listening to the voice note"
+        "listen": "Listening to the voice note",
+        "watch": "Watching a video"
       }
     },
     "log": {
@@ -535,6 +536,15 @@
       "stop": "Stop recording",
       "recording": "Recording… {time} of {max}",
       "delete": "Delete the voice note"
+    },
+    "video": {
+      "title": "Got a video of your products?",
+      "hint": "Film your rack or table and say each price as you go. Up to {minutes, number} minutes; we'll make a listing for each product.",
+      "choose": "Upload a video",
+      "uploading": "Uploading… {percent, number}%",
+      "starting": "Starting…",
+      "tooLarge": "That video is over {mb, number} MB. Film a shorter one.",
+      "failed": "The video didn't upload. Try again."
     }
   },
   "job": {
@@ -989,7 +999,8 @@
       "sizes": "Sizes",
       "colors": "Colours",
       "material": "Material",
-      "note": "Note"
+      "note": "Note",
+      "titleVideo": "What you said in the video"
     }
   },
   "bulk": {
@@ -1035,6 +1046,16 @@
       "short": "{count, plural, one {# listing won’t get AI photos today. It still gets its text now, and you can make its photos after 6:00 AM Bangladesh time.} other {# listings won’t get AI photos today. They still get their text now, and you can make their photos after 6:00 AM Bangladesh time.}}",
       "go": "{count, plural, one {Upload # photo} other {Upload # photos}}",
       "cancel": "Cancel"
+    },
+    "video": {
+      "watching": "Watching your video…",
+      "paused": "Paused before watching your video.",
+      "watchingHint": "Listening to what you said and finding each product. This takes a minute or two; keep this page open.",
+      "found": "Found {count, plural, one {# product} other {# products}} in your video.",
+      "limited": "{count, plural, one {# more was} other {# more were}} left out: you've made today's listings.",
+      "failed": "We couldn't watch this video.",
+      "retry": "Try again",
+      "batchTitle": "From a video · {count, plural, one {# product} other {# products}}"
     }
   },
   "chat": {
@@ -1219,7 +1240,10 @@
       "shopifyNoAnswer": "Shopify didn't answer. Your listing is safe here; try again in a moment.",
       "shopifySaid": "Shopify said: {message}",
       "shopifyOptions": "This product's options were changed in Shopify, so ListSnap can't update its colours. Change them in Shopify instead.",
-      "voiceNoteMissing": "The voice note file is missing."
+      "voiceNoteMissing": "The voice note file is missing.",
+      "videoMissing": "The video file is missing.",
+      "videoUnreadable": "We couldn't play this video. Try filming it again.",
+      "noProductsInVideo": "We couldn't find any products in this video. Film each product clearly for a few seconds."
     },
     "details": {
       "lookingFor": "Looking for: \"{phrase}\"",
@@ -1281,7 +1305,12 @@
     "voiceNoteTooLarge": "That voice note is too large. Keep it under a minute.",
     "unreadableVoiceNote": "We couldn't play that voice note. Record it again.",
     "sendRecording": "Send the recording as multipart form data.",
-    "dictateLimit": "That's a lot of talking for one day. Type your message instead; voice comes back tomorrow."
+    "dictateLimit": "That's a lot of talking for one day. Type your message instead; voice comes back tomorrow.",
+    "notVideo": "Use an MP4, MOV or WebM video.",
+    "videoTooLarge": "That video is over {mb, number} MB. Film a shorter one.",
+    "videoTooLong": "Keep the video under {minutes, number} minutes.",
+    "unreadableVideo": "We couldn't play that video. Try filming it again.",
+    "videoLimit": "You've made today's listings from videos. You can upload more tomorrow."
   },
   "recorder": {
     "denied": "ListSnap can't use your microphone. Allow it in your browser's settings to record.",

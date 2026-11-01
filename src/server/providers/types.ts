@@ -14,6 +14,7 @@ import type { AssistRequest } from "@/lib/schemas/assist";
 import type { ReelTemplate, ReelVariables } from "@/lib/schemas/reels";
 import type { ChatMessage } from "@/lib/schemas/chat";
 import type { SellerFacts } from "@/lib/schemas/voice-note";
+import type { VideoProduct } from "@/lib/schemas/video";
 
 /**
  * Every outside service sits behind one of these interfaces, each with a mock and a
@@ -56,8 +57,11 @@ export interface MetaProvider {
     voice: BrandVoice,
     said: SellerFacts | null,
   ): Promise<ListingText>;
-  /** Muse Voice Transcribe: a mono 24 kHz WAV into words, in Bangla, English or both. */
-  transcribe(ctx: CallContext, wav: Buffer, keywords: string[]): Promise<Transcript>;
+  /**
+   * Muse Voice Transcribe: a mono 24 kHz WAV into words, in Bangla, English or both.
+   * `turns` asks for each spoken turn with its times too, as a video needs.
+   */
+  transcribe(ctx: CallContext, wav: Buffer, keywords: string[], turns?: boolean): Promise<Transcript>;
   translate(ctx: CallContext, listing: ListingText): Promise<BanglaText>;
   /** Review's per-field help: the new text for one field. */
   assist(ctx: CallContext, input: AssistInput): Promise<string>;
@@ -92,6 +96,8 @@ export interface MetaProvider {
 export interface Transcript {
   text: string;
   seconds: number;
+  /** Each spoken turn with its start and end, when asked for. */
+  turns: { startMs: number; endMs: number; text: string }[];
 }
 
 /**
@@ -103,6 +109,8 @@ export interface BasetenProvider {
   facts(ctx: CallContext, transcript: string, photo: Buffer): Promise<SellerFacts>;
   /** The fallback: what was heard, and the facts, from the audio alone. */
   factsFromAudio(ctx: CallContext, wav: Buffer, photo: Buffer): Promise<{ heard: string; facts: SellerFacts }>;
+  /** Watches a seller's video (an MP4, no sound) with their timed words, and lists its products. */
+  watch(ctx: CallContext, mp4: Buffer, transcript: string): Promise<VideoProduct[]>;
 }
 
 /** What a lifestyle scene in the seller's own shop needs from the brand kit. */
