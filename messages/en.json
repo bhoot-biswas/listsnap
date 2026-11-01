@@ -651,7 +651,13 @@
     "body": "Your work is saved. Try again, or go back to the dashboard.",
     "notFoundTitle": "Page not found",
     "notFoundBody": "This page doesn't exist or isn't in your shop.",
-    "goDashboard": "Go to Dashboard"
+    "goDashboard": "Go to Dashboard",
+    "bodyRetry": "Your work is saved. Try again in a moment.",
+    "goHome": "Go to home page",
+    "code": "Error code: {code}",
+    "bodyHome": "Your work is saved. Try again, or go to the home page.",
+    "goListings": "Go to Listings",
+    "notFoundPublic": "This page doesn't exist."
   },
   "offline": {
     "offline": "You're offline. Your work is safe and saves when you're back.",
