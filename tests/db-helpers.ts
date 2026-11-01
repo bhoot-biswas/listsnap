@@ -136,8 +136,8 @@ export async function runJob(workspace: Workspace, jobId: string, maxRounds = 20
 }
 
 /**
- * A few seconds of test-pattern video with a tone, made by ffmpeg (on the PATH here and on
- * GitHub's runners): enough for the watch step's sound, small copy and frames.
+ * A few seconds of test-pattern video with a tone, made by ffmpeg (CI installs it, as the
+ * server has it): enough for the watch step's sound, small copy and frames.
  */
 export async function sampleVideo(seconds = 3): Promise<Buffer> {
   const { execFileSync } = await import("node:child_process");
