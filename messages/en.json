@@ -192,7 +192,7 @@
     "snap": "Snap a product",
     "filters": "Filter by status",
     "all": "All",
-    "search": "Search titles",
+    "search": "Search titles, categories, tags",
     "searchGo": "Search",
     "noMatch": "No listings match.",
     "clear": "Show all listings",
@@ -206,7 +206,16 @@
     "confidence": "AI confidence",
     "created": "Made",
     "open": "Open",
-    "archived": "Archived"
+    "archived": "Archived",
+    "behind": "Store draft out of date",
+    "sortBy": "Order",
+    "sort": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "price_low": "Price: low to high",
+      "price_high": "Price: high to low",
+      "check": "Least sure first"
+    }
   },
   "usage": {
     "title": "Usage",
