@@ -1,0 +1,2 @@
+# Clears demo shops older than a day. Installed by DEPLOY.md to /etc/cron.d/listsnap-demo.
+30 4 * * * listsnap cd /srv/listsnap-current && /usr/bin/node --env-file=/etc/listsnap/env scripts/cleanup-demo.mjs >>/var/log/listsnap-demo.log 2>&1

@@ -1,5 +1,6 @@
 # ListSnap as a systemd service. Installed by DEPLOY.md to /etc/systemd/system/listsnap.service.
-# `next start` reads /srv/listsnap/.env.production.local, a link to /etc/listsnap/env.
+# It runs the live release, /srv/listsnap-current, a link the deploy switches; `next start`
+# reads the release's .env.production.local, a link to /etc/listsnap/env.
 
 [Unit]
 Description=ListSnap
@@ -10,8 +11,8 @@ Wants=mariadb.service
 Type=simple
 User=listsnap
 Group=listsnap
-WorkingDirectory=/srv/listsnap
-Environment=NODE_ENV=production
+WorkingDirectory=/srv/listsnap-current
+Environment=NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 # only Nginx on this machine talks to the app
 ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000
 Restart=always
@@ -19,12 +20,17 @@ RestartSec=3
 # next exits 143 on SIGTERM; a normal stop isn't a failure
 SuccessExitStatus=143
 
-# the app writes only its media folder and its own build
+# The app user owns the code, so the whole system is read-only to the app: it can't
+# change its own code or the deploy files. It writes only its media and reel browser
+# (/var/lib/listsnap), /tmp, and Next's cache, which is a folder of its own rather than
+# the build's.
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=full
+ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/listsnap /srv/listsnap
+ReadWritePaths=/var/lib/listsnap
+CacheDirectory=listsnap
+BindPaths=/var/cache/listsnap:/srv/listsnap-current/.next/cache
 
 [Install]
 WantedBy=multi-user.target
