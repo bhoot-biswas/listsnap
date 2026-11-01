@@ -4,8 +4,10 @@ import { ShopifyConnectForm } from "@/components/app/shopify-connect-form";
 import { PendingButton } from "@/components/app/form-buttons";
 import { connectTestMeta } from "@/server/actions/meta-connection";
 import { env } from "@/server/env";
+import { metaLoginOffered } from "@/server/social/meta-connect";
 import type { Service } from "@/lib/connectors";
 import { DetailSection } from "./detail-header";
+import { MetaLoginButton } from "./meta-login-button";
 
 /** How each service is connected: the same forms onboarding uses. */
 export async function ConnectStep({ service }: { service: Service }) {
@@ -29,6 +31,12 @@ export async function ConnectStep({ service }: { service: Service }) {
       ) : (
         <>
           <p className="text-sm text-muted-foreground">{t("meta.body")}</p>
+          {metaLoginOffered() && (
+            <div className="space-y-2">
+              <MetaLoginButton label={t("meta.connect")} />
+              <p className="text-xs text-muted-foreground">{t("meta.connectHint")}</p>
+            </div>
+          )}
           {testAllowed && (
             <form action={connectTestMeta} className="space-y-2">
               <PendingButton variant="outline" size="lg">
@@ -37,7 +45,7 @@ export async function ConnectStep({ service }: { service: Service }) {
               <p className="text-xs text-muted-foreground">{t("meta.testHint")}</p>
             </form>
           )}
-          <p className="text-xs text-muted-foreground">{t("meta.realSoon")}</p>
+          {!metaLoginOffered() && <p className="text-xs text-muted-foreground">{t("meta.realSoon")}</p>}
         </>
       )}
     </DetailSection>

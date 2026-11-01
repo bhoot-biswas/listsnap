@@ -9,6 +9,7 @@ import { Service, serviceHref } from "@/lib/connectors";
 import { DetailHeader } from "../../_components/detail-header";
 import { ConnectStep } from "../../_components/connect-step";
 import { ShopifyNotice } from "../../_components/shopify-notice";
+import { MetaNotice } from "../../_components/meta-notice";
 
 export async function generateMetadata({ params }: PageProps<"/connections/add/[service]">): Promise<Metadata> {
   const service = Service.safeParse((await params).service);
@@ -27,10 +28,17 @@ export default async function ConnectServicePage({ params, searchParams }: PageP
   const s = services.find((x) => x.service === service);
   // demo shops only have our WooCommerce test store
   if (!s) redirect("/connections/add");
-  const notice = (await searchParams).shopify;
+  const query = await searchParams;
+  const notice = query.shopify;
+  const metaNotice = query.meta;
   if (s.status !== "none") {
     // e.g. "Connect again" on a broken store comes back here with Shopify's answer
-    const q = typeof notice === "string" ? `?shopify=${encodeURIComponent(notice)}` : "";
+    const q =
+      typeof notice === "string"
+        ? `?shopify=${encodeURIComponent(notice)}`
+        : typeof metaNotice === "string"
+          ? `?meta=${encodeURIComponent(metaNotice)}`
+          : "";
     redirect(`${serviceHref(service)}${q}` as Route);
   }
 
@@ -39,6 +47,7 @@ export default async function ConnectServicePage({ params, searchParams }: PageP
       <TopBar title={t("connectService", { name: t(`names.${service}`) })} />
       <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-4 md:px-6 md:pb-6">
         {service === "shopify" && <ShopifyNotice value={notice} />}
+        {service === "meta" && <MetaNotice value={metaNotice} />}
         <DetailHeader s={s} back="add" />
         <ConnectStep service={service} />
       </div>
