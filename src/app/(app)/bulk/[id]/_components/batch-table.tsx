@@ -146,12 +146,12 @@ export function BatchTable({
     r.listing && r.listing.title ? (
       <Link
         href={`/job/${r.jobId}/review?l=${r.listing.id}`}
-        className="inline-flex min-h-10 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+        className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
       >
         {t("review")}
       </Link>
     ) : (
-      <Link href={`/job/${r.jobId}`} className="inline-flex min-h-10 items-center text-sm text-muted-foreground">
+      <Link href={`/job/${r.jobId}`} className="inline-flex min-h-11 items-center text-sm text-muted-foreground">
         {t("open")}
       </Link>
     );
@@ -240,6 +240,18 @@ export function BatchTable({
         </table>
       </div>
 
+      {/* the table's header box, for phones: ticking twenty cards one by one is too much */}
+      {savable.length > 0 && (
+        <label className="flex min-h-11 w-fit cursor-pointer items-center gap-3 px-3 text-sm font-medium md:hidden">
+          <input
+            type="checkbox"
+            className="size-5 accent-primary"
+            checked={allOn}
+            onChange={(e) => onSelectAll(e.target.checked ? savable : [])}
+          />
+          {t("selectAll")}
+        </label>
+      )}
       <ul className="space-y-3 md:hidden">
         {rows.map((r) => (
           <li key={r.jobId} className="flex items-center gap-3 rounded-xl border bg-card p-3">
