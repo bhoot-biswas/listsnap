@@ -5,6 +5,7 @@ import type { Workspace } from "@/server/db/workspaces";
 import { GroupMode, Scene, writtenStatus } from "@/lib/schemas/pipeline";
 import { runStep, type StepOutcome } from "./run-step";
 import { groupStep, planStep, segmentStep } from "./job-steps";
+import { listenStep } from "./listen-step";
 import { lookStep, renderStep, translateStep, writeStep } from "./listing-steps";
 import { reelStep } from "./reel-step";
 import { postStep } from "./post-step";
@@ -46,7 +47,13 @@ export async function executeJobStep(
   if (force && job.status === "failed") await ws.transitionJob(jobId, "failed", "processing");
   const ctx = { ws, jobId };
   const work = (): Promise<unknown> =>
-    step === "plan" ? planStep(ctx) : step === "segment" ? segmentStep(ctx) : groupStep(ctx);
+    step === "plan"
+      ? planStep(ctx)
+      : step === "segment"
+        ? segmentStep(ctx)
+        : step === "listen"
+          ? listenStep(ctx)
+          : groupStep(ctx);
   const outcome = await runStep(sqlStepStore(ws.id), { jobId, step, target: "-" }, { lockMs: LOCK_MS, force }, work);
   await settleJob(ws, workspace, jobId);
   return { found: true, outcome };
@@ -227,6 +234,7 @@ async function settleJob(ws: WorkspaceScope, workspace: Workspace, jobId: string
     translate: workspace.settings.listingLanguages.includes("bn"),
   };
   if (!isSettled(input)) return;
-  const jobStepFailed = steps.some((s) => s.target === "-" && s.status === "failed");
+  // a voice note that couldn't be heard leaves the listing written from the photo, not a failed job
+  const jobStepFailed = steps.some((s) => s.target === "-" && s.step !== "listen" && s.status === "failed");
   await ws.transitionJob(jobId, "processing", jobStepFailed || !listings.length ? "failed" : "ready");
 }

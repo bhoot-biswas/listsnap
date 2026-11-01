@@ -244,7 +244,8 @@
         "look": "Making more looks",
         "reel": "Making reels",
         "post": "Posting to Facebook and Instagram",
-        "chat": "Assistant"
+        "chat": "Assistant",
+        "listen": "Listening to the voice note"
       }
     },
     "log": {
@@ -526,12 +527,23 @@
     "eachOwn": "One listing each",
     "eachOwnHint": "Different products, listed together in bulk",
     "sameProduct": "Same product, different angles",
-    "sameProductHint": "One listing with all the photos"
+    "sameProductHint": "One listing with all the photos",
+    "voice": {
+      "title": "Add a voice note (optional)",
+      "hint": "Say the price, sizes, how many you have and the fabric. Bangla, English or both.",
+      "record": "Record a voice note",
+      "stop": "Stop recording",
+      "recording": "Recording… {time} of {max}",
+      "delete": "Delete the voice note",
+      "denied": "ListSnap can't use your microphone. Allow it in your browser's settings to record.",
+      "unsupported": "This browser can't record. Try Chrome, or type the details on Review."
+    }
   },
   "job": {
     "title": "Making your listing",
     "steps": {
       "upload": "Uploaded",
+      "listen": "Listening to your voice note",
       "plan": "Understanding the photo",
       "segment": "Cutting out the product",
       "group": "Grouping the items",
@@ -966,6 +978,20 @@
         "priceLine": "Price: {price}",
         "cta": "Message us to order."
       }
+    },
+    "voiceNote": {
+      "title": "Your voice note",
+      "notHeard": "We couldn't hear this voice note, so the listing was written from the photo.",
+      "silent": "No words were heard in this voice note.",
+      "used": "Used in this listing:",
+      "usedCheckPrice": "Used in this listing. We heard it from the recording itself, so check the price before you save it:",
+      "notUsed": "This photo became several listings, so the note wasn't used for any of them. What you said:",
+      "price": "Price",
+      "stock": "Stock",
+      "sizes": "Sizes",
+      "colors": "Colours",
+      "material": "Material",
+      "note": "Note"
     }
   },
   "bulk": {
@@ -1186,13 +1212,15 @@
       "shopifyProblem": "Shopify had a problem (error {status}). Your listing is safe here.",
       "shopifyNoAnswer": "Shopify didn't answer. Your listing is safe here; try again in a moment.",
       "shopifySaid": "Shopify said: {message}",
-      "shopifyOptions": "This product's options were changed in Shopify, so ListSnap can't update its colours. Change them in Shopify instead."
+      "shopifyOptions": "This product's options were changed in Shopify, so ListSnap can't update its colours. Change them in Shopify instead.",
+      "voiceNoteMissing": "The voice note file is missing."
     },
     "details": {
       "lookingFor": "Looking for: \"{phrase}\"",
       "found": "{count, plural, one {# item} other {# items}} for \"{phrase}\" · fills {fill, number}% of the frame",
       "foundRetried": "{count, plural, one {# item} other {# items}} for \"{phrase}\" (after trying \"{first}\") · fills {fill, number}% of the frame",
-      "quoted": "\"{title}\""
+      "quoted": "\"{title}\"",
+      "heard": "Heard: \"{text}\""
     }
   },
   "archive": {
@@ -1242,6 +1270,9 @@
     "unknownLook": "Unknown look.",
     "unknownLanguage": "Unknown language.",
     "unknownScene": "Unknown scene.",
-    "invalidRequest": "Invalid request."
+    "invalidRequest": "Invalid request.",
+    "notVoiceNote": "That file isn't a voice recording.",
+    "voiceNoteTooLarge": "That voice note is too large. Keep it under a minute.",
+    "unreadableVoiceNote": "We couldn't play that voice note. Record it again."
   }
 }

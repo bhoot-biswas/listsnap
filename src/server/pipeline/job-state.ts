@@ -40,6 +40,10 @@ function detail(step: string, result: unknown, locale: Locale): string | null {
     const retried = r.tried.length > 1 && r.phrase !== r.tried[0];
     return retried ? t("foundRetried", { ...found, first: r.tried[0]! }) : t("found", found);
   }
+  if (step === "listen") {
+    const heard = (result as { transcript?: string }).transcript ?? "";
+    return heard ? t("heard", { text: heard.length > 80 ? `${heard.slice(0, 80)}…` : heard }) : null;
+  }
   // the model writes this reason in English; it is shown as written
   if (step === "group") return (result as GroupResult).reason;
   if (step === "write" || step === "translate")

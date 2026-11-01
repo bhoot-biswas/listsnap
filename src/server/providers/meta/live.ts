@@ -18,7 +18,8 @@ import {
 import { SAM_COST_USD, SAM_MODEL, SamRejectedError, samSegment } from "./sam";
 import { liveAssist } from "./assist";
 import { liveChat } from "./chat";
-import { BANGLA_SYSTEM, MATCH_SYSTEM, SELLER_CONTEXT, writeSystem } from "./prompts";
+import { BANGLA_SYSTEM, MATCH_SYSTEM, SELLER_CONTEXT, saidText, writeSystem } from "./prompts";
+import { liveTranscribe } from "./transcribe";
 import { photoDataUrl, SPARK_EFFORT, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
 
 /**
@@ -80,7 +81,7 @@ export const liveMeta: MetaProvider = {
     return r.data;
   },
 
-  write: async (ctx, photo, plan, voice) => {
+  write: async (ctx, photo, plan, voice, said) => {
     const imageUrl = await photoDataUrl(photo);
     const firstLook = JSON.stringify({ product: plan.sam_phrase, category: plan.category_guess });
     const r = await logged(
@@ -92,10 +93,13 @@ export const liveMeta: MetaProvider = {
           effort: SPARK_EFFORT.write,
           schema: ListingText,
           system: writeSystem(voice),
-          userText: `Write the listing for the product in this photo. A first look found: ${firstLook}.`,
+          userText: `Write the listing for the product in this photo. A first look found: ${firstLook}.${saidText(said)}`,
           imageUrl,
         }),
-      (r) => ({ summary: `"${r.data.title}" · confidence ${r.data.confidence}${retried(r)}`, costUsd: r.costUsd }),
+      (r) => ({
+        summary: `"${r.data.title}" · confidence ${r.data.confidence}${said ? " · with voice note" : ""}${retried(r)}`,
+        costUsd: r.costUsd,
+      }),
     );
     return r.data;
   },
@@ -117,6 +121,8 @@ export const liveMeta: MetaProvider = {
     );
     return r.data;
   },
+
+  transcribe: liveTranscribe,
 
   assist: liveAssist,
 

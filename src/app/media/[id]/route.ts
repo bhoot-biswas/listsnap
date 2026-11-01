@@ -7,7 +7,7 @@ const ID = /^([0-9a-f-]{36})(?:\.(?:jpg|png|mp4))?$/;
 const RANGE = /^bytes=(\d*)-(\d*)$/;
 
 /**
- * Serves a workspace's images and reels. Workspace-checked: another shop's id answers 404, the
+ * Serves a workspace's images, reels and voice notes. Workspace-checked: another shop's id answers 404, the
  * same as an id that doesn't exist. A store downloading product images has no session,
  * so it gets a short-lived signed link instead (media/signed.ts).
  *

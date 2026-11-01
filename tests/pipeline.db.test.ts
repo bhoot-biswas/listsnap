@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { createTestJob, createTestWorkspace, dbEnv, runJob, samplePhoto, widePhoto } from "./db-helpers";
+import { createTestJob, createTestWorkspace, dbEnv, runJob, samplePhoto, sampleVoice, widePhoto } from "./db-helpers";
 
 // A whole job through the mock providers and the real database, the way the browser drives it.
 const enabled = dbEnv();
@@ -48,6 +48,30 @@ describe.skipIf(!enabled)("pipeline end to end (mock providers, MariaDB)", async
     // each outside call was logged, in mock mode
     expect(state.calls.length).toBeGreaterThanOrEqual(5);
     expect(state.calls.every((c) => c.mode === "mock" && c.ok)).toBe(true);
+  });
+
+  it("fills in the price, stock and sizes the seller said in a voice note", async () => {
+    const jobId = await createTestJob(shop.workspace.id, await samplePhoto("saree.jpg"), sampleVoice());
+    const state = await runJob(shop.workspace, jobId);
+
+    expect(state.status).toBe("ready");
+    const listen = state.steps.find((s) => s.step === "listen");
+    expect(listen?.status).toBe("done");
+    expect(listen?.detail).toContain("থ্রি পিস");
+    const listing = await ws.getListing(state.listings[0]!.id);
+    // the mock seller said ৳1500 and twelve in stock
+    expect(listing!.price_bdt).toBe(1500);
+    expect(listing!.stock_qty).toBe(12);
+    const en = listing!.fields_json?.en as { attributes: { name: string; value: string }[] };
+    expect(en.attributes).toContainEqual({ name: "Size", value: "M, L, XL" });
+    expect(state.calls.map((c) => c.step)).toEqual(expect.arrayContaining(["listen", "write"]));
+  });
+
+  it("leaves a job without a voice note as it was", async () => {
+    const jobId = await createTestJob(shop.workspace.id, await samplePhoto("saree.jpg"));
+    const state = await runJob(shop.workspace, jobId);
+    expect(state.steps.some((s) => s.step === "listen")).toBe(false);
+    expect((await ws.getListing(state.listings[0]!.id))!.price_bdt).toBeNull();
   });
 
   it("never redoes a finished step", async () => {

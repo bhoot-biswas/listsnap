@@ -16,7 +16,7 @@ The config files are in [`deploy/`](deploy). Run every command below on the serv
 apt update && apt -y upgrade
 apt -y install nginx mariadb-server git curl unzip ufw fail2ban \
   php8.3-fpm php8.3-mysql php8.3-curl php8.3-gd php8.3-intl php8.3-mbstring php8.3-xml php8.3-zip
-# reels: ffmpeg encodes them, and headless Chrome (fetched by deploy.sh) needs these libraries
+# reels and voice notes: ffmpeg encodes them, and headless Chrome (fetched by deploy.sh) needs these libraries
 apt -y install ffmpeg libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 \
   libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 libcairo2
 # 2 GB of swap: a safety net for the build

@@ -25,6 +25,10 @@ const isWide = async (photo: Buffer) => {
   return (m.width ?? 1) >= 2 * (m.height ?? 1);
 };
 
+/** What the mock "hears" in every voice note: a seller pricing a cotton three-piece. */
+export const MOCK_TRANSCRIPT =
+  "এটা আমাদের নতুন সুতি থ্রি পিস, মেরুন কালার। সাইজ আছে এম, এল আর এক্সেল। প্রাইস দেড় হাজার টাকা। স্টকে আছে বারোটা।";
+
 const SPARK = { provider: "meta", model: "muse-spark-1.3 (mock)", mode: "mock" } as const;
 const SAM = { provider: "meta", model: "sam-3.1 (mock)", mode: "mock" } as const;
 const IMAGE = { provider: "meta", model: "muse-image-1.0 (mock)", mode: "mock" } as const;
@@ -140,14 +144,19 @@ export const mockMeta: MetaProvider = {
       (r) => ({ summary: `suggest ${r.mode} · ${r.colors.join(", ")}`, costUsd: 0 }),
     ),
 
-  write: (ctx, _photo, plan) =>
+  write: (ctx, _photo, plan, _voice, said) =>
     logged(
       ctx,
       { ...SPARK, endpoint: "chat/completions" },
       async (): Promise<ListingText> => {
         await delay();
         const bag = plan.category_guess === "Bags";
-        return {
+        // what the seller said joins the attributes, as the live model is asked to do
+        const spoken = [
+          ...(said?.sizes.length ? [{ name: "Size", value: said.sizes.join(", ") }] : []),
+          ...(said?.material ? [{ name: "Material", value: said.material }] : []),
+        ];
+        const text: ListingText = {
           title: bag ? "Handloom Cotton Tote Bag" : "Handwoven Jamdani Saree with Zari Border",
           short_description: bag
             ? "A roomy handloom tote for daily use, woven in soft cotton."
@@ -171,8 +180,26 @@ export const mockMeta: MetaProvider = {
           confidence: bag ? 0.82 : 0.66,
           check_notes: bag ? [] : ["Check the fabric: handloom or powerloom, cotton or silk blend."],
         };
+        return spoken.length
+          ? {
+              ...text,
+              attributes: [...spoken, ...text.attributes.filter((a) => !spoken.some((s) => s.name === a.name))],
+            }
+          : text;
       },
-      (r) => ({ summary: `"${r.title}" · confidence ${r.confidence}`, costUsd: 0 }),
+      (r) => ({ summary: `"${r.title}" · confidence ${r.confidence}${said ? " · with voice note" : ""}`, costUsd: 0 }),
+    ),
+
+  transcribe: (ctx, wav) =>
+    logged(
+      ctx,
+      { provider: "meta", model: "muse-voice-transcribe-1.0 (mock)", endpoint: "asr/transcribe", mode: "mock" },
+      async () => {
+        await delay();
+        // the length is real, so the Review player and the log agree
+        return { text: MOCK_TRANSCRIPT, seconds: Math.max(0, wav.length - 44) / 48_000 };
+      },
+      (t) => ({ summary: `${t.seconds.toFixed(1)} s heard · ${t.text.length} characters`, costUsd: 0 }),
     ),
 
   translate: (ctx, listing) =>

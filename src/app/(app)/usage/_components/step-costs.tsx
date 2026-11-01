@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import type { UsageStep } from "@/server/db/scope";
 
 const KNOWN = new Set([
+  "listen",
   "plan",
   "segment",
   "group",
