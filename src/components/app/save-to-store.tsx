@@ -58,6 +58,8 @@ export function SaveToStore({
   const run = async () => {
     setSaving(true);
     if (beforeSave && !(await beforeSave())) {
+      // the store would get an older copy than what's on screen, so say why nothing happened
+      toast.error(navigator.onLine === false ? t("editsOffline") : t("editsNotSaved"));
       setSaving(false);
       return;
     }
