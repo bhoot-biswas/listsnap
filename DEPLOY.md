@@ -16,7 +16,7 @@ The config files are in [`deploy/`](deploy). Run every command below on the serv
 apt update && apt -y upgrade
 apt -y install nginx mariadb-server git curl unzip ufw fail2ban \
   php8.3-fpm php8.3-mysql php8.3-curl php8.3-gd php8.3-intl php8.3-mbstring php8.3-xml php8.3-zip
-# reels and voice notes: ffmpeg encodes them, and headless Chrome (fetched by deploy.sh) needs these libraries
+# reels and voice notes: ffmpeg encodes them, and headless Chrome (fetched by the deploy) needs these libraries
 apt -y install ffmpeg libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 \
   libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 libcairo2
 # 2 GB of swap: a safety net for the build
@@ -76,21 +76,32 @@ PROVIDER_MODE_INSTAGRAM=mock
 EOF
 chown root:listsnap /etc/listsnap /etc/listsnap/env
 chmod 750 /etc/listsnap && chmod 640 /etc/listsnap/env
-# next build and next start read this link
-sudo -u listsnap ln -s /etc/listsnap/env /srv/listsnap/.env.production.local
 ```
+
+Each release the deploy builds gets its own `.env.production.local`, a link to this file, which `next build` and `next start` read.
 
 The secrets live only in `/etc/listsnap/env` on the server. Don't copy them anywhere else, and never commit them.
 
 ## 5. First deploy
 
+The deploy script, the service and the nightly jobs run as root, so root installs its own copies of them. The copies in `/srv/listsnap` belong to the app user, and anything that runs as that user could change them.
+
 ```bash
-cp /srv/listsnap/deploy/listsnap.service /etc/systemd/system/
+install -m 755 /srv/listsnap/deploy/deploy.sh /usr/local/sbin/listsnap-deploy
+install -m 644 /srv/listsnap/deploy/listsnap.service /etc/systemd/system/listsnap.service
+install -m 755 /srv/listsnap/deploy/backup-db.sh /etc/cron.daily/listsnap-db
+install -m 755 /srv/listsnap/deploy/backup-media.sh /etc/cron.daily/listsnap-media
+install -m 644 /srv/listsnap/deploy/listsnap-demo.cron /etc/cron.d/listsnap-demo
+touch /var/log/listsnap-demo.log && chown listsnap /var/log/listsnap-demo.log
 systemctl daemon-reload && systemctl enable listsnap
-bash /srv/listsnap/deploy/deploy.sh
+listsnap-deploy
 ```
 
-The deploy script pulls `main`, installs packages, migrates the database, builds (about a minute) and restarts the app. It ends with `✓ Live:` and the health report: `"database":"ok"`, `"media":"ok"`, and all secrets `true`.
+The deploy pulls `main` into `/srv/listsnap`, then unpacks it into a release folder of its own (`/srv/listsnap-releases/<time>-<commit>`). There it installs packages, migrates the database and builds. The build runs in a cage of 3 GB and one CPU, so it can't starve the live site; it reuses the live release's build cache, which brings it down to seconds. Only then does the deploy point `/srv/listsnap-current` at the new release and restart the app. It ends with `✓ Live:` and the health report: `"database":"ok"`, `"media":"ok"`, `"config":"ok"`, and all secrets `true`.
+
+If the new release fails the health check, the deploy switches straight back to the one before. It keeps the last three releases.
+
+When `main` changes one of the files above, the deploy stops before building. It shows the diff and the `install` commands to run; read the diff, run them, and deploy again.
 
 ## 6. Nginx and HTTPS
 
@@ -164,28 +175,24 @@ Save with Ctrl+O, then Enter, and exit with Ctrl+X. Then restart:
 systemctl restart listsnap
 ```
 
-Only `NEXT_PUBLIC_SITE_URL` needs a rebuild (`deploy.sh`) when changed; everything else needs just the restart.
+Only `NEXT_PUBLIC_SITE_URL` needs a rebuild (`listsnap-deploy --rebuild`) when changed; everything else needs just the restart.
 
 In production the health check also checks these settings: the site URL must be `https`, `BETTER_AUTH_SECRET` at least 32 characters, `CREDENTIALS_KEY` 32 bytes in base64, and each live service needs its key. If one is missing, the health check answers `503` with `"config":"incomplete"`, and on the server it names the setting (never its value).
 
 ## 9. Backups
 
+Step 5 installed the nightly jobs. Run them once to check:
+
 ```bash
-install -m 755 /srv/listsnap/deploy/backup-db.sh /etc/cron.daily/listsnap-db
-install -m 755 /srv/listsnap/deploy/backup-media.sh /etc/cron.daily/listsnap-media
 /etc/cron.daily/listsnap-db && /etc/cron.daily/listsnap-media && ls -lh /var/backups/listsnap /var/backups/listsnap/media
 ```
 
 Both databases are dumped every night and kept for 7 days. Seller media (`/var/lib/listsnap/media`) gets a snapshot every night, also kept for 7; files that didn't change are hard links to the night before, so each night costs only what's new. Both are on the same disk: they cover mistakes and bad deploys, and Hostinger's VPS snapshots cover losing the disk.
 
-Demo shops expire after a day. Delete them, with their photos and their drafts in the demo store, every night after the backup. The same run deletes cutouts no listing uses any more (left behind when a photo is cut out again):
+Demo shops expire after a day. The `listsnap-demo` job deletes them every night after the backup, with their photos and their drafts in the demo store, and deletes cutouts no listing uses any more (left behind when a photo is cut out again). To see what it would delete:
 
 ```bash
-cat > /etc/cron.d/listsnap-demo <<'EOF'
-30 4 * * * listsnap cd /srv/listsnap && /usr/bin/node --env-file=/etc/listsnap/env scripts/cleanup-demo.mjs >>/var/log/listsnap-demo.log 2>&1
-EOF
-touch /var/log/listsnap-demo.log && chown listsnap /var/log/listsnap-demo.log
-sudo -u listsnap sh -c 'cd /srv/listsnap && node --env-file=/etc/listsnap/env scripts/cleanup-demo.mjs --dry-run'
+sudo -u listsnap sh -c 'cd /srv/listsnap-current && node --env-file=/etc/listsnap/env scripts/cleanup-demo.mjs --dry-run'
 ```
 
 ## 10. Lock down SSH
@@ -221,19 +228,48 @@ sshd -t && systemctl reload ssh
 After merging to `main`:
 
 ```bash
-ssh root@YOUR_SERVER_IP bash /srv/listsnap/deploy/deploy.sh
+ssh root@YOUR_SERVER_IP listsnap-deploy
 ```
 
-New migrations run as part of it. The site is unavailable for about a minute while it builds, so deploy when no one is mid-listing.
+New migrations run as part of it, before the switch, while the old release still serves. So a migration must leave the database usable by the release before it: add columns and tables, and rename or drop them only in a later deploy. The site keeps serving while the new release builds; it is away only for the few seconds of the restart.
+
+To go back to the release before:
+
+```bash
+ssh root@YOUR_SERVER_IP listsnap-deploy --rollback
+```
+
+A rollback doesn't undo migrations, which is why they must only add.
+
+## Moving an older server to release folders (once)
+
+Servers set up before release folders run the app from `/srv/listsnap` itself, with `bash /srv/listsnap/deploy/deploy.sh`. To move one over, once the change is on `main`:
+
+```bash
+sudo -u listsnap git -C /srv/listsnap fetch --quiet origin main
+sudo -u listsnap git -C /srv/listsnap reset --hard --quiet origin/main
+install -m 755 /srv/listsnap/deploy/deploy.sh /usr/local/sbin/listsnap-deploy
+install -m 644 /srv/listsnap/deploy/listsnap.service /etc/systemd/system/listsnap.service
+install -m 755 /srv/listsnap/deploy/backup-db.sh /etc/cron.daily/listsnap-db
+install -m 755 /srv/listsnap/deploy/backup-media.sh /etc/cron.daily/listsnap-media
+install -m 644 /srv/listsnap/deploy/listsnap-demo.cron /etc/cron.d/listsnap-demo
+# the build that is running now stands in as the release before, so a failed first deploy switches back to it
+ln -sfn /srv/listsnap /srv/listsnap-current
+systemctl daemon-reload
+listsnap-deploy
+```
+
+Until a second release exists, `--rollback` has nothing to go back to; to go back to the old build, run `ln -sfn /srv/listsnap /srv/listsnap-current && systemctl restart listsnap`. Once a second release has gone live, the old build is no longer needed: `rm -rf /srv/listsnap/node_modules /srv/listsnap/.next /srv/listsnap/.env.production.local`.
 
 ## When something's wrong
 
-| What      | Where to look                                               |
-| --------- | ----------------------------------------------------------- |
-| The app   | `journalctl -u listsnap -n 100` (add `-f` to follow)        |
-| Nginx     | `tail -n 50 /var/log/nginx/error.log`                       |
-| A deploy  | The output of `deploy.sh`; it stops at the step that failed |
-| Is it up? | `curl -s localhost:3000/api/health`                         |
+| What          | Where to look                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------------- |
+| The app       | `journalctl -u listsnap -n 100` (add `-f` to follow)                                                 |
+| Nginx         | `tail -n 50 /var/log/nginx/error.log`                                                                |
+| A deploy      | The output of `listsnap-deploy`; it stops at the step that failed, and the live release is untouched |
+| A bad release | `listsnap-deploy --rollback`                                                                         |
+| Is it up?     | `curl -s localhost:3000/api/health`                                                                  |
 
 **Daily limits:** 20 listings and 60 AI photos per shop per day, reset at midnight UTC (6:00 AM in Bangladesh). Demo shops are also capped at 20 listings per visitor per day. A shop's limits are the `daily_listing_limit` and `daily_image_limit` columns on `workspaces`.
 
