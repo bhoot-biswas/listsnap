@@ -192,7 +192,7 @@
     "snap": "Snap a product",
     "filters": "Filter by status",
     "all": "All",
-    "search": "Search titles",
+    "search": "Search titles, categories, tags",
     "searchGo": "Search",
     "noMatch": "No listings match.",
     "clear": "Show all listings",
@@ -206,7 +206,27 @@
     "confidence": "AI confidence",
     "created": "Made",
     "open": "Open",
-    "archived": "Archived"
+    "archived": "Archived",
+    "behind": "Store draft out of date",
+    "sortBy": "Order",
+    "sort": {
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "price_low": "Price: low to high",
+      "price_high": "Price: high to low",
+      "check": "Least sure first"
+    },
+    "suggested": "suggested, not set yet",
+    "suggestedHint": "The suggested price. Set your own on the listing.",
+    "storesIn": "Saved to:",
+    "behindShort": "Draft out of date",
+    "selectAll": "Select all on this page",
+    "selectRow": "Select {title}",
+    "selectedCount": "{count, plural, one {# selected} other {# selected}}",
+    "saveCount": "{count, plural, one {Save # to store} other {Save # to store}}",
+    "archivedCount": "{count, plural, one {Archived # listing.} other {Archived # listings.}}",
+    "restoredCount": "{count, plural, one {Restored # listing.} other {Restored # listings.}}",
+    "clearSelection": "Clear selection"
   },
   "usage": {
     "title": "Usage",

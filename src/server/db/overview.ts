@@ -1,6 +1,7 @@
 import "server-only";
 import { select, selectOne } from "./pool";
 import type { ListingStatus } from "./listings";
+import { StoreKind } from "@/lib/stores";
 
 /**
  * Read-only queries for the Listings page and the Dashboard, bound to one workspace.
@@ -8,6 +9,24 @@ import type { ListingStatus } from "./listings";
  */
 
 export const LISTING_PAGE_SIZE = 20;
+
+/** Orders the Listings page offers; "check" puts the listings the model was least sure of first. */
+export const LISTING_SORTS = ["newest", "oldest", "price_low", "price_high", "check"] as const;
+export type ListingSort = (typeof LISTING_SORTS)[number];
+
+const ORDER: Record<ListingSort, string> = {
+  newest: "l.created_at DESC, l.sort",
+  oldest: "l.created_at, l.sort",
+  // a listing still waiting for its price goes last either way, not first as NULL would
+  price_low: "l.price_bdt IS NULL, l.price_bdt, l.created_at DESC, l.sort",
+  price_high: "l.price_bdt IS NULL, l.price_bdt DESC, l.created_at DESC, l.sort",
+  check: "l.confidence IS NULL, l.confidence, l.created_at DESC, l.sort",
+};
+
+/** What a listing's search reads: titles, categories and tags in both languages. */
+const SEARCHED = `JSON_EXTRACT(l.fields_json, '$.en.title', '$.bn.title', '$.en.category', '$.bn.category', '$.en.tags', '$.bn.tags')`;
+/** Saved to a store, then changed: the store's draft is behind. */
+const BEHIND = "(l.sent_at IS NOT NULL AND l.edited_at > l.sent_at)";
 
 export interface ListingListRow {
   id: string;
@@ -25,6 +44,9 @@ export interface ListingListRow {
   colors: number;
   cutout_media_id: string | null;
   created_at: Date;
+  /** The stores holding a draft of it. */
+  stores: StoreKind[];
+  behind: boolean;
 }
 
 export interface AttentionRow {
@@ -71,50 +93,85 @@ const CUTOUT = `(SELECT i.cutout_media_id FROM items i
 
 /** LIKE treats % and _ as wildcards; a seller searching "50%" means the characters. */
 const likeTerm = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+// JSON text compares as binary; the collation makes "light" find "Light"
+const SEARCH = `${SEARCHED} COLLATE utf8mb4_unicode_ci LIKE ?`;
 
 export function overviewQueries(ws: string) {
   return {
-    /** One page of listings; `archived` shows the archived ones instead of the rest. */
-    async listingPage(opts: { status: ListingStatus | null; q: string; page: number; archived?: boolean }) {
+    /**
+     * One page of listings; `archived` shows the archived ones instead of the rest, and
+     * `behind` the ones whose store draft is older than the seller's last change.
+     */
+    async listingPage(opts: {
+      status: ListingStatus | null;
+      q: string;
+      page: number;
+      archived?: boolean;
+      behind?: boolean;
+      sort?: ListingSort;
+    }) {
       const where = ["l.workspace_id = ?", `l.archived_at IS ${opts.archived ? "NOT " : ""}NULL`];
       const params: (string | number)[] = [ws];
       if (opts.status) {
         where.push("l.status = ?");
         params.push(opts.status);
       }
+      if (opts.behind) where.push(BEHIND);
       if (opts.q) {
-        // JSON text compares as binary; the collation makes "light" find "Light"
-        where.push(
-          `(${TITLE} COLLATE utf8mb4_unicode_ci LIKE ? OR JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.bn.title')) COLLATE utf8mb4_unicode_ci LIKE ?)`,
-        );
-        params.push(likeTerm(opts.q), likeTerm(opts.q));
+        where.push(SEARCH);
+        params.push(likeTerm(opts.q));
       }
       const filter = where.join(" AND ");
       const [rows, total] = await Promise.all([
-        select<ListingListRow>(
+        select<Omit<ListingListRow, "stores" | "behind"> & { stores: string | null; behind: number }>(
           `SELECT l.id, l.job_id, l.status, l.price_bdt, l.confidence, l.created_at, ${TITLE} AS title, ${TITLE_BN} AS title_bn,
                   JSON_UNQUOTE(JSON_EXTRACT(l.fields_json, '$.en.category')) AS category,
                   CAST(JSON_VALUE(l.fields_json, '$.en.price_hint_bdt.low') AS SIGNED) AS hint_low,
                   CAST(JSON_VALUE(l.fields_json, '$.en.price_hint_bdt.high') AS SIGNED) AS hint_high,
                   IF(j.group_mode = 'variants', JSON_LENGTH(l.item_ids_json), 0) AS colors,
-                  ${CUTOUT} AS cutout_media_id
+                  ${CUTOUT} AS cutout_media_id,
+                  (SELECT GROUP_CONCAT(sp.kind ORDER BY sp.kind) FROM listing_store_products sp
+                    WHERE sp.listing_id = l.id AND sp.workspace_id = l.workspace_id) AS stores,
+                  ${BEHIND} AS behind
              FROM listings l JOIN jobs j ON j.id = l.job_id
             WHERE ${filter}
-            ORDER BY l.created_at DESC, l.sort LIMIT ? OFFSET ?`,
+            ORDER BY ${ORDER[opts.sort ?? "newest"]} LIMIT ? OFFSET ?`,
           [...params, LISTING_PAGE_SIZE, (opts.page - 1) * LISTING_PAGE_SIZE],
         ),
         selectOne<{ n: number }>(`SELECT COUNT(*) AS n FROM listings l WHERE ${filter}`, params),
       ]);
-      return { rows, total: Number(total?.n ?? 0) };
+      return {
+        rows: rows.map((r) => ({
+          ...r,
+          stores: (r.stores?.split(",") ?? []).filter((k): k is StoreKind => StoreKind.safeParse(k).success),
+          behind: !!Number(r.behind),
+        })),
+        total: Number(total?.n ?? 0),
+      };
     },
 
-    /** Listings per status, for the filter chips' counts; archived ones count only as archived. */
-    async statusCounts(): Promise<Partial<Record<ListingStatus | "archived", number>>> {
-      const rows = await select<{ status: ListingStatus | "archived"; n: number }>(
-        "SELECT IF(archived_at IS NULL, status, 'archived') AS status, COUNT(*) AS n FROM listings WHERE workspace_id = ? GROUP BY 1",
-        [ws],
+    /**
+     * Listings per status for the filter chips, within the search so a chip's count is
+     * what it opens. Archived ones count only as archived; `behind` is counted on its own.
+     */
+    async statusCounts(q = ""): Promise<Partial<Record<ListingStatus | "archived" | "behind", number>>> {
+      const search = q ? ` AND ${SEARCH}` : "";
+      const params = q ? [ws, likeTerm(q)] : [ws];
+      const [rows, behind] = await Promise.all([
+        select<{ status: ListingStatus | "archived"; n: number }>(
+          `SELECT IF(l.archived_at IS NULL, l.status, 'archived') AS status, COUNT(*) AS n FROM listings l WHERE l.workspace_id = ?${search} GROUP BY 1`,
+          params,
+        ),
+        selectOne<{ n: number }>(
+          `SELECT COUNT(*) AS n FROM listings l WHERE l.workspace_id = ? AND l.archived_at IS NULL AND ${BEHIND}${search}`,
+          params,
+        ),
+      ]);
+      const counts: Partial<Record<ListingStatus | "archived" | "behind", number>> = Object.fromEntries(
+        rows.map((r) => [r.status, Number(r.n)]),
       );
-      return Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
+      if (Number(behind?.n)) counts.behind = Number(behind!.n);
+      return counts;
     },
 
     async dashboardStats(): Promise<DashboardStats> {
