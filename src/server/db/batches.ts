@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { execute, select, selectOne } from "./pool";
+import { execute, select, selectOne, transaction } from "./pool";
 import { LISTING_COLUMNS, type ListingRow } from "./listings";
 import type { ItemRow, JobRow, PhotoRow, StepRowView } from "./scope";
 
@@ -60,10 +60,51 @@ export function batchQueries(ws: string) {
       return id;
     },
 
+    /** A batch whose jobs come from a video: empty until its watch step finds the products. */
+    async createVideoBatch(videoMediaId: string): Promise<string> {
+      const id = randomUUID();
+      await transaction(async (conn) => {
+        await conn.query("INSERT INTO batches (id, workspace_id, total, video_media_id) VALUES (?, ?, 0, ?)", [
+          id,
+          ws,
+          videoMediaId,
+        ]);
+        await conn.query("INSERT INTO batch_steps (batch_id, step, target, workspace_id) VALUES (?, 'watch', '-', ?)", [
+          id,
+          ws,
+        ]);
+      });
+      return id;
+    },
+
     getBatch: (id: string) =>
-      selectOne<{ id: string; total: number; created_at: Date }>(
-        "SELECT id, total, created_at FROM batches WHERE id = ? AND workspace_id = ?",
+      selectOne<{ id: string; total: number; video_media_id: string | null; created_at: Date }>(
+        "SELECT id, total, video_media_id, created_at FROM batches WHERE id = ? AND workspace_id = ?",
         [id, ws],
+      ),
+
+    /** Videos uploaded today (UTC), for their daily cap. */
+    async videosToday(): Promise<number> {
+      const row = await selectOne<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM media WHERE workspace_id = ? AND kind = 'video' AND created_at >= UTC_DATE()",
+        [ws],
+      );
+      return Number(row?.n ?? 0);
+    },
+
+    setBatchTotal: (id: string, total: number) =>
+      execute("UPDATE batches SET total = ? WHERE id = ? AND workspace_id = ?", [total, id, ws]),
+
+    /** A batch-level step's state, with its result, for the bulk page. */
+    batchStep: (batchId: string, step: string) =>
+      selectOne<{
+        status: "pending" | "running" | "done" | "failed";
+        attempts: number;
+        last_error: string | null;
+        result_json: unknown;
+      }>(
+        "SELECT status, attempts, last_error, result_json FROM batch_steps WHERE batch_id = ? AND step = ? AND target = '-' AND workspace_id = ?",
+        [batchId, step, ws],
       ),
 
     async batches(limit = 50): Promise<BatchSummaryRow[]> {

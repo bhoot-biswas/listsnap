@@ -75,6 +75,16 @@ export interface PhotoCheck {
   hints: string[];
 }
 
+/** The spread of a Laplacian-filtered greyscale: higher is sharper (6 is the blurry line). */
+export async function sharpnessOf(photo: Buffer): Promise<number> {
+  const edges = await sharp(photo)
+    .greyscale()
+    .resize(512, 512, { fit: "inside" })
+    .convolve({ width: 3, height: 3, kernel: [0, 1, 0, 1, -4, 1, 0, 1, 0] })
+    .stats();
+  return edges.channels[0]?.stdev ?? 0;
+}
+
 /**
  * The retake hint. Fill is the share of the frame the found items cover
  * (all of them, so a neat row of products isn't called "too small"); sharpness is the
@@ -95,11 +105,7 @@ export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoChec
   const small = sharp(photo).greyscale().resize(512, 512, { fit: "inside" });
   const { channels } = await small.clone().stats();
   const luma = channels[0]?.mean ?? 128;
-  const edges = await small
-    .clone()
-    .convolve({ width: 3, height: 3, kernel: [0, 1, 0, 1, -4, 1, 0, 1, 0] })
-    .stats();
-  const sharpness = edges.channels[0]?.stdev ?? 0;
+  const sharpness = await sharpnessOf(photo);
 
   const exposure = luma < 60 ? "dark" : luma > 215 ? "bright" : "ok";
   const isSharp = sharpness >= 6;

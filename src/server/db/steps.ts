@@ -6,14 +6,18 @@ import { execute, json, selectOne } from "./pool";
  * job_steps as a StepStore. Every lock comparison uses the database clock
  * (UTC_TIMESTAMP), so two app processes with drifting clocks still agree on who
  * holds a lock. Callers have already checked the job belongs to the workspace.
+ *
+ * `batch_steps` holds the few steps that belong to a whole bulk batch, like watching
+ * the video its jobs come from; there the key's jobId is the batch's id.
  */
-export function sqlStepStore(workspaceId: string): StepStore {
-  const where = "job_id = ? AND step = ? AND target = ?";
+export function sqlStepStore(workspaceId: string, table: "job_steps" | "batch_steps" = "job_steps"): StepStore {
+  const owner = table === "job_steps" ? "job_id" : "batch_id";
+  const where = `${owner} = ? AND step = ? AND target = ?`;
   const k = (key: StepKey) => [key.jobId, key.step, key.target];
 
   return {
     async ensure(key) {
-      await execute("INSERT IGNORE INTO job_steps (job_id, step, target, workspace_id) VALUES (?, ?, ?, ?)", [
+      await execute(`INSERT IGNORE INTO ${table} (${owner}, step, target, workspace_id) VALUES (?, ?, ?, ?)`, [
         ...k(key),
         workspaceId,
       ]);
@@ -27,7 +31,7 @@ export function sqlStepStore(workspaceId: string): StepStore {
         result_json: unknown;
         lock_valid: 0 | 1 | null;
       }>(
-        `SELECT status, attempts, last_error, result_json, (locked_until > UTC_TIMESTAMP(3)) AS lock_valid FROM job_steps WHERE ${where}`,
+        `SELECT status, attempts, last_error, result_json, (locked_until > UTC_TIMESTAMP(3)) AS lock_valid FROM ${table} WHERE ${where}`,
         k(key),
       );
       if (!row) return null;
@@ -42,7 +46,7 @@ export function sqlStepStore(workspaceId: string): StepStore {
 
     async claim(key, lockMs, maxAttempts) {
       const r = await execute(
-        `UPDATE job_steps
+        `UPDATE ${table}
             SET status = 'running', attempts = attempts + 1, started_at = UTC_TIMESTAMP(3),
                 locked_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND
           WHERE ${where} AND attempts < ?
@@ -54,14 +58,14 @@ export function sqlStepStore(workspaceId: string): StepStore {
 
     async renew(key, lockMs) {
       await execute(
-        `UPDATE job_steps SET locked_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND WHERE ${where} AND status = 'running'`,
+        `UPDATE ${table} SET locked_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND WHERE ${where} AND status = 'running'`,
         [lockMs * 1000, ...k(key)],
       );
     },
 
     async complete(key, result) {
       await execute(
-        `UPDATE job_steps SET status = 'done', result_json = ?, last_error = NULL, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,
+        `UPDATE ${table} SET status = 'done', result_json = ?, last_error = NULL, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,
         [json(result), ...k(key)],
       );
     },
@@ -75,14 +79,14 @@ export function sqlStepStore(workspaceId: string): StepStore {
             ? { sql: "GREATEST(attempts - 1, 0)", params: [] }
             : { sql: "attempts", params: [] };
       await execute(
-        `UPDATE job_steps SET status = 'failed', last_error = ?, attempts = ${attempts.sql}, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,
+        `UPDATE ${table} SET status = 'failed', last_error = ?, attempts = ${attempts.sql}, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,
         [error.slice(0, 500), ...attempts.params, ...k(key)],
       );
     },
 
     async reset(key, opts) {
       await execute(
-        `UPDATE job_steps SET status = 'pending', attempts = 0, last_error = NULL WHERE ${where} AND status IN (${opts?.done ? "'failed', 'done'" : "'failed'"})`,
+        `UPDATE ${table} SET status = 'pending', attempts = 0, last_error = NULL WHERE ${where} AND status IN (${opts?.done ? "'failed', 'done'" : "'failed'"})`,
         k(key),
       );
     },

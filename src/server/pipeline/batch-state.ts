@@ -5,6 +5,10 @@ import type { BatchRow, BatchState } from "@/lib/batch-state";
 import { ListingText } from "@/lib/schemas/pipeline";
 import { suggestedPrice } from "@/lib/schemas/review";
 import { buildJobState } from "./job-state";
+import { MAX_ATTEMPTS } from "./run-step";
+import { WatchResult } from "@/lib/schemas/video";
+import { errorText } from "@/server/step-text";
+import type { WatchView } from "@/lib/batch-state";
 import type { Locale } from "@/i18n/request";
 
 /**
@@ -68,5 +72,26 @@ export async function loadBatchState(
       next: state.next,
     });
   }
-  return { id: batch.id, total: batch.total, createdAt: batch.created_at.toISOString(), rows };
+  return {
+    id: batch.id,
+    total: batch.total,
+    createdAt: batch.created_at.toISOString(),
+    watch: batch.video_media_id ? await watchView(ws, batch.id, locale) : null,
+    rows,
+  };
+}
+
+async function watchView(ws: ReturnType<typeof forWorkspace>, batchId: string, locale: Locale): Promise<WatchView> {
+  const step = await ws.batchStep(batchId, "watch");
+  const status = step?.status ?? "pending";
+  const exhausted = status === "failed" && (step?.attempts ?? 0) >= MAX_ATTEMPTS;
+  const result = WatchResult.safeParse(step?.result_json);
+  return {
+    status,
+    url: status === "done" || exhausted ? null : `/api/batches/${batchId}/watch`,
+    exhausted,
+    error: status === "failed" && step?.last_error ? errorText(step.last_error, locale) : null,
+    found: result.success ? result.data.found : null,
+    limited: result.success ? result.data.limited : 0,
+  };
 }

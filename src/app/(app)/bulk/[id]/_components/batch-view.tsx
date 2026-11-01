@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { JOBS_AT_ONCE, useBatchRunner } from "@/hooks/use-batch-runner";
 import type { BatchState } from "@/lib/batch-state";
 import { BatchTable, SAVABLE } from "./batch-table";
+import { WatchPanel } from "./watch-panel";
 
 /** One bulk upload: progress, pause and resume, the rows, and saving the chosen ones to the store. */
 export function BatchView({ initial, autoStart }: { initial: BatchState; autoStart: boolean }) {
@@ -27,8 +28,10 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
           .map((r) => r.jobId)
       : [],
   );
-  const left = rows.filter((r) => r.jobStatus === "processing").length;
-  const done = rows.length - left;
+  // a video batch's rows appear only once its video is watched
+  const watching = !!state.watch && state.watch.status !== "done";
+  const left = rows.filter((r) => r.jobStatus === "processing").length + (watching && !state.watch?.exhausted ? 1 : 0);
+  const done = rows.filter((r) => r.jobStatus !== "processing").length;
   const chosen = rows
     .map((r) => r.listing)
     .filter((l): l is NonNullable<typeof l> => !!l && selected.has(l.id) && SAVABLE.has(l.status))
@@ -36,14 +39,21 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
 
   return (
     <>
-      <TopBar title={t("batchTitle", { count: rows.length })} />
+      <TopBar
+        title={state.watch ? t("video.batchTitle", { count: rows.length }) : t("batchTitle", { count: rows.length })}
+      />
       <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-6 md:px-6">
         <div className="flex flex-wrap items-center gap-4">
+          {/* nothing to count until the video is watched; its panel says what's happening */}
           <div className="min-w-48 flex-1 space-y-1.5">
-            <p className="text-sm font-medium" aria-live="polite">
-              {t("progress", { done, total: rows.length })}
-            </p>
-            <Progress value={rows.length ? (done / rows.length) * 100 : 0} />
+            {!watching && (
+              <>
+                <p className="text-sm font-medium" aria-live="polite">
+                  {t("progress", { done, total: rows.length })}
+                </p>
+                <Progress value={rows.length ? (done / rows.length) * 100 : 0} />
+              </>
+            )}
           </div>
           {left > 0 &&
             (running ? (
@@ -70,12 +80,14 @@ export function BatchView({ initial, autoStart }: { initial: BatchState; autoSta
           )}
         </div>
 
-        {!running && left > 0 && (
+        {state.watch && <WatchPanel batchId={state.id} watch={state.watch} running={running} onRetried={resume} />}
+
+        {!running && left > 0 && !watching && (
           <p role="status" className="rounded-lg border border-warning/40 bg-marigold-soft px-4 py-3 text-sm">
             {t("pausedBanner", { count: left })}
           </p>
         )}
-        {left === 0 && <p className="text-sm text-muted-foreground">{t("allDone")}</p>}
+        {left === 0 && !watching && <p className="text-sm text-muted-foreground">{t("allDone")}</p>}
 
         <BatchTable
           rows={rows}

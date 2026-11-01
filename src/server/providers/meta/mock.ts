@@ -197,7 +197,12 @@ export const mockMeta: MetaProvider = {
       async () => {
         await delay();
         // the length is real, so the Review player and the log agree
-        return { text: MOCK_TRANSCRIPT, seconds: Math.max(0, wav.length - 44) / 48_000 };
+        const seconds = Math.max(0, wav.length - 44) / 48_000;
+        return {
+          text: MOCK_TRANSCRIPT,
+          seconds,
+          turns: [{ startMs: 0, endMs: seconds * 1000, text: MOCK_TRANSCRIPT }],
+        };
       },
       (t) => ({ summary: `${t.seconds.toFixed(1)} s heard · ${t.text.length} characters`, costUsd: 0 }),
     ),

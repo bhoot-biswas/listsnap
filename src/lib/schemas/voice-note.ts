@@ -28,11 +28,12 @@ export type SellerFacts = z.infer<typeof SellerFacts>;
 /**
  * The `listen` step. `heardBy` says how: Muse Voice Transcribe's words, or Muse Spark
  * Open hearing the audio itself when Transcribe failed, which the spike showed can get
- * the price wrong, so Review asks the seller to check it then.
+ * the price wrong, so Review asks the seller to check it then. `video`: the job came
+ * from a video, and this is what the seller said while its product was on screen.
  */
 export const ListenResult = z.object({
   transcript: z.string(),
-  heardBy: z.enum(["transcribe", "audio"]),
+  heardBy: z.enum(["transcribe", "audio", "video"]),
   facts: SellerFacts.nullable(),
 });
 export type ListenResult = z.infer<typeof ListenResult>;

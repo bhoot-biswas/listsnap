@@ -19,6 +19,8 @@ ListSnap is for small social-commerce sellers in Bangladesh. One phone photo bec
 | Render    | Muse Image                             | Studio and banner photos keep the product's real pixels on a generated background; the lifestyle scene is labelled "AI scene"                                                    |
 | Save      | WooCommerce, Shopify                   | Creates or updates a **draft** product in each connected store, never a published one                                                                                            |
 
+**From a video:** the seller films their rack or table while saying each price, the way they sell on Facebook Live. Muse Voice Transcribe writes down what they said, turn by turn with times; Muse Spark Open watches the video with those words and lists each product, the moment it's seen best and what was said about it. The sharpest frame there becomes the product's photo, and each product runs through the steps above as part of a bulk upload, already knowing its spoken price.
+
 Each step is one short request driven by the browser, with its state and lock in MySQL. A refresh, a second tab or a server restart repeats nothing that already finished.
 
 ## Run it locally

@@ -25,9 +25,23 @@ export interface BatchRow {
   next: NextCallView[];
 }
 
+/** Watching the video a batch comes from, before it has any rows. */
+export interface WatchView {
+  status: "pending" | "running" | "done" | "failed";
+  /** The call to make next; null when it's done or out of attempts. */
+  url: string | null;
+  /** Out of attempts: waits for "Try again". */
+  exhausted: boolean;
+  error: string | null;
+  found: number | null;
+  limited: number;
+}
+
 export interface BatchState {
   id: string;
   total: number;
   createdAt: string;
+  /** Null for a batch of photos. */
+  watch: WatchView | null;
   rows: BatchRow[];
 }

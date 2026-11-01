@@ -41,7 +41,7 @@ export interface OpenResult<T> {
   requests: number;
 }
 
-type Part = { type: "text"; text: string } | { type: "image_url" | "audio_url"; [k: string]: unknown };
+type Part = { type: "text"; text: string } | { type: "image_url" | "audio_url" | "video_url"; [k: string]: unknown };
 
 /**
  * One answer checked against `schema`. With `tool` set the answer comes as that tool's
@@ -54,6 +54,8 @@ export async function openJson<S extends z.ZodType>(opts: {
   system: string;
   content: Part[];
   tool?: boolean;
+  /** How long the answer may take, retry included; a voice note's fits the listen step's lock. */
+  budgetMs?: number;
 }): Promise<OpenResult<z.infer<S>>> {
   const key = env().basetenApiKey;
   if (!key) throw new PermanentError("PROVIDER_MODE_BASETEN=live needs BASETEN_API_KEY.");
@@ -76,7 +78,8 @@ export async function openJson<S extends z.ZodType>(opts: {
     }),
   });
 
-  const deadline = performance.now() + BUDGET_MS;
+  const budget = opts.budgetMs ?? BUDGET_MS;
+  const deadline = performance.now() + budget;
   let costUsd = 0;
   for (let requests = 1; ; requests++) {
     const completion = await post(key, body, deadline - performance.now());
@@ -89,7 +92,8 @@ export async function openJson<S extends z.ZodType>(opts: {
     const parsed = opts.schema.safeParse(readJson(text));
     if (parsed.success) return { data: parsed.data, costUsd: Math.round(costUsd * 1e6) / 1e6, requests };
     console.warn(`[muse-open] ${opts.name}: unreadable answer (request ${requests})`);
-    if (requests >= 2 || deadline - performance.now() < RETRY_MIN_MS) throw new StepError(UNREADABLE);
+    if (requests >= 2 || deadline - performance.now() < Math.max(RETRY_MIN_MS, budget / 2))
+      throw new StepError(UNREADABLE);
   }
 }
 

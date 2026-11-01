@@ -95,6 +95,8 @@ export function forWorkspace(workspaceId: string) {
       photos: { mediaId: string; width: number; height: number }[],
       batchId?: string,
       voiceMediaId?: string,
+      /** What the seller already said about it, in the video it came from: its listen step, done. */
+      heard?: unknown,
     ): Promise<string> {
       const jobId = randomUUID();
       await transaction(async (conn) => {
@@ -118,6 +120,11 @@ export function forWorkspace(workspaceId: string) {
             ws,
           ]);
         }
+        if (heard !== undefined)
+          await conn.query(
+            "INSERT INTO job_steps (job_id, step, target, workspace_id, status, attempts, result_json, finished_at) VALUES (?, 'listen', '-', ?, 'done', 1, ?, UTC_TIMESTAMP(3))",
+            [jobId, ws, json(heard)],
+          );
         await conn.query("INSERT INTO events (workspace_id, type, ref_id) VALUES (?, 'job_created', ?)", [ws, jobId]);
       });
       return jobId;

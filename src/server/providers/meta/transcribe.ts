@@ -15,7 +15,8 @@ import { BASE_URL, BUSY } from "./spark";
 
 export const TRANSCRIBE_MODEL = "muse-voice-transcribe-1.0";
 const PRICE_PER_HOUR = 0.18;
-const TIMEOUT_MS = 20_000;
+// a minute came back in about 5 s; a video's few minutes get more room
+const timeoutMs = (wav: Buffer) => 20_000 + Math.round((wav.length / 48_000) * 500);
 
 /**
  * Sellers mix Bangla and English. The spike found keywords must be in Bangla script:
@@ -23,11 +24,21 @@ const TIMEOUT_MS = 20_000;
  */
 const LANGUAGES = ["Bengali", "English"];
 
-const Response = z.object({ transcript: z.string(), audioDurationMs: z.number().nullish() });
+const Response = z.object({
+  transcript: z.string(),
+  audioDurationMs: z.number().nullish(),
+  turns: z
+    .array(z.object({ startMs: z.number().nullish(), endMs: z.number().nullish(), transcript: z.string().nullish() }))
+    .nullish(),
+});
 
 const info = { provider: "meta", model: TRANSCRIBE_MODEL, endpoint: "asr/transcribe", mode: "live" } as const;
 
-export function liveTranscribe(ctx: CallContext, wav: Buffer, keywords: string[]): Promise<Transcript> {
+/**
+ * `turns` switches to ENDPOINTING, where the model finds where each spoken turn starts and
+ * ends: a video's words then line up with what was on screen.
+ */
+export function liveTranscribe(ctx: CallContext, wav: Buffer, keywords: string[], turns = false): Promise<Transcript> {
   return logged(
     ctx,
     info,
@@ -35,7 +46,8 @@ export function liveTranscribe(ctx: CallContext, wav: Buffer, keywords: string[]
       const key = env().modelApiKey;
       if (!key) throw new PermanentError("PROVIDER_MODE_META=live needs MODEL_API_KEY.");
       const form = new FormData();
-      const request = { model: TRANSCRIBE_MODEL, mode: "PUSH_TO_TALK", audioEncoding: "WAV", languageBias: LANGUAGES };
+      const mode = turns ? "ENDPOINTING" : "PUSH_TO_TALK";
+      const request = { model: TRANSCRIBE_MODEL, mode, audioEncoding: "WAV", languageBias: LANGUAGES };
       form.append(
         "request",
         new Blob([JSON.stringify(keywords.length ? { ...request, keywords } : request)], { type: "application/json" }),
@@ -49,7 +61,7 @@ export function liveTranscribe(ctx: CallContext, wav: Buffer, keywords: string[]
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
           body: form,
-          signal: AbortSignal.timeout(TIMEOUT_MS),
+          signal: AbortSignal.timeout(timeoutMs(wav)),
         });
       } catch (err) {
         console.warn("[transcribe] request failed:", err instanceof Error ? err.message : err);
@@ -66,11 +78,19 @@ export function liveTranscribe(ctx: CallContext, wav: Buffer, keywords: string[]
         throw new PermanentError(`Muse Voice Transcribe HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
       const body = Response.safeParse(await res.json().catch(() => null));
       if (!body.success) throw new Error("Muse Voice Transcribe sent an unexpected response");
-      return { text: body.data.transcript.trim(), seconds: (body.data.audioDurationMs ?? 0) / 1000 };
+      return {
+        text: body.data.transcript.trim(),
+        seconds: (body.data.audioDurationMs ?? 0) / 1000,
+        turns: (body.data.turns ?? []).map((t) => ({
+          startMs: t.startMs ?? 0,
+          endMs: t.endMs ?? 0,
+          text: (t.transcript ?? "").trim(),
+        })),
+      };
     },
     // billed per whole second of audio; the words stay out of the log, like photos
     (t) => ({
-      summary: `${t.seconds.toFixed(1)} s heard · ${t.text.length} characters`,
+      summary: `${t.seconds.toFixed(1)} s heard · ${t.text.length} characters${turns ? ` · ${t.turns.length} turns` : ""}`,
       costUsd: (Math.floor(t.seconds) / 3600) * PRICE_PER_HOUR,
     }),
   );
