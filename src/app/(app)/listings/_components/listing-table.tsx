@@ -77,7 +77,7 @@ export async function ListingTable({
     };
   });
   const store = (r: (typeof view)[number], align: "start" | "end") =>
-    (r.stores.length > 0 || r.behind || r.marketplace) && (
+    (r.stores.length > 0 || r.behind.length > 0 || r.marketplace) && (
       <span className={cn("flex flex-col gap-0.5 text-xs", align === "end" ? "items-end" : "items-start")}>
         {r.stores.length > 0 && (
           <span className="text-muted-foreground">
@@ -86,10 +86,13 @@ export async function ListingTable({
           </span>
         )}
         {r.marketplace && <span className="text-muted-foreground">{t("onMarketplace")}</span>}
-        {r.behind && (
+        {r.behind.length > 0 && (
           <span className="inline-flex items-center gap-1 whitespace-nowrap text-warning">
             <RefreshCw className="size-3" aria-hidden="true" />
-            {t("behindShort")}
+            {/* with two stores, which one: updating one store leaves the other behind */}
+            {r.stores.length > 1
+              ? t("behindIn", { stores: r.behind.map((k) => STORE_NAMES[k]).join(" · ") })
+              : t("behindShort")}
           </span>
         )}
       </span>

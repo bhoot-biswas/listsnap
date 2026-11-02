@@ -87,14 +87,25 @@ describe.skipIf(!enabled)("Listings page (MariaDB)", async () => {
     await execute("UPDATE listings SET edited_at = sent_at + INTERVAL 1 MINUTE WHERE id = ?", [ids.saree]);
     const rows = (await A.listingPage({ status: null, q: "", page: 1 })).rows;
     const row = (id: string) => rows.find((r) => r.id === id)!;
-    expect(row(ids.saree)).toMatchObject({ stores: ["woo", "shopify"], behind: true });
-    expect(row(ids.bangles)).toMatchObject({ stores: ["woo"], behind: false });
-    expect(row(ids.kurti)).toMatchObject({ stores: [], behind: false });
+    expect(row(ids.saree)).toMatchObject({ stores: ["woo", "shopify"], behind: ["woo", "shopify"] });
+    expect(row(ids.bangles)).toMatchObject({ stores: ["woo"], behind: [] });
+    expect(row(ids.kurti)).toMatchObject({ stores: [], behind: [] });
 
     const behind = await A.listingPage({ status: null, q: "", page: 1, behind: true });
     expect(behind.rows.map((r) => r.id)).toEqual([ids.saree]);
     expect(behind.total).toBe(1);
     expect(await A.statusCounts()).toEqual({ ready: 1, in_store: 2, behind: 1 });
     expect((await A.statusCounts("bangles")).behind).toBeUndefined();
+  });
+
+  it("tells the stores apart: updating one leaves the other behind", async () => {
+    // a minute later, only WooCommerce gets the update
+    await execute(
+      "UPDATE listing_store_products SET saved_at = saved_at + INTERVAL 2 MINUTE WHERE listing_id = ? AND kind = 'woo'",
+      [ids.saree],
+    );
+    const rows = (await A.listingPage({ status: null, q: "", page: 1 })).rows;
+    expect(rows.find((r) => r.id === ids.saree)).toMatchObject({ behind: ["shopify"] });
+    expect(await A.statusCounts()).toMatchObject({ behind: 1 });
   });
 });

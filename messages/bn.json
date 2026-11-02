@@ -225,6 +225,7 @@
     "suggestedHint": "প্রস্তাবিত দাম। লিস্টিংয়ে নিজের দাম দিন।",
     "storesIn": "সেভ হয়েছে:",
     "behindShort": "ড্রাফট পুরোনো",
+    "behindIn": "{stores}-এ পুরোনো",
     "onMarketplace": "মার্কেটপ্লেসে আছে",
     "selectAll": "এই পাতার সব বাছুন",
     "selectRow": "{title} বাছুন",
@@ -1032,7 +1033,8 @@
     "offline": "অফলাইন, পরে সেভ হবে",
     "saveToStore": "স্টোরে ড্রাফট সেভ করুন",
     "updateStore": "স্টোরের ড্রাফট আপডেট করুন",
-    "storeBehind": "স্টোরের ড্রাফট পুরোনো। বদলগুলো পাঠাতে আপডেট করুন।",
+    "storeBehindIn": "{stores}-এর ড্রাফট পুরোনো। আপনার পরিবর্তন পাঠাতে আপডেট করুন।",
+    "storeMissing": "{stores}-এ এখনো নেই। সেখানেও সেভ করতে আপডেট করুন।",
     "over": "{count, number}টি বেশি",
     "assist": {
       "group": "{field}-এর জন্য AI সাহায্য",

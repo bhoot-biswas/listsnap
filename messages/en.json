@@ -225,6 +225,7 @@
     "suggestedHint": "The suggested price. Set your own on the listing.",
     "storesIn": "Saved to:",
     "behindShort": "Draft out of date",
+    "behindIn": "Out of date in {stores}",
     "onMarketplace": "On Marketplace",
     "selectAll": "Select all on this page",
     "selectRow": "Select {title}",
@@ -1032,7 +1033,8 @@
     "offline": "Offline, will save",
     "saveToStore": "Save draft to store",
     "updateStore": "Update store draft",
-    "storeBehind": "Store draft is out of date. Update it to send your changes.",
+    "storeBehindIn": "Out of date in {stores}. Update to send your changes.",
+    "storeMissing": "Not in {stores} yet. Update to save it there too.",
     "over": "{count} over",
     "assist": {
       "group": "AI help for {field}",
