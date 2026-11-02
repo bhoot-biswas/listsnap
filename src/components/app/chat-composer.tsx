@@ -13,7 +13,7 @@ import { MediaImg } from "@/components/app/media-img";
 /**
  * The message box: one rounded card with the text on top and the photo, microphone and
  * send buttons below. Enter sends, Shift+Enter starts a new line. Spoken words join the
- * text, so the seller sees them before they're sent.
+ * text as they're heard, so the seller sees them before they're sent.
  */
 export function ChatComposer({
   chat,
@@ -32,6 +32,8 @@ export function ChatComposer({
   const t = useTranslations("chat");
   const picker = useRef<HTMLInputElement>(null);
   const [dictating, setDictating] = useState(false);
+  // what was typed before the mic went on; the spoken words go after it
+  const typed = useRef("");
   const { busy, uploading, photos } = chat;
 
   const submit = () => !dictating && chat.send(chat.draft, newChat);
@@ -75,6 +77,7 @@ export function ChatComposer({
         aria-label={t("label")}
         placeholder={placeholder}
         value={chat.draft}
+        readOnly={dictating}
         maxLength={CHAT_MESSAGE_MAX}
         rows={2}
         autoFocus={autoFocus}
@@ -85,7 +88,11 @@ export function ChatComposer({
             submit();
           }
         }}
-        className="field-sizing-content max-h-48 min-h-11 w-full resize-none bg-transparent px-2 pt-1 text-base outline-none placeholder:text-muted-foreground md:text-sm"
+        className={cn(
+          "field-sizing-content max-h-48 min-h-11 w-full resize-none bg-transparent px-2 pt-1 text-base outline-none placeholder:text-muted-foreground md:text-sm",
+          // words still being heard look unsettled until the seller stops
+          dictating && "text-muted-foreground",
+        )}
       />
       <div className="flex items-center gap-1">
         <input
@@ -112,8 +119,11 @@ export function ChatComposer({
         </Button>
         <ChatMic
           disabled={busy}
-          onWorking={setDictating}
-          onText={(text) => chat.setDraft((cur) => (cur.trim() ? `${cur.trimEnd()} ${text}` : text))}
+          onWorking={(working) => {
+            if (working) typed.current = chat.draft.trimEnd();
+            setDictating(working);
+          }}
+          onWords={(text) => chat.setDraft(typed.current ? `${typed.current} ${text}` : text)}
         />
         <Button
           type="submit"

@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { VOICE_NOTE_MAX_S } from "@/lib/schemas/voice-note";
 
 /** What the browser records in: Opus where it can (Chrome, Firefox), AAC in MP4 on Safari. */
-const TYPES = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"];
+export const RECORDING_TYPES = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"];
+
+/** What a MediaRecorder recorded, as a File named for its format. */
+export function recordingFile(chunks: Blob[], type: string): File {
+  const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+  return new File([new Blob(chunks, { type })], `voice-note.${ext}`, { type: type.split(";")[0] });
+}
 
 export type RecorderProblem = "unsupported" | "denied";
 
@@ -48,7 +54,7 @@ export function useRecorder(onDone: (file: File) => void, maxSeconds = VOICE_NOT
       setProblem("denied");
       return false;
     }
-    const mimeType = TYPES.find((type) => MediaRecorder.isTypeSupported(type));
+    const mimeType = RECORDING_TYPES.find((type) => MediaRecorder.isTypeSupported(type));
     const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     const chunks: Blob[] = [];
     rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
@@ -56,9 +62,7 @@ export function useRecorder(onDone: (file: File) => void, maxSeconds = VOICE_NOT
       stream.getTracks().forEach((tr) => tr.stop());
       if (timer.current) clearInterval(timer.current);
       setRecording(false);
-      const type = rec.mimeType || mimeType || "audio/webm";
-      const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
-      done.current(new File([new Blob(chunks, { type })], `voice-note.${ext}`, { type: type.split(";")[0] }));
+      done.current(recordingFile(chunks, rec.mimeType || mimeType || "audio/webm"));
     };
     recorder.current = rec;
     rec.start();

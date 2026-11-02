@@ -7,6 +7,7 @@ import { logged } from "../log";
 import { chatSummary } from "./chat";
 import type { AssistInput, MetaProvider, SegmentInstance } from "../types";
 import { mockChatTurn } from "./chat-mock";
+import { mockTranscribeLive } from "./realtime-mock";
 
 /**
  * Deterministic stand-ins for Muse Spark, SAM 3.1 and Muse Image: no key, no cost,
@@ -208,6 +209,8 @@ export const mockMeta: MetaProvider = {
       },
       (t) => ({ summary: `${t.seconds.toFixed(1)} s heard · ${t.text.length} characters`, costUsd: 0 }),
     ),
+
+  transcribeLive: (ctx, _keywords, events) => mockTranscribeLive(ctx, MOCK_TRANSCRIPT, events),
 
   translate: (ctx, listing) =>
     logged(
