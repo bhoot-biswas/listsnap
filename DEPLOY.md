@@ -65,6 +65,8 @@ SQL
 cat > /etc/listsnap/env <<EOF
 NEXT_PUBLIC_SITE_URL=https://getlistsnap.com
 DATABASE_URL=mysql://listsnap:$DBPW@127.0.0.1:3306/listsnap
+# the app's own MariaDB allows 151 connections; the default of 5 suits shared hosting
+DATABASE_POOL_SIZE=20
 BETTER_AUTH_SECRET=$(openssl rand -base64 32)
 CREDENTIALS_KEY=$(openssl rand -base64 32)
 MEDIA_DIR=/var/lib/listsnap/media
