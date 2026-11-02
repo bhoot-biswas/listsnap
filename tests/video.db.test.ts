@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { createTestWorkspace, dbEnv, runJob, sampleVideo } from "./db-helpers";
 
 // A video batch through the mock providers: watched once, one job per product, each
@@ -50,5 +50,26 @@ describe.skipIf(!enabled)("listings from a video (mock providers, MariaDB)", asy
 
     const after = await loadBatchState(shop.workspace, batchId);
     expect(after?.watch).toMatchObject({ status: "done", url: null, found: 2 });
+  });
+
+  it("gives up at once on a video with no products, instead of watching it three times", async () => {
+    const { mockBaseten } = await import("@/server/providers/baseten/mock");
+    const media = await saveMedia(ws.id, "video", await sampleVideo(), {
+      mime: "video/mp4",
+      width: 0,
+      height: 0,
+      selected: false,
+    });
+    const batchId = await ws.createVideoBatch(media.id);
+    const watch = vi.spyOn(mockBaseten, "watch").mockResolvedValue([]);
+    try {
+      const r = await executeWatchStep(shop.workspace, batchId, "127.0.0.1");
+      expect(r).toMatchObject({ found: true, outcome: { state: "failed", exhausted: true } });
+      // asking again doesn't run ffmpeg and the models again
+      await executeWatchStep(shop.workspace, batchId, "127.0.0.1");
+      expect(watch).toHaveBeenCalledTimes(1);
+    } finally {
+      watch.mockRestore();
+    }
   });
 });
