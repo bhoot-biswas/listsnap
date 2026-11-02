@@ -16,6 +16,13 @@ export interface OpRunRow {
   undone_at: Date | null;
 }
 
+/**
+ * How long a running op holds its key. Store saves and posts finish in a few minutes; a
+ * run still "running" after this died with its process (a deploy, a crash), so the same
+ * request may claim the key again instead of being told "busy" for good.
+ */
+const LEASE_MINUTES = 10;
+
 /** Undo history kept per listing; older snapshots are dropped, the audit rows stay. */
 const UNDO_KEEP = 50;
 
@@ -32,7 +39,8 @@ export function opRunQueries(ws: string) {
     /**
      * Records that an op started. With a key, a second start of the same op finds the
      * first run instead (the unique key makes this atomic): a finished one is replayed,
-     * a running one is busy, and a failed one is claimed again so a retry can work.
+     * a running one is busy, and a failed one, or a running one past its lease, is claimed
+     * again so a retry can work.
      */
     async startOpRun(run: {
       op: string;
@@ -40,20 +48,23 @@ export function opRunQueries(ws: string) {
       idemKey: string | null;
     }): Promise<{ id: number } | { existing: OpRunRow }> {
       try {
-        const r = await execute("INSERT INTO op_runs (workspace_id, op, via, idem_key) VALUES (?, ?, ?, ?)", [
-          ws,
-          run.op,
-          run.via,
-          run.idemKey,
-        ]);
+        const r = await execute(
+          `INSERT INTO op_runs (workspace_id, op, via, idem_key, lease_until)
+           VALUES (?, ?, ?, ?, UTC_TIMESTAMP(3) + INTERVAL ${LEASE_MINUTES} MINUTE)`,
+          [ws, run.op, run.via, run.idemKey],
+        );
         return { id: r.insertId };
       } catch (err) {
         if (!run.idemKey || !isDuplicate(err)) throw err;
         const existing = await byKey(run.op, run.idemKey);
         if (!existing) throw err;
-        if (existing.status !== "failed") return { existing };
+        if (existing.status === "done") return { existing };
+        // rows from before leases existed count from when they started
         const reclaimed = await execute(
-          "UPDATE op_runs SET status = 'running' WHERE id = ? AND workspace_id = ? AND status = 'failed'",
+          `UPDATE op_runs SET status = 'running', lease_until = UTC_TIMESTAMP(3) + INTERVAL ${LEASE_MINUTES} MINUTE
+            WHERE id = ? AND workspace_id = ?
+              AND (status = 'failed' OR (status = 'running' AND
+                   COALESCE(lease_until, created_at + INTERVAL ${LEASE_MINUTES} MINUTE) < UTC_TIMESTAMP(3)))`,
           [existing.id, ws],
         );
         return reclaimed.affectedRows === 1 ? { id: existing.id } : { existing: { ...existing, status: "running" } };
@@ -71,7 +82,7 @@ export function opRunQueries(ws: string) {
       },
     ) {
       await execute(
-        "UPDATE op_runs SET status = ?, result_json = ?, undo_json = ?, listing_id = ?, summary = ? WHERE id = ? AND workspace_id = ?",
+        "UPDATE op_runs SET status = ?, lease_until = NULL, result_json = ?, undo_json = ?, listing_id = ?, summary = ? WHERE id = ? AND workspace_id = ?",
         [
           end.status,
           end.result === undefined ? null : json(end.result),
