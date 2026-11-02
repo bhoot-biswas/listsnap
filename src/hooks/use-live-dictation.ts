@@ -34,15 +34,19 @@ interface Session {
 }
 
 /**
- * Talk into a chat box and watch the words appear: the microphone goes to /api/dictate
- * as 24 kHz PCM while a normal recording runs alongside. The live words are a preview;
- * if anything on the live path fails, the recording goes to /api/transcribe whole when
- * the seller stops, so they still get their words, a few seconds later.
+ * Talk and watch the words appear: the microphone goes to /api/dictate as 24 kHz PCM
+ * while a normal recording runs alongside. The live words are a preview; if anything on
+ * the live path fails, the recording goes to /api/transcribe whole when the seller
+ * stops, so they still get their words, a few seconds later. A voice note, whose
+ * recording is the thing kept, gets the recording back as soon as it stops and skips
+ * that second try (`writeDown: false`).
  */
 export function useLiveDictation({
   onWords,
   onDone,
   onFail,
+  onRecorded,
+  writeDown = true,
   maxSeconds = VOICE_NOTE_MAX_S,
 }: {
   /** The words so far; each call replaces the last. */
@@ -51,6 +55,10 @@ export function useLiveDictation({
   onDone: (text: string) => void;
   /** Nothing came back; the server's words for why, when it said. */
   onFail: (message: string | null) => void;
+  /** The whole recording, the moment the seller stops; before the last words arrive. */
+  onRecorded?: (file: File) => void;
+  /** Send the recording to /api/transcribe when the live words didn't make it. */
+  writeDown?: boolean;
   maxSeconds?: number;
 }) {
   const [phase, setPhase] = useState<DictationPhase>("idle");
@@ -58,9 +66,9 @@ export function useLiveDictation({
   const [problem, setProblem] = useState<RecorderProblem | null>(null);
   const session = useRef<Session | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cb = useRef({ onWords, onDone, onFail });
+  const cb = useRef({ onWords, onDone, onFail, onRecorded });
   useEffect(() => {
-    cb.current = { onWords, onDone, onFail };
+    cb.current = { onWords, onDone, onFail, onRecorded };
   });
 
   const release = (s: Session) => {
@@ -240,6 +248,10 @@ export function useLiveDictation({
     });
     rec.stop();
     release(s);
+    if (cb.current.onRecorded) {
+      const f = await file;
+      if (session.current === s) cb.current.onRecorded(f);
+    }
 
     let text: string | null = null;
     if (s.live && s.id) {
@@ -256,6 +268,11 @@ export function useLiveDictation({
     s.abort.abort();
     if (session.current !== s) return;
 
+    if (text === null && !writeDown) {
+      session.current = null;
+      setPhase("idle");
+      return cb.current.onFail(null);
+    }
     if (text === null) {
       // the live words didn't make it: the whole recording, the way it worked before
       try {
