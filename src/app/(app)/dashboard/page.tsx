@@ -7,6 +7,7 @@ import { RecentListings } from "@/components/app/recent-listings";
 import { TopBar } from "@/components/app/top-bar";
 import { requireWorkspace } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
+import { metaConnection } from "@/server/social/connection";
 import { connectedStores } from "@/server/stores/targets";
 import { serviceHref } from "@/lib/connectors";
 import { Activity } from "./_components/activity";
@@ -27,7 +28,7 @@ export default async function DashboardPage() {
   const tNav = await getTranslations("nav");
   const ws = forWorkspace(viewer.workspace.id);
   const { isDemo } = viewer.workspace;
-  const [stats, attention, recent, activity, days, checklist, stores, used] = await Promise.all([
+  const [stats, attention, recent, activity, days, checklist, stores, used, meta] = await Promise.all([
     ws.dashboardStats(),
     ws.attention(5),
     ws.recentListings(5),
@@ -36,6 +37,7 @@ export default async function DashboardPage() {
     ws.checklist(),
     connectedStores(viewer.workspace),
     ws.usageToday(),
+    metaConnection(ws),
   ]);
   // the demo shop saves to our test store, so it counts as connected
   const done = { ...checklist, store: checklist.store || isDemo };
@@ -74,6 +76,19 @@ export default async function DashboardPage() {
             <CircleAlert className="size-5 shrink-0 text-destructive" aria-hidden="true" />
             <p className="min-w-0 flex-1 text-sm">{t("storeBroken")}</p>
             <ButtonLink href={serviceHref(brokenStore.kind)} variant="outline" className="h-11 md:h-9">
+              {t("fixConnection")}
+            </ButtonLink>
+          </div>
+        )}
+
+        {meta?.broken && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4"
+          >
+            <CircleAlert className="size-5 shrink-0 text-destructive" aria-hidden="true" />
+            <p className="min-w-0 flex-1 text-sm">{t("facebookBroken")}</p>
+            <ButtonLink href={serviceHref("meta")} variant="outline" className="h-11 md:h-9">
               {t("fixConnection")}
             </ButtonLink>
           </div>

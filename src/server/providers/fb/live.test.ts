@@ -50,8 +50,11 @@ beforeEach(() => {
 
 describe("Facebook login", () => {
   it("trades the code for a long-lived token and keeps only Pages it may post as", async () => {
-    answers = [() => json({ access_token: "short" }), () => json({ access_token: "long" })];
-    expect(await fb.exchangeCode(ctx, { code: "c", redirectUri: "https://app/api/meta/callback" })).toBe("long");
+    answers = [() => json({ access_token: "short" }), () => json({ access_token: "long", expires_in: 5_184_000 })];
+    const login = await fb.exchangeCode(ctx, { code: "c", redirectUri: "https://app/api/meta/callback" });
+    expect(login.token).toBe("long");
+    // Meta says 60 days; we keep the date the seller must connect again by
+    expect(login.expiresAt!.getTime() - Date.now()).toBeGreaterThan(59 * 24 * 3600 * 1000);
     expect(sent[0]!.body).toMatchObject({ code: "c", client_secret: "secret" });
     expect(sent[1]!.body).toMatchObject({ grant_type: "fb_exchange_token", fb_exchange_token: "short" });
 
@@ -78,6 +81,20 @@ describe("Facebook login", () => {
     expect(sent[2]!.url).not.toContain("long");
     expect(sent[2]!.headers.Authorization).toBe("OAuth long");
     expect(sent[2]!.url).toContain(`appsecret_proof=${appSecretProof("long")}`);
+  });
+});
+
+describe("Facebook token check", () => {
+  it("says whether Meta still accepts a token", async () => {
+    answers = [() => json({ id: "1" }), () => json({ error: { message: "Session expired", code: 190 } }, 400)];
+    expect(await fb.checkToken(ctx, "t")).toBe("ok");
+    expect(await fb.checkToken(ctx, "t")).toBe("refused");
+    expect(sent[0]!.url).toContain("/me?fields=id");
+  });
+
+  it("throws when Meta couldn't be asked, so nothing is marked", async () => {
+    answers = [() => json({ error: { message: "Service unavailable", code: 2 } }, 503)];
+    await expect(fb.checkToken(ctx, "t")).rejects.toMatchObject({ key: "metaSaid" });
   });
 });
 

@@ -4,6 +4,7 @@ import { forWorkspace, type ListingRow, type WorkspaceScope } from "@/server/db/
 import type { Workspace } from "@/server/db/workspaces";
 import { shopify, woo } from "@/server/providers";
 import type { StoreDraftInput } from "@/server/providers/types";
+import { ShopifyHttpError } from "@/server/providers/shopify/http";
 import { WooHttpError } from "@/server/providers/woo/http";
 import { resolveWooStore } from "@/server/stores/woo-store";
 import { resolveShopifyStore, shopifySettings } from "@/server/stores/shopify-store";
@@ -11,6 +12,7 @@ import { storeTargets } from "@/server/stores/targets";
 import { storedError } from "@/server/step-text";
 import { suggestedPrice } from "@/lib/schemas/review";
 import { listingProduct } from "@/server/stores/listing-product";
+import type { ShopifyCheckReason } from "@/lib/shopify-connection";
 import type { WooCheck } from "@/lib/woo-connection";
 import { STORE_NAMES, storeStep, type StoreKind } from "@/lib/stores";
 import { runStep, type StepOutcome } from "./run-step";
@@ -31,6 +33,12 @@ export interface StoreResult {
 export interface StoresResult {
   stores: ({ kind: StoreKind } & StoreResult)[];
 }
+
+/** Shopify refusals that mean the connection itself no longer works, as a check reason. */
+const SHOPIFY_REFUSED: Partial<Record<string, ShopifyCheckReason>> = {
+  shopifyAuth: "auth",
+  shopifyGone: "unreachable",
+};
 
 // the store downloads every image while creating the product, which can take a while
 const LOCK_MS = 90_000;
@@ -121,7 +129,16 @@ async function saveDraft(
   } else {
     const target = shopify().mode === "mock" ? null : await resolveShopifyStore(workspace, ctx);
     const settings = target?.settings ?? (await shopifySettings(workspace));
-    saved = await shopify().saveDraft(ctx, target?.store ?? null, { ...input, locationId: settings.locationId });
+    try {
+      saved = await shopify().saveDraft(ctx, target?.store ?? null, { ...input, locationId: settings.locationId });
+    } catch (err) {
+      // the app was removed (and its webhook missed) or its access cut: only connecting
+      // again helps, so Connections and the dashboard say so, as they do for WooCommerce
+      const reason = err instanceof ShopifyHttpError ? SHOPIFY_REFUSED[err.key] : undefined;
+      if (target && !settings.demo && reason)
+        await ws.setConnectionChecks("shopify", "broken", [{ id: "reach", status: "fail", reason }]);
+      throw err;
+    }
   }
   await ws.markInStore(listing.id, kind, saved.productRef);
   return saved;

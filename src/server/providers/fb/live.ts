@@ -36,7 +36,7 @@ export function makeLiveFacebook(wait = realWait): FacebookProvider {
         params: { client_id: appId, client_secret: appSecret, redirect_uri: redirectUri, code },
       });
       // the short token lasts an hour; a long-lived one makes Page tokens that never expire
-      const long = await graph<{ access_token: string }>(ctx, {
+      const long = await graph<{ access_token: string; expires_in?: number }>(ctx, {
         provider: "facebook",
         endpoint: "oauth/fb_exchange_token",
         method: "POST",
@@ -48,7 +48,11 @@ export function makeLiveFacebook(wait = realWait): FacebookProvider {
           fb_exchange_token: short.access_token,
         },
       });
-      return long.access_token;
+      const seconds = Number(long.expires_in);
+      return {
+        token: long.access_token,
+        expiresAt: Number.isFinite(seconds) && seconds > 0 ? new Date(Date.now() + seconds * 1000) : null,
+      };
     },
 
     async pages(ctx, userToken) {
@@ -156,6 +160,23 @@ export function makeLiveFacebook(wait = realWait): FacebookProvider {
           message: (e.message ?? "").slice(0, 200),
         })),
       };
+    },
+
+    async checkToken(ctx, token) {
+      try {
+        await graph(ctx, {
+          provider: "facebook",
+          endpoint: "me",
+          method: "GET",
+          path: "/me",
+          params: { fields: "id" },
+          token,
+        });
+        return "ok";
+      } catch (err) {
+        if (err instanceof GraphError && err.key === "metaAuth") return "refused";
+        throw err;
+      }
     },
 
     async postReel(ctx, { page, videoUrl, caption }) {

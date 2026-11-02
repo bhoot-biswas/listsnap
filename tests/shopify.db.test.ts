@@ -127,6 +127,37 @@ describe.skipIf(!enabled)("Shopify and two stores (MariaDB)", async () => {
     await A.setConnectionSettings("woo", { demo: true, saveDrafts: true });
   });
 
+  it("marks the store broken when Shopify refuses a save's access", async () => {
+    const { ShopifyHttpError } = await import("@/server/providers/shopify/http");
+    // the store's own token is only read in live mode
+    const mode = mockShopify as { mode: string };
+    mode.mode = "live";
+    const refused = vi.spyOn(mockShopify, "saveDraft").mockRejectedValue(new ShopifyHttpError(401, "", "shopifyAuth"));
+    try {
+      await ops.saveDraftToStore.call(a.workspace, { listingId, update: true, stores: ["shopify"] }, ui);
+    } finally {
+      refused.mockRestore();
+      mode.mode = "mock";
+    }
+    const row = (await A.storeConnection("shopify"))!;
+    expect(row.status).toBe("broken");
+    expect(row.checks_json).toEqual([{ id: "reach", status: "fail", reason: "auth" }]);
+
+    // a busy store says nothing about the connection
+    await A.setConnectionChecks("shopify", "connected", []);
+    mode.mode = "live";
+    const busy = vi
+      .spyOn(mockShopify, "saveDraft")
+      .mockRejectedValue(new StepError("shopifyBusy", { permanent: true }));
+    try {
+      await ops.saveDraftToStore.call(a.workspace, { listingId, update: true, stores: ["shopify"] }, ui);
+    } finally {
+      busy.mockRestore();
+      mode.mode = "mock";
+    }
+    expect((await A.storeConnection("shopify"))!.status).toBe("connected");
+  });
+
   it("refreshes an expired token once, even for two saves at the same moment", async () => {
     await A.rotateCredentials("shopify", async () => ({
       save: encryptShopifyToken({

@@ -1,12 +1,14 @@
 "use server";
 
 import { randomInt } from "node:crypto";
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/server/auth/session";
 import { encryptSecret } from "@/server/crypto";
 import { forWorkspace } from "@/server/db/scope";
 import { env } from "@/server/env";
 import { settingsFor } from "@/server/social/meta-connect";
+import { recheckMetaLogins } from "@/server/social/meta-health";
 import { MetaSettings } from "@/lib/schemas/social";
 
 /**
@@ -29,6 +31,7 @@ export async function connectTestMeta(): Promise<void> {
     catalogs: [],
     catalogId: null,
     catalogAccess: false,
+    userTokenExpiresAt: null,
   };
   await forWorkspace(viewer.workspace.id).saveConnection("meta", {
     baseUrl: null,
@@ -58,6 +61,18 @@ export async function chooseMetaCatalog(formData: FormData): Promise<void> {
   const catalog = current.success ? current.data.catalogs.find((c) => c.id === formData.get("catalogId")) : undefined;
   if (current.success && catalog) await ws.setConnectionSettings("meta", { ...current.data, catalogId: catalog.id });
   redirect("/connections/meta");
+}
+
+/** "Test now" on Connections: asks Meta whether both logins still work, and records it. */
+export async function recheckMeta(): Promise<void> {
+  const viewer = await requireWorkspace();
+  try {
+    await recheckMetaLogins(forWorkspace(viewer.workspace.id));
+  } catch (err) {
+    // Meta couldn't be asked: what was known before still stands
+    console.error("[connect] Facebook re-check failed:", err);
+  }
+  refresh();
 }
 
 /** Forgets the Page tokens. Posts already made stay on Facebook and Instagram. */

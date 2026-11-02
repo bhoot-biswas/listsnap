@@ -169,7 +169,12 @@ export function connectionQueries(ws: string) {
  * store address. They run only after the webhook's signature has been checked.
  */
 
-/** False when this delivery was handled before (Shopify retries ones it thinks failed). */
+/** True when this delivery was handled before (Shopify retries ones it thinks failed). */
+export async function webhookDelivered(webhookId: string): Promise<boolean> {
+  return !!(await selectOne("SELECT 1 AS x FROM shopify_webhooks WHERE webhook_id = ?", [webhookId]));
+}
+
+/** Records a handled delivery; false when it was already recorded. */
 export async function firstWebhookDelivery(webhookId: string, topic: string, shop: string): Promise<boolean> {
   const r = await execute("INSERT IGNORE INTO shopify_webhooks (webhook_id, topic, shop) VALUES (?, ?, ?)", [
     webhookId,

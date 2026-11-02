@@ -125,6 +125,7 @@
     "storeMissing": "No store connected yet",
     "storeDemo": "Demo store",
     "storeBroken": "Your WooCommerce store isn't connecting. New listings can't be saved to it.",
+    "facebookBroken": "Facebook stopped accepting ListSnap's access, so reels can't be posted. Connect it again.",
     "fixConnection": "Fix connection",
     "recent": "Recent listings",
     "allListings": "All listings",
@@ -825,7 +826,23 @@
       "catalogIs": "Listings are saved to {name}",
       "noCatalog": "None of your business portfolios has a catalog yet. Make one in Commerce Manager, then connect again.",
       "noCatalogAccess": "ListSnap can't see your catalogs yet. Connect again and allow catalog access.",
-      "commerceManager": "Open Commerce Manager"
+      "commerceManager": "Open Commerce Manager",
+      "access": {
+        "ok": "Catalog access lasts until {date}. Facebook asks you to connect again after that; posting reels isn't affected.",
+        "soon": "Catalog access ends on {date}. Press Connect again before then to keep saving to the catalog.",
+        "expired": "Catalog access ended on {date}. Press Connect again to save to the catalog."
+      },
+      "broken": "Facebook stopped accepting ListSnap's access to {name}, so reels can't be posted. Press Connect again below.",
+      "checks": {
+        "page": {
+          "pass": "Page login works: reels can be posted",
+          "fail": "Facebook refused the Page login: connect again"
+        },
+        "user": {
+          "pass": "Catalog login works",
+          "fail": "Facebook refused the catalog login: connect again"
+        }
+      }
     },
     "disconnectConfirm": "Disconnect your store? ListSnap can’t save drafts to it until you connect it again.",
     "disconnectYes": "Yes, disconnect",
@@ -1117,10 +1134,12 @@
       "blocked": {
         "connect": "Connect Facebook with catalog access first.",
         "choose": "Choose a catalog first.",
-        "website": "Add the shop's website first; Meta links each product to it."
+        "website": "Add the shop's website first; Meta links each product to it.",
+        "expired": "Facebook's catalog access has ended. Connect again to save to the catalog."
       },
       "openConnections": "Open Connections",
-      "openSettings": "Open Settings"
+      "openSettings": "Open Settings",
+      "reconnectBy": "Facebook's catalog access ends on {date}; connect again before then."
     },
     "marketplace": {
       "title": "Facebook Marketplace",

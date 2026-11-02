@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { Check, LayoutGrid, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -11,7 +11,9 @@ export interface CatalogState {
   /** Facebook is connected with catalog access, and a catalog is chosen; its name. */
   catalogName: string | null;
   /** Why it can't be used yet, in the order the seller fixes it. */
-  blocked: "connect" | "choose" | "website" | null;
+  blocked: "connect" | "expired" | "choose" | "website" | null;
+  /** The seller's Facebook login ends within two weeks (ISO time); null otherwise. */
+  reconnectBy: string | null;
   saved: { items: number; checked: boolean } | null;
 }
 
@@ -34,6 +36,7 @@ export function CatalogPanel({
 }) {
   const t = useTranslations("review.catalog");
   const router = useRouter();
+  const format = useFormatter();
   const [state, setState] = useState<Sending>({ kind: "idle" });
 
   async function save() {
@@ -72,17 +75,31 @@ export function CatalogPanel({
       </div>
 
       {catalog.blocked ? (
-        <p className="text-sm">
-          {t(`blocked.${catalog.blocked}`)}{" "}
+        <div className="text-sm">
+          <p>{t(`blocked.${catalog.blocked}`)}</p>
+          {/* on its own line, so its 44 px tap area doesn't stretch the sentence's lines */}
           <Link
             href={catalog.blocked === "website" ? "/settings#shop" : "/connections/meta"}
-            className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline md:min-h-0"
+            className="flex min-h-11 w-fit items-center font-medium text-primary underline-offset-4 hover:underline md:min-h-8"
           >
             {catalog.blocked === "website" ? t("openSettings") : t("openConnections")}
           </Link>
-        </p>
+        </div>
       ) : (
         <>
+          {catalog.reconnectBy && (
+            <div className="text-sm">
+              <p className="text-warning">
+                {t("reconnectBy", { date: format.dateTime(new Date(catalog.reconnectBy), { dateStyle: "medium" }) })}
+              </p>
+              <Link
+                href="/connections/meta"
+                className="flex min-h-11 w-fit items-center font-medium text-primary underline-offset-4 hover:underline md:min-h-8"
+              >
+                {t("openConnections")}
+              </Link>
+            </div>
+          )}
           {catalog.saved && (
             <p className="flex flex-wrap items-center gap-1.5 text-sm">
               <Check className="size-4 text-success" aria-hidden="true" />
