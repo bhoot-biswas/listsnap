@@ -14,6 +14,12 @@ export function dbEnv(): boolean {
   try {
     process.loadEnvFile(".env.local");
   } catch {}
+  // These tests insert and delete rows. On a server that also holds the real database, one
+  // wrong line in .env.local would point them at it, so only a *_test database is used
+  // (CI's own throwaway service is the one exception).
+  const db = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).pathname.slice(1) : "";
+  if (db && !db.endsWith("_test") && !process.env.CI)
+    throw new Error(`DB tests only run against a database whose name ends in _test, not "${db}".`);
   process.env.MEDIA_DIR = mkdtempSync(path.join(tmpdir(), "listsnap-media-"));
   process.env.PROVIDER_MODE_META = "mock";
   process.env.PROVIDER_MODE_WOO = "mock";
