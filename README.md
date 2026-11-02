@@ -12,7 +12,7 @@ ListSnap is for small social-commerce sellers in Bangladesh. One phone photo, a 
 - **Photos:** a clean cutout, studio and banner photos that keep the product's real pixels, labelled AI scenes, and campaign looks for an occasion, all in the shop's brand kit.
 - **Save:** drafts in Shopify and WooCommerce (colour variants as variable products), never published ones; also the seller's Facebook catalog, a Facebook Marketplace helper and CSV exports.
 - **Reels:** a 12-second video of a listing, posted to the seller's Facebook Page and Instagram after they approve the caption.
-- **Assistant:** a shop-wide chat that takes photos and voice, and can start a listing.
+- **Assistant:** a shop-wide chat that takes photos and voice, and can start a listing. Spoken words appear in the message box while the seller talks, in Bangla, English or both, for them to check before sending.
 
 ## Meta models
 
@@ -23,7 +23,7 @@ Every model ListSnap calls at runtime is a Meta model.
 | Muse Spark            | Meta Model API (dev.meta.ai)  | Plans each photo, groups items into products, sets or colour variants, writes the English listing and its natural Bangla version, the Review help buttons and the chat       |
 | SAM 3.1               | Meta Model API (dev.meta.ai)  | Finds every matching item and cuts it out; checks fill, sharpness, light, overlap and colour on its mask                                                                     |
 | Muse Image            | Meta Model API (dev.meta.ai)  | Studio, banner and lifestyle photos, and campaign looks, around the real cutout                                                                                              |
-| Muse Voice Transcribe | Meta Model API (dev.meta.ai)  | Writes down voice notes, a video's speech turn by turn with times, and messages spoken into a chat box                                                                       |
+| Muse Voice Transcribe | Meta Model API (dev.meta.ai)  | Writes down voice notes and a video's speech turn by turn with times; streams the words of a chat message live, over its realtime socket, while the seller is still talking  |
 | Muse Spark Open       | Baseten (Meta's open weights) | Reads the price, sizes and stock out of what the seller said; watches a product video with its transcript and lists each product; hears the audio itself if Transcribe fails |
 
 ## How a listing is made
