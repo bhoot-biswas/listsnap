@@ -200,10 +200,12 @@ export function overviewQueries(ws: string) {
           `SELECT AVG(span) AS s FROM (
              SELECT TIMESTAMPDIFF(MICROSECOND, MIN(js.started_at), MAX(js.finished_at)) / 1e6 AS span
                FROM job_steps js JOIN jobs j ON j.id = js.job_id
-              WHERE js.workspace_id = ? AND j.status = 'ready' AND js.step IN ('plan', 'segment', 'group', 'listen', 'write', 'translate', 'render')
+              WHERE js.workspace_id = ? AND j.workspace_id = ? AND j.status = 'ready'
+                AND js.step IN ('plan', 'segment', 'group', 'listen', 'write', 'translate', 'render')
                 AND j.created_at >= UTC_TIMESTAMP() - INTERVAL 7 DAY
               GROUP BY js.job_id HAVING COUNT(*) = SUM(js.status = 'done')) t`,
-          [ws],
+          // the job's own shop too, so the week's jobs come from jobs_workspace_created_idx
+          [ws, ws],
         ),
       ]);
       const n = (v: number | null | undefined) => Number(v ?? 0);
