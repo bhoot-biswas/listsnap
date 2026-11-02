@@ -31,7 +31,7 @@ jobs:
       CREDENTIALS_KEY: Y2ktb25seS1jcmVkZW50aWFscy1rZXktMzItYnl0ZXM=
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
