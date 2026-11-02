@@ -4,7 +4,7 @@ import { forWorkspace, type WorkspaceScope } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
 import { GroupMode, Scene, writtenStatus } from "@/lib/schemas/pipeline";
 import { runStep, type StepOutcome } from "./run-step";
-import { groupStep, planStep, segmentStep } from "./job-steps";
+import { attachAngles, groupStep, planStep, segmentStep } from "./job-steps";
 import { listenStep } from "./listen-step";
 import { watchStep } from "./watch-step";
 import { lookStep, renderStep, translateStep, writeStep } from "./listing-steps";
@@ -212,7 +212,9 @@ export async function applyChoice(
   if (!kept.length || !["separate", "set", "variants"].includes(choice.mode)) return "invalid";
 
   const groups = choice.mode === "separate" ? kept.map((id) => ({ itemIds: [id] })) : [{ itemIds: kept }];
-  await ws.createListings(jobId, groups);
+  const listingIds = await ws.createListings(jobId, groups);
+  // other angles belong to the product only when there is one listing to give them to
+  if (listingIds.length === 1) await attachAngles(ws, jobId, listingIds[0]!);
   await ws.updateJob(jobId, { groupMode: choice.mode });
   await ws.transitionJob(jobId, "awaiting_choice", "processing");
   return "ok";

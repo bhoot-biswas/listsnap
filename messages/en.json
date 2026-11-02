@@ -475,7 +475,8 @@
       "look_boishakh": "Pohela Boishakh look",
       "look_minimal": "Minimal white look",
       "look_outdoor": "Outdoor look",
-      "look_wedding": "Wedding look"
+      "look_wedding": "Wedding look",
+      "angle": "Another angle"
     },
     "search": "Search by listing title",
     "searchGo": "Search",
@@ -973,6 +974,7 @@
     "next": "Next:",
     "photos": "Photos",
     "mainImage": "Main image",
+    "angle": "Another angle",
     "photosHint": "Choose the photos to send to your store. The main image always goes.",
     "include": "Include {name}",
     "english": "English",

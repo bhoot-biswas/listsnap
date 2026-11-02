@@ -41,6 +41,7 @@ export function ReviewPhotos({
   const name = (p: ReviewPhoto) => {
     const look = lookOf(p.kind);
     if (look) return t(`looks.names.${look}`);
+    if (p.kind === "angle") return t("angle");
     return p.kind === "main"
       ? t("mainImage")
       : p.kind in { studio: 1, lifestyle: 1, banner: 1 }
@@ -93,8 +94,8 @@ export function ReviewPhotos({
                   </span>
                 )}
                 <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1 text-center text-[10px] text-white">
-                  {p.kind === "main"
-                    ? t("mainImage")
+                  {p.kind === "main" || p.kind === "angle"
+                    ? name(p)
                     : lookOf(p.kind)
                       ? name(p)
                       : aiScene(p)

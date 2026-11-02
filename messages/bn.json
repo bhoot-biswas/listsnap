@@ -475,7 +475,8 @@
       "look_boishakh": "পহেলা বৈশাখ লুক",
       "look_minimal": "সাদামাটা সাদা লুক",
       "look_outdoor": "বাইরের লুক",
-      "look_wedding": "বিয়ের লুক"
+      "look_wedding": "বিয়ের লুক",
+      "angle": "অন্য দিক থেকে"
     },
     "search": "লিস্টিংয়ের শিরোনামে খুঁজুন",
     "searchGo": "খুঁজুন",
@@ -973,6 +974,7 @@
     "next": "পরেরটা:",
     "photos": "ছবি",
     "mainImage": "মূল ছবি",
+    "angle": "অন্য দিক থেকে",
     "photosHint": "কোন ছবিগুলো স্টোরে যাবে বেছে নিন। মূল ছবি সবসময় যায়।",
     "include": "{name} রাখুন",
     "english": "English",
