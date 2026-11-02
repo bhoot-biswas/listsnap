@@ -346,9 +346,10 @@ export interface FacebookProvider {
   /** The catalogs in the seller's business portfolios; null when catalog access wasn't given. */
   catalogs(ctx: CallContext, userToken: string): Promise<MetaCatalog[] | null>;
   /** Creates or updates the items (by our id), so sending again never makes copies. Returns Meta's batch handle. */
+  /** `removeIds` are items sent before that the listing no longer has (a colour turned off, say). */
   saveCatalogItems(
     ctx: CallContext,
-    input: { catalogId: string; userToken: string; items: CatalogApiItem[] },
+    input: { catalogId: string; userToken: string; items: CatalogApiItem[]; removeIds?: string[] },
   ): Promise<string>;
   catalogBatch(
     ctx: CallContext,

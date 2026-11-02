@@ -23,6 +23,7 @@ import { StillMaking } from "./_components/still-making";
 import type { VoiceNoteView } from "./_components/voice-note-card";
 import { ListenResult } from "@/lib/schemas/voice-note";
 import { catalogAccess } from "@/lib/meta-access";
+import { storeTargets } from "@/server/stores/targets";
 import { localTitle } from "@/lib/titles";
 import { numberRepeats, REVIEWABLE } from "@/lib/review-next";
 
@@ -31,6 +32,7 @@ function catalogState(
   meta: Awaited<ReturnType<typeof metaConnection>>,
   website: string | null,
   saved: unknown,
+  editedAt: Date | null,
 ): CatalogState {
   const catalog = meta?.settings.catalogs.find((c) => c.id === meta.settings.catalogId) ?? null;
   const result = CatalogSaved.safeParse(saved);
@@ -48,11 +50,26 @@ function catalogState(
             : !website
               ? "website"
               : null,
-    saved: result.success && result.data.catalogId === catalog?.id ? result.data : null,
+    saved:
+      result.success && result.data.catalogId === catalog?.id
+        ? {
+            items: result.data.items,
+            checked: result.data.checked,
+            refused: result.data.refused ?? [],
+            // saved before it was last changed: the catalog has the older text or price
+            behind: !!editedAt && !!result.data.savedAt && editedAt > new Date(result.data.savedAt),
+          }
+        : null,
   };
 }
 
-const CatalogSaved = z.object({ catalogId: z.string(), items: z.number(), checked: z.boolean() });
+const CatalogSaved = z.object({
+  catalogId: z.string(),
+  items: z.number(),
+  checked: z.boolean(),
+  refused: z.array(z.object({ id: z.string(), message: z.string() })).optional(),
+  savedAt: z.string().optional(),
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("review"))("title") };
@@ -95,6 +112,14 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
     ws.stepResult(id, "catalog", listing.id),
   ]);
   const chatId = await ws.listingChat(listing.id);
+  // each store the shop saves drafts to, on its own: behind since the seller's last change, or missing
+  const [saves, targets] = await Promise.all([ws.storeSaves(listing.id), storeTargets(viewer.workspace)]);
+  const kept = saves.filter((s) => targets.includes(s.kind));
+  const stores = {
+    behind: kept.filter((s) => !!listing.edited_at && listing.edited_at > s.saved_at).map((s) => s.kind),
+    in: kept.map((s) => s.kind),
+    missing: saves.length ? targets.filter((k) => !saves.some((s) => s.kind === k)) : [],
+  };
   // a voice note, or what the seller said in the video this job came from
   const heard = ListenResult.safeParse(await ws.stepResult(id, "listen"));
   const voiceNote: VoiceNoteView | null =
@@ -189,7 +214,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
         inStore={listing.status === "in_store" || listing.status === "posted"}
         hasWebsite={!!viewer.workspace.settings.website}
         archived={!!listing.archived_at}
-        storeBehind={!!listing.sent_at && !!listing.edited_at && listing.edited_at > listing.sent_at}
+        stores={stores}
         looks={{
           made: media.map((m) => lookOf(m.kind)).filter((l): l is Look => l !== null),
           imagesLeft: Math.max(0, viewer.workspace.limits.images - usage.images),
@@ -228,7 +253,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
             ? { at: listing.marketplace_posted_at.toISOString(), url: listing.marketplace_url }
             : null,
         }}
-        catalog={catalogState(meta, viewer.workspace.settings.website, savedCatalog)}
+        catalog={catalogState(meta, viewer.workspace.settings.website, savedCatalog, listing.edited_at)}
         chat={{
           items: chatItems(history),
           revision: chatRevision(history),

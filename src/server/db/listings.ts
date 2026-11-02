@@ -310,6 +310,13 @@ export function listingQueries(ws: string) {
       await execute("INSERT INTO events (workspace_id, type, ref_id) VALUES (?, 'sent_to_store', ?)", [ws, id]);
     },
 
+    /** When the listing was last saved to each store it is in. */
+    storeSaves: (listingId: string) =>
+      select<{ kind: StoreKind; saved_at: Date }>(
+        "SELECT kind, saved_at FROM listing_store_products WHERE workspace_id = ? AND listing_id = ?",
+        [ws, listingId],
+      ),
+
     /** Which stores each listing is in, and its product there. */
     async storeProducts(ids: string[]): Promise<Map<string, Partial<Record<StoreKind, string>>>> {
       const out = new Map<string, Partial<Record<StoreKind, string>>>();

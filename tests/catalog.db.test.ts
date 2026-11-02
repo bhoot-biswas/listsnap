@@ -10,7 +10,8 @@ describe.skipIf(!enabled)("Facebook catalog (MariaDB)", async () => {
   const { encryptSecret } = await import("@/server/crypto");
   const { finishLogin } = await import("@/server/social/meta-connect");
   const { metaConnection, readyCatalog } = await import("@/server/social/connection");
-  const { saveToCatalog } = await import("@/server/pipeline/catalog-step");
+  const { checkCatalog, saveToCatalog } = await import("@/server/pipeline/catalog-step");
+  const { updateDoneStepResult } = await import("@/server/db/steps");
   const { mockFacebook } = await import("@/server/providers/fb/mock");
 
   const a = await createTestWorkspace({ website: "https://rupkotha.example" });
@@ -122,5 +123,40 @@ describe.skipIf(!enabled)("Facebook catalog (MariaDB)", async () => {
     expect(r.found && "outcome" in r && r.outcome.state === "failed" && r.outcome.error).toMatch(/connectCatalog/);
     expect(send).not.toHaveBeenCalled();
     await A.setConnectionSettings("meta", settings);
+  });
+
+  it("checks again later when Meta hadn't finished checking", async () => {
+    const still = vi.spyOn(mockFacebook, "catalogBatch").mockResolvedValue({ done: false });
+    const r = await saveToCatalog(a.workspace, listingId, { update: true }, noWait);
+    still.mockRestore();
+    expect(r.found && "outcome" in r && r.outcome.state === "done" && r.outcome.result).toMatchObject({
+      checked: false,
+      handle: expect.any(String),
+    });
+    const listing = (await A.getListing(listingId))!;
+    expect(await checkCatalog(a.workspace, listingId)).toMatchObject({ checked: true, handle: null });
+    expect(await A.stepResult(listing.job_id, "catalog", listingId)).toMatchObject({ checked: true });
+  });
+
+  it("removes items the listing no longer has, and keeps a save Meta only partly refused", async () => {
+    const listing = (await A.getListing(listingId))!;
+    const key = { jobId: listing.job_id, step: "catalog", target: listingId };
+    const saved = (await A.stepResult<{ retailerIds: string[] }>(listing.job_id, "catalog", listingId))!;
+    // as if the listing was sold as one item before it had colours
+    await updateDoneStepResult(a.workspace.id, key, { ...saved, retailerIds: [...saved.retailerIds, "listsnap-old"] });
+    const send = vi.spyOn(mockFacebook, "saveCatalogItems");
+    // Meta can't remove what's already gone; that isn't this save's failure
+    const checked = vi
+      .spyOn(mockFacebook, "catalogBatch")
+      .mockResolvedValueOnce({ done: true, errors: [{ id: "listsnap-old", message: "Not found" }] });
+    const r = await saveToCatalog(a.workspace, listingId, { update: true }, noWait);
+    expect(send.mock.calls.at(-1)![1]).toMatchObject({ removeIds: ["listsnap-old"] });
+    expect(r.found && "outcome" in r && r.outcome.state === "done" && r.outcome.result).toMatchObject({
+      checked: true,
+      retailerIds: saved.retailerIds,
+    });
+    expect((r as { outcome: { result: { refused?: unknown } } }).outcome.result.refused).toBeUndefined();
+    send.mockRestore();
+    checked.mockRestore();
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { STORE_NAMES, type StoreKind } from "@/lib/stores";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ArrowRight, Check, ChevronDown, CloudOff, Loader2 } from "lucide-react";
@@ -48,7 +49,7 @@ export function ReviewForm({
   status,
   inStore,
   hasWebsite,
-  storeBehind,
+  stores,
   archived,
   others,
   looks,
@@ -78,7 +79,8 @@ export function ReviewForm({
   /** The shop has a website set, which an exported Facebook catalog needs. */
   hasWebsite: boolean;
   /** Edited since the store draft was saved. */
-  storeBehind: boolean;
+  /** The shop's draft stores: the ones this listing is in, behind, or still missing from. */
+  stores: { in: StoreKind[]; behind: StoreKind[]; missing: StoreKind[] };
   archived: boolean;
   /** Every listing from this photo, for the tabs and "Next". */
   others: {
@@ -132,12 +134,12 @@ export function ReviewForm({
 
   // the latest edit, for AI answers that arrive after the seller kept typing
   const latest = useRef(edit);
-  const [behind, setBehind] = useState(storeBehind);
+  const [behind, setBehind] = useState(stores.behind);
   const change = (next: ListingEdit) => {
     latest.current = next;
     setEdit(next);
     saver.change(next);
-    setBehind(true);
+    setBehind(stores.in);
   };
 
   // the chat changed the listing on the server: take the server's copy, which already holds
@@ -390,9 +392,12 @@ export function ReviewForm({
           </Link>
         )}
         {/* the autosave keeps ListSnap's copy; the store's draft changes only on Update */}
-        {inStore && behind && (
+        {inStore && (behind.length > 0 || stores.missing.length > 0) && (
           <p role="status" className="text-sm font-medium text-warning">
-            {t("storeBehind")}
+            {behind.length > 0 && t("storeBehindIn", { stores: behind.map((k) => STORE_NAMES[k]).join(" · ") })}
+            {behind.length > 0 && stores.missing.length > 0 && " "}
+            {stores.missing.length > 0 &&
+              t("storeMissing", { stores: stores.missing.map((k) => STORE_NAMES[k]).join(" · ") })}
           </p>
         )}
         <div className="flex items-center justify-between gap-3">

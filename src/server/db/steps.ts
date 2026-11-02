@@ -142,6 +142,15 @@ export async function recordDoneSteps(
  * Lets a finished step run again, for "Update store draft": the saved result would
  * otherwise be returned forever. Only a done step moves, so a running one is left alone.
  */
+/** Replaces a finished step's result, for news that came later (Meta finishing its checks). */
+export async function updateDoneStepResult(workspaceId: string, key: StepKey, result: unknown): Promise<boolean> {
+  const r = await execute(
+    "UPDATE job_steps SET result_json = ? WHERE job_id = ? AND step = ? AND target = ? AND workspace_id = ? AND status = 'done'",
+    [json(result), key.jobId, key.step, key.target, workspaceId],
+  );
+  return r.affectedRows === 1;
+}
+
 export async function reopenDoneStep(workspaceId: string, key: StepKey): Promise<void> {
   await execute(
     "UPDATE job_steps SET status = 'pending', attempts = 0 WHERE job_id = ? AND step = ? AND target = ? AND workspace_id = ? AND status = 'done'",

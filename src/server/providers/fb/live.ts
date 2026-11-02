@@ -109,8 +109,8 @@ export function makeLiveFacebook(wait = realWait): FacebookProvider {
       }
     },
 
-    async saveCatalogItems(ctx, { catalogId, userToken, items }) {
-      const requests = items.map((i) => ({
+    async saveCatalogItems(ctx, { catalogId, userToken, items, removeIds = [] }) {
+      const requests: { method: string; data: Record<string, unknown> }[] = items.map((i) => ({
         method: "UPDATE",
         data: {
           id: i.id,
@@ -126,6 +126,8 @@ export function makeLiveFacebook(wait = realWait): FacebookProvider {
           ...(i.color && { color: i.color }),
         },
       }));
+      // left in the catalog they would still be on sale: a duplicate, or a colour no longer sold
+      for (const id of removeIds) requests.push({ method: "DELETE", data: { id } });
       const res = await graph<{ handles?: string[] }>(ctx, {
         provider: "facebook",
         endpoint: "catalog items_batch",

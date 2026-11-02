@@ -1,5 +1,5 @@
 import "server-only";
-import { reopenDoneStep, sqlStepStore } from "@/server/db/steps";
+import { reopenDoneStep, sqlStepStore, updateDoneStepResult } from "@/server/db/steps";
 import { forWorkspace, type ListingRow } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
 import { csvShop } from "@/server/export/build";
@@ -24,6 +24,14 @@ export interface CatalogResult {
   items: number;
   /** Meta checked the items before we stopped waiting; otherwise it is still working on them. */
   checked: boolean;
+  /** Our ids of the items sent, so the next save removes the ones the listing no longer has. */
+  retailerIds?: string[];
+  /** Meta's batch, kept while unchecked so "Check again" can ask about it later. */
+  handle?: string | null;
+  /** Items Meta refused while the others were saved, in Meta's words. */
+  refused?: { id: string; message: string }[];
+  /** When it was sent (ISO), to tell when the listing changed since. */
+  savedAt?: string;
 }
 
 /**
@@ -52,10 +60,12 @@ export async function saveToCatalog(
   if (!listing) return { found: false };
   if (!SAVABLE.has(listing.status)) return { found: true, invalid: "This listing isn't finished yet." };
   const key = { jobId: listing.job_id, step: "catalog", target: listingId };
+  // read before reopening: it names the items sent last time
+  const before = await ws.stepResult<CatalogResult>(listing.job_id, "catalog", listingId);
   if (opts.update) await reopenDoneStep(ws.id, key);
   // pressing the button again is the seller's "Try again"
   const outcome = await runStep(sqlStepStore(ws.id), key, { lockMs: LOCK_MS, force: true }, () =>
-    send(workspace, listing, wait),
+    send(workspace, listing, wait, before),
   );
   return { found: true, outcome };
 }
@@ -64,6 +74,7 @@ async function send(
   workspace: Workspace,
   listing: ListingRow,
   wait: (ms: number) => Promise<unknown>,
+  before: CatalogResult | null,
 ): Promise<CatalogResult> {
   const ws = forWorkspace(workspace.id);
   const conn = await metaConnection(ws);
@@ -81,17 +92,32 @@ async function send(
   if (!items.length) throw new StepError("addPriceFirst");
 
   const ctx = { workspaceId: ws.id, jobId: listing.job_id, step: "catalog" };
+  const retailerIds = items.map((i) => i.id);
+  const removeIds =
+    before?.catalogId === catalog.id ? (before.retailerIds ?? []).filter((id) => !retailerIds.includes(id)) : [];
+  const result = (checked: boolean, extra: Partial<CatalogResult> = {}): CatalogResult => ({
+    catalogId: catalog.id,
+    catalogName: catalog.name,
+    items: items.length,
+    checked,
+    retailerIds,
+    savedAt: new Date().toISOString(),
+    ...extra,
+  });
   try {
-    const handle = await facebook().saveCatalogItems(ctx, { catalogId: catalog.id, userToken, items });
+    const handle = await facebook().saveCatalogItems(ctx, { catalogId: catalog.id, userToken, items, removeIds });
     for (let i = 0; i < STATUS_TRIES; i++) {
       const batch = await facebook().catalogBatch(ctx, { catalogId: catalog.id, userToken, handle });
       if (batch.done) {
-        const refused = batch.errors.find((e) => e.message);
-        if (refused) throw new StepError("metaSaid", { params: { message: refused.message }, permanent: true });
-        return { catalogId: catalog.id, catalogName: catalog.name, items: items.length, checked: true };
+        const refused = refusedItems(batch.errors, removeIds);
+        // nothing went in: say why, as a failure; some did: say which were refused
+        if (refused.length === items.length)
+          throw new StepError("metaSaid", { params: { message: refused[0]!.message }, permanent: true });
+        return result(true, refused.length ? { refused } : {});
       }
       await wait(STATUS_WAIT_MS);
     }
+    return result(false, { handle });
   } catch (err) {
     // the login ended early (password changed, access removed): it counts as ended, so
     // every catalog button says to connect again instead of failing one by one
@@ -99,5 +125,38 @@ async function send(
     await metaRefused(ws, "user");
     throw new StepError("connectCatalog", { permanent: true });
   }
-  return { catalogId: catalog.id, catalogName: catalog.name, items: items.length, checked: false };
+}
+
+/** Meta's refusals; one about removing an old item (already gone, say) says nothing about this save. */
+function refusedItems(errors: { id: string; message: string }[], removed: string[]) {
+  return errors.filter((e) => e.message && !removed.includes(e.id)).map((e) => ({ id: e.id, message: e.message }));
+}
+
+/**
+ * "Check again" on a save Meta hadn't finished checking: asks about that batch once, and
+ * keeps the answer as the save's result. A save already checked comes back as it is.
+ */
+export async function checkCatalog(workspace: Workspace, listingId: string): Promise<CatalogResult | null> {
+  const ws = forWorkspace(workspace.id);
+  const listing = await ws.getListing(listingId);
+  if (!listing) return null;
+  const saved = await ws.stepResult<CatalogResult>(listing.job_id, "catalog", listingId);
+  if (!saved || saved.checked || !saved.handle) return saved;
+  const conn = await metaConnection(ws);
+  const userToken = conn?.userToken();
+  if (!userToken) throw new StepError("connectCatalog");
+  const ctx = { workspaceId: ws.id, jobId: listing.job_id, step: "catalog" };
+  let batch;
+  try {
+    batch = await facebook().catalogBatch(ctx, { catalogId: saved.catalogId, userToken, handle: saved.handle });
+  } catch (err) {
+    if (!metaRefusal(err)) throw err;
+    await metaRefused(ws, "user");
+    throw new StepError("connectCatalog");
+  }
+  if (!batch.done) return saved;
+  const refused = refusedItems(batch.errors, []);
+  const checked: CatalogResult = { ...saved, checked: true, handle: null, ...(refused.length && { refused }) };
+  await updateDoneStepResult(ws.id, { jobId: listing.job_id, step: "catalog", target: listingId }, checked);
+  return checked;
 }

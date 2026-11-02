@@ -27,8 +27,13 @@ const ORDER: Record<ListingSort, string> = {
 
 /** What a listing's search reads: titles, categories and tags in both languages. */
 const SEARCHED = `JSON_EXTRACT(l.fields_json, '$.en.title', '$.bn.title', '$.en.category', '$.bn.category', '$.en.tags', '$.bn.tags')`;
-/** Saved to a store, then changed: the store's draft is behind. */
-const BEHIND = "(l.sent_at IS NOT NULL AND l.edited_at > l.sent_at)";
+/**
+ * Changed since its last save to one of its stores: that store's draft is behind. Each
+ * store is compared on its own, so updating one store doesn't hide the other's old draft.
+ */
+const BEHIND_IN = `FROM listing_store_products sp
+  WHERE sp.listing_id = l.id AND sp.workspace_id = l.workspace_id AND l.edited_at > sp.saved_at`;
+const BEHIND = `EXISTS (SELECT 1 ${BEHIND_IN})`;
 
 export interface ListingListRow {
   id: string;
@@ -48,9 +53,12 @@ export interface ListingListRow {
   created_at: Date;
   /** The stores holding a draft of it. */
   stores: StoreKind[];
-  behind: boolean;
+  /** The stores whose draft is older than the seller's last change. */
+  behind: StoreKind[];
   /** The seller marked it as posted on Facebook Marketplace. */
   marketplace: boolean;
+  /** Saved to the shop's Facebook catalog. */
+  catalog: boolean;
 }
 
 export interface AttentionRow {
@@ -127,10 +135,11 @@ export function overviewQueries(ws: string) {
       const filter = where.join(" AND ");
       const [rows, total] = await Promise.all([
         select<
-          Omit<ListingListRow, "stores" | "behind" | "marketplace"> & {
+          Omit<ListingListRow, "stores" | "behind" | "marketplace" | "catalog"> & {
             stores: string | null;
-            behind: number;
+            behind: string | null;
             marketplace: number;
+            catalog: number;
           }
         >(
           `SELECT l.id, l.job_id, l.status, l.price_bdt, l.confidence, l.created_at, ${TITLE} AS title, ${TITLE_BN} AS title_bn,
@@ -141,7 +150,10 @@ export function overviewQueries(ws: string) {
                   ${CUTOUT} AS cutout_media_id,
                   (SELECT GROUP_CONCAT(sp.kind ORDER BY sp.kind) FROM listing_store_products sp
                     WHERE sp.listing_id = l.id AND sp.workspace_id = l.workspace_id) AS stores,
-                  ${BEHIND} AS behind, l.marketplace_posted_at IS NOT NULL AS marketplace
+                  (SELECT GROUP_CONCAT(sp.kind ORDER BY sp.kind) ${BEHIND_IN}) AS behind,
+                  l.marketplace_posted_at IS NOT NULL AS marketplace,
+                  EXISTS (SELECT 1 FROM job_steps cs WHERE cs.workspace_id = l.workspace_id AND cs.job_id = l.job_id
+                            AND cs.step = 'catalog' AND cs.target = l.id AND cs.status = 'done') AS catalog
              FROM listings l JOIN jobs j ON j.id = l.job_id
             WHERE ${filter}
             ORDER BY ${ORDER[opts.sort ?? "newest"]} LIMIT ? OFFSET ?`,
@@ -153,8 +165,9 @@ export function overviewQueries(ws: string) {
         rows: rows.map((r) => ({
           ...r,
           stores: (r.stores?.split(",") ?? []).filter((k): k is StoreKind => StoreKind.safeParse(k).success),
-          behind: !!Number(r.behind),
+          behind: (r.behind?.split(",") ?? []).filter((k): k is StoreKind => StoreKind.safeParse(k).success),
           marketplace: !!Number(r.marketplace),
+          catalog: !!Number(r.catalog),
         })),
         total: Number(total?.n ?? 0),
       };
