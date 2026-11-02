@@ -10,5 +10,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/chat
   const { id } = await params;
   const ws = forWorkspace(viewer.workspace.id);
   if ((await ws.chatListing(id)) === undefined) return notFound();
-  return ok({ id, items: chatItems(await ws.chatMessages(id)) });
+  const [messages, running] = await Promise.all([ws.chatMessages(id), ws.chatRunning(id)]);
+  // running: a turn still holds it, so a chat box that lost its stream keeps reading
+  return ok({ id, items: chatItems(messages), running });
 }

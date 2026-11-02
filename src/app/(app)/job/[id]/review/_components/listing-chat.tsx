@@ -14,10 +14,13 @@ const SUGGESTIONS = ["status", "reel", "eid", "store"] as const;
 export function ListingChat({
   listingId,
   initial,
+  running,
   beforeSend,
 }: {
   listingId: string;
   initial: ChatItem[];
+  /** The conversation whose reply is still being worked on, if any. */
+  running: string | null;
   beforeSend: () => Promise<boolean>;
 }) {
   const t = useTranslations("chat");
@@ -37,6 +40,7 @@ export function ListingChat({
           endpoint={`/api/listings/${listingId}/chat`}
           historyUrl={`/api/chats?listing=${listingId}`}
           initial={initial}
+          running={running}
           intro={t("intro")}
           placeholder={t("placeholder")}
           suggestions={SUGGESTIONS.map((s) => t(`suggestions.${s}`))}

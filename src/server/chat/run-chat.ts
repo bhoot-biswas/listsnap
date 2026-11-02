@@ -57,8 +57,10 @@ export async function runChat(
   const ws = forWorkspace(workspace.id);
   const listing = scope.listingId ? await ws.getListing(scope.listingId) : null;
   if (scope.listingId && !listing) return emit({ type: "error", code: "generic" });
+  // read before the claim below, which counts as using the chat
+  const usedLast = await ws.listingChat(scope.listingId);
   // an earlier conversation the seller opened, or the one used last
-  let chatId = req.chatId ? await ws.chatInScope(req.chatId, scope.listingId) : await ws.listingChat(scope.listingId);
+  let chatId = req.chatId ? await ws.chatInScope(req.chatId, scope.listingId) : usedLast;
   if (req.chatId && !chatId) return emit({ type: "error", code: "generic" });
   // one turn per chat: claimed before its history is read, so a second tab or a second
   // tap of Approve finds the card answered instead of running it again
@@ -106,7 +108,8 @@ export async function runChat(
       const photoIds = [...new Set(req.photoIds)];
       if ((await ws.chatPhotos(photoIds)).length !== photoIds.length) return emit({ type: "error", code: "generic" });
       if (!chatId || req.newChat) {
-        // a card left open in the old chat can't be answered any more, so nothing is sent
+        // a card left open in the old chat can't be answered any more, so it says nothing was sent
+        if (chatId) await closeCards(chatId);
         chatId = await ws.startChat(scope.listingId, req.message || "Photo");
         await claim(chatId);
         // early, so the page can give the conversation its own address while the model works
@@ -118,9 +121,23 @@ export async function runChat(
       }
       await add({ role: "user", content: req.message, ...(photoIds.length && { photoIds }) });
       await received(chatId);
+    } else if ("retry" in req) {
+      // only a reply that didn't finish is tried again, and it counts as a message
+      const last = history.at(-1);
+      if (!(last?.role === "assistant" && last.failed)) return emit({ type: "error", code: "answered" });
+      if ((await ws.chatCallsToday()) >= CHAT_CALLS_PER_DAY) return emit({ type: "error", code: "limit" });
+      if (!(await takeDemoAllowance(workspace, clientIp, "ai_calls"))) return emit({ type: "error", code: "limit" });
+      await received(chatId!);
     } else {
       const asked = pendingCalls(history).find((c) => c.id === req.approve.toolCallId);
       if (!asked) return emit({ type: "error", code: "answered" });
+      // a card in a conversation the seller has since left was made for then: its prices
+      // and photos may be out of date, so it is closed instead of run
+      if (chatId !== usedLast) {
+        await add({ role: "tool", toolCallId: asked.id, name: asked.name, result: MOVED_ON });
+        emit({ type: "item", item: approvalItem(asked, "declined") });
+        return emit({ type: "error", code: "expired" });
+      }
       // the seller may reword a reel's caption on the card: the post goes out with their words,
       // which the result keeps, so a reload shows the caption that was posted
       const caption = req.approve.caption;
@@ -151,8 +168,8 @@ export async function runChat(
         if (await stopRequested()) return await stop([]);
         await claim(chatId!);
         emit({ type: "working", name: null });
-        // a Stop mark is ours, not something the model said
-        const messages = history.filter((m) => !(m.role === "assistant" && m.stopped));
+        // Stop and failure marks are ours, not something the model said
+        const messages = history.filter((m) => !(m.role === "assistant" && (m.stopped || m.failed)));
         const answer = await meta().chat(ctx, { system, messages, tools, images });
         // our own ids: the model's may repeat across turns, and an id is an op's idempotency key
         const checked = await Promise.all(
@@ -208,16 +225,41 @@ export async function runChat(
         }
         if (waiting) return done();
       }
-      emit({ type: "error", code: "steps" });
+      await fail({ code: "steps" });
     } catch (err) {
-      if (err instanceof StepError)
-        emit({ type: "error", code: "busy", message: errorWords(err, await requestLocale()) });
+      if (err instanceof StepError) await fail({ code: "busy", message: errorWords(err, await requestLocale()) });
       else {
         console.error("[chat] unexpected error:", err);
-        emit({ type: "error", code: "generic" });
+        await fail({ code: "generic" });
       }
     }
     done();
+
+    /**
+     * The seller's message is stored but its reply didn't finish. That is stored too, so the
+     * chat still says so after a reload (or on a new chat's own page) and offers Try again.
+     */
+    async function fail(failed: { code: "busy" | "steps" | "generic"; message?: string }) {
+      try {
+        await add({ role: "assistant", content: null, toolCalls: [], failed });
+        emit({ type: "item", item: { kind: "failed", id: randomUUID(), ...failed } });
+      } catch (err) {
+        console.error("[chat] couldn't store a failed reply:", err);
+        emit({ type: "error", code: failed.code, message: failed.message });
+      }
+    }
+  }
+
+  /** Cards still waiting in the conversation the seller is leaving; skipped if a turn holds it. */
+  async function closeCards(oldId: string) {
+    const token = randomUUID();
+    if (!(await ws.claimChat(oldId, token, LOCK_MS))) return;
+    try {
+      for (const call of pendingCalls(await ws.chatMessages(oldId)))
+        await ws.addChatMessage(oldId, { role: "tool", toolCallId: call.id, name: call.name, result: MOVED_ON });
+    } finally {
+      await ws.releaseChat(oldId, token);
+    }
   }
 }
 

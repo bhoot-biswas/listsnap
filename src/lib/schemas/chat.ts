@@ -45,6 +45,11 @@ export const ChatMessage = z.discriminatedUnion("role", [
     toolCalls: z.array(ToolCall).default([]),
     /** Not the model's: marks where the seller pressed Stop, so a reload still shows it. */
     stopped: z.literal(true).optional(),
+    /**
+     * Not the model's either: the reply to the message before it didn't finish, and why,
+     * so a reload or a new chat's page still says so and offers Try again.
+     */
+    failed: z.object({ code: z.enum(["busy", "steps", "generic"]), message: z.string().optional() }).optional(),
   }),
   z.object({ role: z.literal("tool"), toolCallId: z.string(), name: z.string(), result: z.unknown() }),
 ]);
@@ -73,6 +78,8 @@ export const ChatRequest = z.union([
     }),
     chatId: ChatId.optional(),
   }),
+  // Try again on a reply that didn't finish: the stored conversation goes to the model again
+  z.object({ retry: z.literal(true), chatId: ChatId }),
 ]);
 export type ChatRequest = z.infer<typeof ChatRequest>;
 
@@ -92,6 +99,8 @@ export type ChatItem =
   | { kind: "assistant"; id: string; text: string }
   /** Where the seller pressed Stop. */
   | { kind: "stopped"; id: string }
+  /** A reply that didn't finish; `message` is the reason in the seller's words, when there is one. */
+  | { kind: "failed"; id: string; code: "busy" | "steps" | "generic"; message?: string }
   | ({ kind: "tool"; id: string; name: string; ok: boolean } & ToolExtras)
   | ({
       kind: "approval";
@@ -117,7 +126,11 @@ export type ChatEvent =
   | { type: "received"; chatId: string }
   | { type: "item"; item: ChatItem }
   | { type: "working"; name: string | null }
-  | { type: "error"; code: "busy" | "running" | "limit" | "steps" | "answered" | "generic"; message?: string }
+  | {
+      type: "error";
+      code: "busy" | "running" | "limit" | "steps" | "answered" | "expired" | "generic";
+      message?: string;
+    }
   | { type: "done"; changed: boolean; chatId?: string };
 
 /** A conversation in the list of earlier ones. */

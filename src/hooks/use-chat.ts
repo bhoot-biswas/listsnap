@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { resizeForUpload } from "@/lib/resize-image";
@@ -12,15 +12,20 @@ import { CHAT_PHOTOS_MAX, type ChatEvent, type ChatItem } from "@/lib/schemas/ch
  * a reload shows it again, and the page refreshes afterwards to show whatever the chat
  * changed. Photos upload as soon as they're picked, so sending only names them.
  */
+const FOLLOW_MS = 4000;
+
 export function useChat({
   endpoint,
   initial,
   chatId: initialChatId,
   beforeSend,
   onStarted,
+  runningChat,
 }: {
   endpoint: string;
   initial: ChatItem[];
+  /** A conversation whose reply the page found still being worked on (the seller left mid-turn). */
+  runningChat?: string | null;
   /** undefined: the conversation used last, as the page loaded it; a string: that one. */
   chatId?: string;
   /** Saves the seller's pending edits first, so the chat works on what they see. */
@@ -51,6 +56,10 @@ export function useChat({
   const [draft, setDraft] = useState("");
   // undefined: the conversation used last; null: a new one not sent yet
   const [chatId, setChatId] = useState<string | null | undefined>(initialChatId);
+  // the reply goes on without us (the connection dropped, or the page was left): its
+  // conversation is read again until the server lets go of it
+  const [following, setFollowing] = useState(false);
+  const followed = useRef<string | null>(null);
 
   // the page's copy is of the conversation used last; after the seller opens an earlier one
   // or starts a new one, a refresh of the page (a reel, a save) mustn't swap it back
@@ -74,10 +83,12 @@ export function useChat({
    * the box to try again, instead of vanishing on flaky phone data.
    */
   async function request(body: unknown, giveBack?: () => void) {
-    if (inFlight.current) return;
+    if (inFlight.current || followed.current) return;
     inFlight.current = true;
     let started = false;
     let failed = false;
+    let finished = false;
+    let turnChat: string | null = typeof chatId === "string" ? chatId : null;
     setBusy(true);
     setError(null);
     setUnsent(false);
@@ -103,16 +114,20 @@ export function useChat({
           const e = JSON.parse(line) as ChatEvent;
           if (e.type === "received") {
             started = true;
+            turnChat = e.chatId;
             setChatId(e.chatId);
             setStoppable(e.chatId);
           } else if (e.type === "chat") {
             started = true;
+            turnChat = e.chatId;
             setChatId(e.chatId);
             onStarted?.(e.chatId);
           } else if (e.type === "item") upsert(e.item);
           else if (e.type === "working") setWorking(e.name);
-          else if (e.type === "done" && e.chatId) setChatId(e.chatId);
-          else if (e.type === "error") {
+          else if (e.type === "done") {
+            finished = true;
+            if (e.chatId) setChatId(e.chatId);
+          } else if (e.type === "error") {
             failed = true;
             setError(e.message ?? t(`error.${e.code === "busy" ? "generic" : e.code}`));
           }
@@ -120,8 +135,11 @@ export function useChat({
       }
     } catch {
       failed = true;
-      setError(t("error.generic"));
+      if (!started) setError(t("error.generic"));
     } finally {
+      // the message is stored but the answer stopped coming: on a phone that's usually the
+      // connection, while the server carries on, so say that and follow it instead
+      const lost = started && !finished && !!turnChat;
       if (failed && !started && giveBack) {
         giveBack();
         setUnsent(true);
@@ -134,7 +152,10 @@ export function useChat({
       setSince(null);
       setStoppable(null);
       setStopping(false);
-      router.refresh();
+      if (lost) {
+        setError(t("error.lost"));
+        void follow(turnChat!);
+      } else router.refresh();
     }
   }
 
@@ -153,6 +174,46 @@ export function useChat({
       setError(t("stopFailed"));
     }
   }
+
+  /** Reads the conversation every few seconds until no turn holds it, then shows it. */
+  async function follow(id: string) {
+    if (followed.current) return;
+    followed.current = id;
+    setFollowing(true);
+    setStoppable(id);
+    try {
+      // a turn holds its chat at most five minutes after its last step
+      for (let i = 0; i < 80 && followed.current === id; i++) {
+        await new Promise((r) => setTimeout(r, FOLLOW_MS));
+        const res = await fetch(`/api/chats/${id}`).catch(() => null);
+        const body = res?.ok ? ((await res.json()) as { items: ChatItem[]; running: boolean }) : null;
+        if (!body) continue;
+        setItems(body.items);
+        if (!body.running) {
+          setError(null);
+          break;
+        }
+      }
+    } finally {
+      if (followed.current === id) {
+        followed.current = null;
+        setFollowing(false);
+        setStoppable(null);
+        setStopping(false);
+        router.refresh();
+      }
+    }
+  }
+
+  // the page found the reply still running: follow it from the start
+  useEffect(() => {
+    if (runningChat) void follow(runningChat);
+    return () => {
+      followed.current = null;
+    };
+    // once, for the conversation the page loaded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function attach(files: File[]) {
     setError(null);
@@ -200,7 +261,7 @@ export function useChat({
   /** Sends a message; returns false when there's nothing to send or a request is running. */
   function send(message: string, newChat = false): boolean {
     const clean = message.trim();
-    if ((!clean && !photos.length) || busy || inFlight.current || uploading) return false;
+    if ((!clean && !photos.length) || busy || inFlight.current || followed.current || uploading) return false;
     const before = items;
     const sent = photos;
     // a suggestion tapped while typing leaves the typed text alone
@@ -231,11 +292,13 @@ export function useChat({
     photos,
     uploading,
     chatId,
-    status:
-      working === undefined
-        ? ""
-        : stopping
-          ? t("stopping")
+    following,
+    status: stopping
+      ? t("stopping")
+      : following
+        ? t("stillWorking")
+        : working === undefined
+          ? ""
           : working && t.has(`working.${working}`)
             ? t(`working.${working}`)
             : t("thinking"),
@@ -245,6 +308,8 @@ export function useChat({
     stop: () => void stop(),
     send,
     /** `caption` is a reel's caption the seller reworded on the card. */
+    /** Sends the stored conversation to the model again, after a reply that didn't finish. */
+    retry: () => typeof chatId === "string" && void request({ retry: true, chatId }),
     answer: (id: string, yes: boolean, caption?: string) =>
       void request({ approve: { toolCallId: id, yes, ...(caption && { caption }) }, ...which() }),
     attach: (files: File[]) => void attach(files),

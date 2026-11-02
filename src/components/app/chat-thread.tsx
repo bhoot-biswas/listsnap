@@ -59,6 +59,12 @@ export function ChatThread({
           <ChatEntry key={g.id} item={g} busy={busy} onAnswer={chat.answer} />
         ),
       )}
+      {items.at(-1)?.kind === "failed" && !busy && !chat.following && (
+        <Button type="button" variant="outline" className="h-11 md:h-9" onClick={chat.retry}>
+          <RotateCw aria-hidden="true" />
+          {t("tryAgain")}
+        </Button>
+      )}
       {status && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className="flex items-center gap-2 text-xs text-muted-foreground">

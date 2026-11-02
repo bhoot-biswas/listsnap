@@ -229,7 +229,11 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
             : null,
         }}
         catalog={catalogState(meta, viewer.workspace.settings.website, savedCatalog)}
-        chat={{ items: chatItems(history), revision: chatRevision(history) }}
+        chat={{
+          items: chatItems(history),
+          revision: chatRevision(history),
+          running: chatId && (await ws.chatRunning(chatId)) ? chatId : null,
+        }}
         others={tabs}
       />
     </>

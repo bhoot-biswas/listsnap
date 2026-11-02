@@ -159,6 +159,15 @@ export function chatQueries(ws: string) {
       return r.affectedRows === 1;
     },
 
+    /** A turn holds the chat right now: the reply is still being worked on. */
+    async chatRunning(chatId: string): Promise<boolean> {
+      const row = await selectOne<{ running: number }>(
+        "SELECT busy_until > UTC_TIMESTAMP(3) AS running FROM chats WHERE id = ? AND workspace_id = ?",
+        [chatId, ws],
+      );
+      return !!row?.running;
+    },
+
     /** Ends a turn's claim; a claim another turn took over after this one ran out is left alone. */
     async releaseChat(chatId: string, token: string): Promise<void> {
       await execute(
