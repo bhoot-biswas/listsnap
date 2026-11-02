@@ -88,12 +88,12 @@ export async function executeListingStep(
   workspace: Workspace,
   listingId: string,
   step: ListingStepName,
-  opts: { scene?: string; force?: boolean } = {},
+  opts: { scene?: string; force?: boolean; ip?: string } = {},
 ): Promise<ExecuteResult | { found: true; invalid: string }> {
   const ws = forWorkspace(workspace.id);
   const listing = await ws.getListing(listingId);
   if (!listing) return { found: false };
-  const ctx = { ws, workspace, listing };
+  const ctx = { ws, workspace, listing, ip: opts.ip };
   const store = sqlStepStore(ws.id);
   let outcome: StepOutcome<unknown>;
   if (step === "render") {
@@ -133,6 +133,7 @@ export async function executeLookStep(
   listingId: string,
   look: Look,
   force = false,
+  ip?: string,
 ): Promise<ExecuteResult | { found: true; invalid: string }> {
   const ws = forWorkspace(workspace.id);
   const listing = await ws.getListing(listingId);
@@ -142,7 +143,7 @@ export async function executeLookStep(
     sqlStepStore(ws.id),
     { jobId: listing.job_id, step: "look", target: `${listingId}:${look}` },
     { lockMs: RENDER_LOCK_MS, force },
-    () => lookStep({ ws, workspace, listing }, look),
+    () => lookStep({ ws, workspace, listing, ip }, look),
   );
   return { found: true, outcome };
 }

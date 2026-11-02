@@ -25,8 +25,8 @@ export const renderScene = defineOp({
   input: z.object({ listingId: ListingId, scene: Scene }),
   effect: "creates_media",
   cost: () => ({ images: 1 }),
-  async run({ workspace }, { listingId, scene }) {
-    const r = await executeListingStep(workspace, listingId, "render", { scene });
+  async run({ workspace, meta }, { listingId, scene }) {
+    const r = await executeListingStep(workspace, listingId, "render", { scene, ip: meta.clientIp });
     if (!r.found) return { ok: false, error: "not_found" };
     if ("invalid" in r) return { ok: false, error: "invalid", message: r.invalid };
     return { ok: true, value: { outcome: r.outcome as StepOutcome<unknown> }, listingId, summary: scene };
@@ -82,8 +82,8 @@ export const renderLook = defineOp({
   input: z.object({ listingId: ListingId, look: Look, retry: z.boolean().default(false) }),
   effect: "creates_media",
   cost: () => ({ images: 1 }),
-  async run({ workspace }, { listingId, look, retry }) {
-    const r = await executeLookStep(workspace, listingId, look, retry);
+  async run({ workspace, meta }, { listingId, look, retry }) {
+    const r = await executeLookStep(workspace, listingId, look, retry, meta.clientIp);
     if (!r.found) return { ok: false, error: "not_found" };
     if ("invalid" in r) return { ok: false, error: "not_ready", message: r.invalid };
     return { ok: true, value: { outcome: r.outcome as StepOutcome<unknown> }, listingId, summary: look };

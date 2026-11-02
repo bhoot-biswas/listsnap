@@ -42,6 +42,10 @@ export async function watchStep(ctx: WatchContext): Promise<WatchResult> {
   if (!file) throw new StepError("videoMissing");
   const call = { workspaceId: ctx.ws.id, jobId: null, step: "watch" };
 
+  // the first product's listing slot is taken before the paid models listen and watch,
+  // so a shop (or demo visitor) already at today's limit costs nothing more
+  let first = await takeListingSlot(ctx.ws, ctx.workspace, ctx.ip);
+  if (!first) throw new StepError("listingsUsedUp", { permanent: true });
   const video = await openVideo(file.data);
   try {
     const seconds = await video.seconds();
@@ -64,7 +68,9 @@ export async function watchStep(ctx: WatchContext): Promise<WatchResult> {
       const photo = photos[i];
       if (!photo) continue;
       // each product is a listing, so each takes one of today's slots, as a bulk photo does
-      if (!(await takeListingSlot(ctx.ws, ctx.workspace, ctx.ip))) break;
+      const slot = first ?? (await takeListingSlot(ctx.ws, ctx.workspace, ctx.ip));
+      first = null;
+      if (!slot) break;
       const media = await saveMedia(ctx.ws.id, "original", photo.data, {
         mime: "image/jpeg",
         width: photo.width,
@@ -82,6 +88,8 @@ export async function watchStep(ctx: WatchContext): Promise<WatchResult> {
     const usable = photos.filter(Boolean).length;
     return { found: products.length, jobs, limited: usable - jobs };
   } finally {
+    // no listing was made from it (nothing found, or a failure): the slot goes back
+    if (first) await first();
     await video.done();
   }
 }

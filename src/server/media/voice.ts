@@ -30,6 +30,10 @@ export const SHOP_WORDS = [
 const MAX_BYTES = 10 * 1024 * 1024;
 const RATE = 24_000;
 const WAV_OUT = ["-t", `${VOICE_NOTE_MAX_S}`, "-ac", "1", "-ar", `${RATE}`, "-c:a", "pcm_s16le", "-f", "wav", "pipe:1"];
+/** Read only what a browser records, only from the pipe: some formats (playlists) open other files. */
+const INPUT = ["-protocol_whitelist", "pipe", "-format_whitelist", "mov,matroska,webm,ogg,wav,mp3,aac,flac"];
+/** A two-minute note decodes in a second or two; a stalled decoder is stopped after this. */
+const DECODE_MS = 30_000;
 
 /** Why an uploaded voice note can't be used, as the response to send; null when it looks fine. */
 export function voiceFileProblem(f: File): Promise<Response> | null {
@@ -49,19 +53,25 @@ export async function normaliseVoice(input: Buffer): Promise<{ data: Buffer; sec
   const out = await new Promise<Buffer | null>((resolve) => {
     const ff = spawn(
       "ffmpeg",
-      [...["-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vn", "-map_metadata", "-1"], ...WAV_OUT],
+      [...["-hide_banner", "-loglevel", "error", ...INPUT, "-i", "pipe:0", "-vn", "-map_metadata", "-1"], ...WAV_OUT],
       { stdio: ["pipe", "pipe", "pipe"] },
     );
+    const timer = setTimeout(() => {
+      console.warn("[voice] ffmpeg took too long on a voice note; stopped it");
+      ff.kill("SIGKILL");
+    }, DECODE_MS);
     const chunks: Buffer[] = [];
     let err = "";
     ff.stdout.on("data", (c: Buffer) => chunks.push(c));
     ff.stderr.on("data", (c: Buffer) => (err += c.toString()));
     // a missing ffmpeg is our problem, not the seller's file: say so in the log
     ff.on("error", (e) => {
+      clearTimeout(timer);
       console.error("[voice] ffmpeg could not start:", e.message);
       resolve(null);
     });
     ff.on("close", (code) => {
+      clearTimeout(timer);
       if (code !== 0) console.warn("[voice] ffmpeg could not read a voice note:", err.slice(0, 300));
       resolve(code === 0 ? Buffer.concat(chunks) : null);
     });

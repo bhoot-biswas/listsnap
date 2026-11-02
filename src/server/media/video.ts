@@ -8,6 +8,15 @@ import { VIDEO_MAX_S } from "@/lib/schemas/video";
 
 const run = promisify(execFile);
 const FF = ["-hide_banner", "-loglevel", "error", "-y"];
+/**
+ * Read the upload only as a phone video, and only from its own file. ffmpeg guesses the
+ * format from the content otherwise, and some formats (playlists) open other files.
+ */
+const INPUT = ["-protocol_whitelist", "file", "-format_whitelist", "mov,matroska,webm"];
+/** A crafted file can stall a decoder; these end it instead of holding the request. */
+const PROBE_MS = 30_000;
+const SOUND_MS = 120_000;
+const FRAME_MS = 30_000;
 
 /**
  * A seller's video, unpacked for the watch step in a temporary folder: ffmpeg needs a
@@ -26,7 +35,7 @@ export async function openVideo(data: Buffer) {
     async seconds(): Promise<number | null> {
       try {
         const probe = ["-v", "error", "-select_streams", "v:0", "-show_entries", "format=duration", "-of", "csv=p=0"];
-        const { stdout } = await run("ffprobe", [...probe, file]);
+        const { stdout } = await run("ffprobe", [...probe, ...INPUT, file], { timeout: PROBE_MS });
         const s = Number(stdout.trim());
         return Number.isFinite(s) && s > 0 ? s : null;
       } catch {
@@ -38,7 +47,9 @@ export async function openVideo(data: Buffer) {
     async sound(): Promise<Buffer | null> {
       try {
         const out = ["-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le", at("sound.wav")];
-        await run("ffmpeg", [...FF, "-i", file, "-vn", "-t", `${VIDEO_MAX_S}`, ...out]);
+        await run("ffmpeg", [...FF, ...INPUT, "-i", file, "-vn", "-t", `${VIDEO_MAX_S}`, ...out], {
+          timeout: SOUND_MS,
+        });
         return await readFile(at("sound.wav"));
       } catch {
         return null;
@@ -52,7 +63,7 @@ export async function openVideo(data: Buffer) {
     async small(): Promise<Buffer> {
       const scale = ["-an", "-t", `${VIDEO_MAX_S}`, "-vf", "scale=-2:'min(720,ih)',fps=15"];
       const h264 = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-pix_fmt", "yuv420p"];
-      await run("ffmpeg", [...FF, "-i", file, ...scale, ...h264, at("small.mp4")], { timeout: 120_000 });
+      await run("ffmpeg", [...FF, ...INPUT, "-i", file, ...scale, ...h264, at("small.mp4")], { timeout: 120_000 });
       return readFile(at("small.mp4"));
     },
 
@@ -60,7 +71,10 @@ export async function openVideo(data: Buffer) {
     async frame(second: number): Promise<Buffer | null> {
       const out = at(`frame-${Math.round(second * 1000)}.jpg`);
       try {
-        await run("ffmpeg", [...FF, "-ss", second.toFixed(3), "-i", file, "-frames:v", "1", "-q:v", "2", out]);
+        const seek = ["-ss", second.toFixed(3)];
+        await run("ffmpeg", [...FF, ...seek, ...INPUT, "-i", file, "-frames:v", "1", "-q:v", "2", out], {
+          timeout: FRAME_MS,
+        });
         return await readFile(out);
       } catch {
         return null;

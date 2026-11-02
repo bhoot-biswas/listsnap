@@ -1396,6 +1396,7 @@
       "cutoutMissing": "The cutout for this item is missing.",
       "englishNotWritten": "The English listing isn't written yet.",
       "imagesUsedUp": "You've made today's AI photos. More can be made after 6:00 AM Bangladesh time; your listing is saved.",
+      "listingsUsedUp": "You've made today's listings, so the video wasn't watched. Your limit resets at 6:00 AM Bangladesh time.",
       "productChanged": "The AI photo changed your product ({differences}), so it wasn't kept. Try again for a new one; your other photos are ready.",
       "notFinished": "This listing isn't finished yet.",
       "textMissing": "The listing text is missing. Make the listing again.",

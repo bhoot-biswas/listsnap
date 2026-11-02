@@ -1,6 +1,7 @@
 import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { fail, ok, unauthorized } from "@/server/http";
+import { clientIp, takeDemoAllowance } from "@/server/limits";
 import { saveMedia } from "@/server/media/store";
 import { openVideo } from "@/server/media/video";
 import { VIDEO_MAX_MB, VIDEO_MAX_S } from "@/lib/schemas/video";
@@ -26,9 +27,13 @@ export async function POST(request: Request) {
 
   const ws = forWorkspace(viewer.workspace.id);
   if ((await ws.videosToday()) >= PER_DAY) return fail(429, "limit", "videoLimit");
+  // a demo visitor's videos are counted across their demo shops, before the body is read
+  const release = await takeDemoAllowance(viewer.workspace, clientIp(request), "videos");
+  if (!release) return fail(429, "limit", "videoLimit");
+  const refuse = async (response: Promise<Response>) => (await release(), response);
 
   const data = await readCapped(request, max);
-  if (!data) return fail(413, "too_large", "videoTooLarge", { mb: VIDEO_MAX_MB });
+  if (!data) return refuse(fail(413, "too_large", "videoTooLarge", { mb: VIDEO_MAX_MB }));
   const video = await openVideo(data);
   let seconds: number | null;
   try {
@@ -36,9 +41,9 @@ export async function POST(request: Request) {
   } finally {
     await video.done();
   }
-  if (!seconds) return fail(415, "unsupported_file", "unreadableVideo");
+  if (!seconds) return refuse(fail(415, "unsupported_file", "unreadableVideo"));
   // a second over is a rounding of the phone's own limit, not a longer video
-  if (seconds > VIDEO_MAX_S + 1) return fail(400, "too_long", "videoTooLong", { minutes: VIDEO_MAX_S / 60 });
+  if (seconds > VIDEO_MAX_S + 1) return refuse(fail(400, "too_long", "videoTooLong", { minutes: VIDEO_MAX_S / 60 }));
 
   const media = await saveMedia(ws.id, "video", data, { mime: type, width: 0, height: 0, selected: false });
   const batchId = await ws.createVideoBatch(media.id);
