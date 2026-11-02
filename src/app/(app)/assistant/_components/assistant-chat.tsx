@@ -20,6 +20,7 @@ export function AssistantChat({
   heading,
   suggestions = [],
   ask,
+  running = false,
   children,
 }: {
   initial: ChatItem[];
@@ -29,6 +30,8 @@ export function AssistantChat({
   suggestions?: string[];
   /** A message the Dashboard's ask box sent here, to send at once. */
   ask?: string;
+  /** Its reply is still being worked on: the seller left mid-turn and came back. */
+  running?: boolean;
   children?: React.ReactNode;
 }) {
   const t = useTranslations("chat");
@@ -36,6 +39,7 @@ export function AssistantChat({
     endpoint: "/api/chat",
     initial,
     chatId,
+    runningChat: running ? chatId : null,
     onStarted: (id) => window.history.pushState(null, "", `/assistant/${id}`),
   });
 

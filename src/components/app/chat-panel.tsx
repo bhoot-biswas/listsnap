@@ -17,6 +17,7 @@ export function ChatPanel({
   endpoint,
   historyUrl,
   initial,
+  running,
   intro,
   placeholder,
   suggestions,
@@ -27,6 +28,8 @@ export function ChatPanel({
   /** Where the list of earlier conversations comes from. */
   historyUrl: string;
   initial: ChatItem[];
+  /** The conversation whose reply is still being worked on, if any. */
+  running?: string | null;
   intro: string;
   placeholder: string;
   suggestions: string[];
@@ -36,7 +39,7 @@ export function ChatPanel({
   beforeSend?: () => Promise<unknown>;
 }) {
   const t = useTranslations("chat");
-  const chat = useChat({ endpoint, initial, beforeSend });
+  const chat = useChat({ endpoint, initial, beforeSend, runningChat: running });
   const empty = chat.items.length === 0;
 
   return (

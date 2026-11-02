@@ -66,7 +66,7 @@ export function ReviewForm({
   catalog: CatalogState;
   marketplace: MarketplaceState;
   /** The stored conversation, and how many changes the chat has made to this listing. */
-  chat: { items: ChatItem[]; revision: number };
+  chat: { items: ChatItem[]; revision: number; running: string | null };
   colorPhotos: Record<string, string>;
   hint: { low: number; high: number };
   confidence: number | null;
@@ -275,7 +275,7 @@ export function ReviewForm({
         )}
         <div className="flex items-center gap-2">
           <ArchiveButton kind="listing" id={listingId} archived={archived} />
-          <ListingChat listingId={listingId} initial={chat.items} beforeSend={saver.flush} />
+          <ListingChat listingId={listingId} initial={chat.items} running={chat.running} beforeSend={saver.flush} />
         </div>
       </div>
 

@@ -40,7 +40,12 @@ export default async function AssistantChatPage({ params }: PageProps<"/assistan
           </>
         }
       />
-      <AssistantChat key={id} chatId={id} initial={chatItems(await chat.ws.chatMessages(id))} />
+      <AssistantChat
+        key={id}
+        chatId={id}
+        initial={chatItems(await chat.ws.chatMessages(id))}
+        running={await chat.ws.chatRunning(id)}
+      />
     </>
   );
 }

@@ -1257,6 +1257,8 @@
     "placeholder": "Ask about this listing…",
     "send": "Send",
     "sendAgain": "Send again",
+    "tryAgain": "Try again",
+    "stillWorking": "Still working on the reply…",
     "stop": "Stop",
     "stopping": "Stopping after this step…",
     "stopped": "Stopped. Nothing more was done.",
@@ -1324,7 +1326,9 @@
       "steps": "I stopped before finishing. Ask again, one step at a time.",
       "answered": "That was already answered.",
       "running": "This chat is still answering, maybe in another tab. Try again in a moment.",
-      "generic": "Something went wrong. Nothing else changed; try again."
+      "generic": "Something went wrong. Nothing else changed; try again.",
+      "lost": "The connection dropped while the assistant was answering. It may still be working: this chat updates when it's done.",
+      "expired": "That card is from an earlier chat, so nothing was sent. Ask again here to get an up-to-date one."
     },
     "shopSuggestions": {
       "review": "Which listings need review?",

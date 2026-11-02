@@ -34,6 +34,13 @@ export function ChatEntry({
         {t("stopped")}
       </p>
     );
+  if (item.kind === "failed")
+    return (
+      <p className="flex items-start gap-2 text-sm text-destructive">
+        <X className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+        {item.message ?? t(`error.${item.code === "busy" ? "generic" : item.code}`)}
+      </p>
+    );
   if (item.kind === "user" || item.kind === "assistant") {
     const mine = item.kind === "user";
     const photos = item.kind === "user" ? (item.photos ?? []) : [];

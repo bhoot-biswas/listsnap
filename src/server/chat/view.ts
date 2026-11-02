@@ -52,7 +52,7 @@ export function pendingCalls(history: ChatMessage[]): ToolCall[] {
     const m = history[i]!;
     if (m.role === "tool") answered.add(m.toolCallId);
     // a card shown before the seller pressed Stop can still be answered
-    else if (m.role === "assistant" && m.stopped) continue;
+    else if (m.role === "assistant" && (m.stopped || m.failed)) continue;
     else if (m.role === "assistant") return m.toolCalls.filter((c) => needsApproval(c.name) && !answered.has(c.id));
     else return [];
   }
@@ -75,6 +75,7 @@ export function chatItems(history: ChatMessage[]): ChatItem[] {
       });
     if (m.role !== "assistant") return;
     if (m.stopped) return void items.push({ kind: "stopped", id: `m${i}` });
+    if (m.failed) return void items.push({ kind: "failed", id: `m${i}`, ...m.failed });
     if (m.content) items.push({ kind: "assistant", id: `m${i}`, text: m.content });
     for (const c of m.toolCalls) {
       const r = results.get(c.id);
