@@ -20,6 +20,7 @@ import { liveAssist } from "./assist";
 import { liveChat } from "./chat";
 import { BANGLA_SYSTEM, MATCH_SYSTEM, SELLER_CONTEXT, saidText, writeSystem } from "./prompts";
 import { liveTranscribe } from "./transcribe";
+import { liveTranscribeLive } from "./realtime";
 import { photoDataUrl, SPARK_EFFORT, SPARK_MODEL, sparkJson, type SparkResult } from "./spark";
 
 /**
@@ -129,6 +130,7 @@ export const liveMeta: MetaProvider = {
   },
 
   transcribe: liveTranscribe,
+  transcribeLive: liveTranscribeLive,
 
   assist: liveAssist,
 

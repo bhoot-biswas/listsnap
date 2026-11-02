@@ -76,6 +76,12 @@ export interface MetaProvider {
    * `turns` asks for each spoken turn with its times too, as a video needs.
    */
   transcribe(ctx: CallContext, wav: Buffer, keywords: string[], turns?: boolean): Promise<Transcript>;
+  /**
+   * Muse Voice Transcribe while the seller is still talking: 24 kHz 16-bit mono PCM goes
+   * in as it's recorded, words come back through `events`. Throws a StepError at once
+   * when the service is known to be down.
+   */
+  transcribeLive(ctx: CallContext, keywords: string[], events: LiveEvents): LiveTranscription;
   translate(ctx: CallContext, listing: ListingText): Promise<BanglaText>;
   /** Review's per-field help: the new text for one field. */
   assist(ctx: CallContext, input: AssistInput): Promise<string>;
@@ -105,6 +111,24 @@ export interface MetaProvider {
     brief: SceneBrief | null,
     kit: SceneKit | null,
   ): Promise<Buffer>;
+}
+
+export interface LiveTranscription {
+  push(pcm: Buffer): void;
+  /** The seller stopped: send what's left, then `final` follows. */
+  end(): void;
+  /** The seller left: drop everything, no event follows. */
+  cancel(): void;
+}
+
+/** Why a live session ended without its words; the browser then sends the recording whole. */
+export type LiveFailure = "busy" | "lost" | "generic";
+
+export interface LiveEvents {
+  /** The whole hypothesis so far; it replaces the last one. */
+  partial(text: string): void;
+  final(text: string): void;
+  failed(reason: LiveFailure): void;
 }
 
 export interface Transcript {

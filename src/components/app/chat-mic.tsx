@@ -4,62 +4,58 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { clock, useRecorder } from "@/hooks/use-recorder";
+import { clock } from "@/hooks/use-recorder";
+import { useLiveDictation } from "@/hooks/use-live-dictation";
 
 /**
- * Talk instead of typing: tap, speak, tap again. Muse Voice Transcribe writes it down and
- * the words land in the message box, where the seller can fix a misheard word before
- * sending; nothing goes to the chat by itself.
+ * Talk instead of typing: tap, speak, tap again. Muse Voice Transcribe writes it down as
+ * the seller talks, and the words land in the message box, where they can fix a misheard
+ * word before sending; nothing goes to the chat by itself.
  */
 export function ChatMic({
   disabled,
-  onText,
+  onWords,
   onWorking,
 }: {
   disabled?: boolean;
-  onText: (text: string) => void;
-  /** True from the first word until the text is in the box, so send waits for it. */
+  /** The words so far, replacing the last ones given; the final ones come last. */
+  onWords: (text: string) => void;
+  /** True from the tap until the words are settled, so send waits for them. */
   onWorking: (working: boolean) => void;
 }) {
   const t = useTranslations("chat.voice");
   const tRec = useTranslations("recorder");
-  const [writing, setWriting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const mic = useRecorder(async (file) => {
-    setWriting(true);
-    try {
-      const form = new FormData();
-      form.append("audio", file, file.name);
-      const res = await fetch("/api/transcribe", { method: "POST", body: form });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) return setError(body?.error?.message ?? t("failed"));
-      const text = typeof body?.text === "string" ? body.text.trim() : "";
-      if (!text) return setError(t("notHeard"));
-      onText(text);
-    } catch {
-      setError(t("failed"));
-    } finally {
-      setWriting(false);
+  const mic = useLiveDictation({
+    onWords,
+    onDone: (text) => {
+      if (text) onWords(text);
+      else setError(t("notHeard"));
       onWorking(false);
-    }
+    },
+    onFail: (message) => {
+      setError(message ?? t("failed"));
+      onWorking(false);
+    },
   });
 
-  const status = mic.recording
-    ? t("listening", { time: clock(mic.seconds) })
-    : writing
-      ? t("writing")
-      : (error ?? (mic.problem ? tRec(mic.problem) : null));
+  const status =
+    mic.phase === "listening"
+      ? t("listening", { time: clock(mic.seconds) })
+      : mic.phase === "writing"
+        ? t("writing")
+        : (error ?? (mic.problem ? tRec(mic.problem) : null));
 
   return (
     <>
-      {mic.recording ? (
+      {mic.phase === "listening" ? (
         <Button
           type="button"
           variant="destructive"
           size="icon"
           className="size-11 shrink-0 rounded-full md:size-9"
-          onClick={mic.stop}
+          onClick={() => void mic.stop()}
         >
           <Square className="size-4" aria-hidden="true" />
           <span className="sr-only">{t("stopSpeaking")}</span>
@@ -70,7 +66,7 @@ export function ChatMic({
           variant="ghost"
           size="icon"
           className="size-11 shrink-0 md:size-9"
-          disabled={disabled || writing}
+          disabled={disabled || mic.phase === "writing"}
           onClick={() => {
             setError(null);
             onWorking(true);
@@ -78,7 +74,7 @@ export function ChatMic({
             void mic.start().then((started) => started || onWorking(false));
           }}
         >
-          {writing ? (
+          {mic.phase === "writing" ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           ) : (
             <Mic className="size-4" aria-hidden="true" />

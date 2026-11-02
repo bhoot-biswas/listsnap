@@ -14,7 +14,7 @@ import { BASE_URL, BUSY } from "./spark";
  */
 
 export const TRANSCRIBE_MODEL = "muse-voice-transcribe-1.0";
-const PRICE_PER_HOUR = 0.18;
+export const PRICE_PER_HOUR = 0.18;
 // a minute came back in about 5 s; a video's few minutes get more room
 const timeoutMs = (wav: Buffer) => 20_000 + Math.round((wav.length / 48_000) * 500);
 
@@ -22,7 +22,7 @@ const timeoutMs = (wav: Buffer) => 20_000 + Math.round((wav.length / 48_000) * 5
  * Sellers mix Bangla and English. The spike found keywords must be in Bangla script:
  * English ones pulled the whole transcript into Latin letters.
  */
-const LANGUAGES = ["Bengali", "English"];
+export const LANGUAGES = ["Bengali", "English"];
 
 const Response = z.object({
   transcript: z.string(),

@@ -5,10 +5,8 @@ import { clientIp, takeDemoAllowance } from "@/server/limits";
 import { normaliseVoice, SHOP_WORDS, unreadableVoice, voiceFileProblem } from "@/server/media/voice";
 import { StepError } from "@/server/pipeline/run-step";
 import { meta } from "@/server/providers";
+import { DICTATIONS_PER_DAY } from "@/server/dictation/sessions";
 import { errorWords, requestLocale } from "@/server/step-text";
-
-/** A minute each, so this is hours of talking; past it the box is still there to type in. */
-const PER_DAY = 100;
 
 /**
  * Speech into words for a chat box (multipart field "audio"): Muse Voice Transcribe, with
@@ -31,7 +29,7 @@ export async function POST(request: Request) {
   if (problem) return problem;
 
   const ws = forWorkspace(viewer.workspace.id);
-  if ((await ws.dictationsToday()) >= PER_DAY) return fail(429, "limit", "dictateLimit");
+  if ((await ws.dictationsToday()) >= DICTATIONS_PER_DAY) return fail(429, "limit", "dictateLimit");
   const release = await takeDemoAllowance(viewer.workspace, clientIp(request), "ai_calls");
   if (!release) return fail(429, "limit", "dictateLimit");
   const note = await normaliseVoice(Buffer.from(await file.arrayBuffer()));
