@@ -15,21 +15,33 @@ export function ErrorState({
   error,
   retry,
   back = { href: "/dashboard", label: "goDashboard" },
+  titled = false,
 }: {
   error: Error & { digest?: string };
   retry: () => void;
   /** The way out besides Try again; null where there is nowhere better to go. */
-  back?: { href: Route; label: "goDashboard" | "goHome" } | null;
+  back?: { href: Route; label: "goDashboard" | "goHome" | "goListings" } | null;
+  /** A top bar above already names the page, so this heading is the second level. */
+  titled?: boolean;
 }) {
+  const Heading = titled ? "h2" : "h1";
   const t = useTranslations();
   useEffect(() => {
     console.error(error);
   }, [error]);
   return (
     <div role="alert" className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-16 text-center">
-      <h1 className="text-2xl font-semibold">{t("errors.title")}</h1>
+      <Heading className="text-2xl font-semibold">{t("errors.title")}</Heading>
       <p className="text-muted-foreground">
-        {t(!back ? "errors.bodyRetry" : back.label === "goHome" ? "errors.bodyHome" : "errors.body")}
+        {t(
+          !back
+            ? "errors.bodyRetry"
+            : back.label === "goHome"
+              ? "errors.bodyHome"
+              : back.label === "goListings"
+                ? "errors.bodyRetry"
+                : "errors.body",
+        )}
       </p>
       <div className="flex gap-2">
         <Button onClick={() => retry()}>{t("common.tryAgain")}</Button>

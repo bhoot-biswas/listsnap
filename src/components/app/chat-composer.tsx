@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ImagePlus, Loader2, SendHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,10 @@ import { MediaImg } from "@/components/app/media-img";
 
 /**
  * The message box: one rounded card with the text on top and the photo, microphone and
- * send buttons below. Enter sends, Shift+Enter starts a new line. Spoken words join the
- * text as they're heard, so the seller sees them before they're sent.
+ * send buttons below. With a keyboard Enter sends and Shift+Enter starts a new line; on a
+ * touch screen Enter is a new line and the Send button sends, since a phone keyboard has
+ * no Shift+Enter. Spoken words join the text as they're heard, so the seller sees them
+ * before they're sent. Photos and the mic work while the assistant answers; only sending waits.
  */
 export function ChatComposer({
   chat,
@@ -31,6 +33,11 @@ export function ChatComposer({
 }) {
   const t = useTranslations("chat");
   const picker = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  // a keyboard opening on a phone would cover the suggestions and earlier chats under it
+  useEffect(() => {
+    if (autoFocus && window.matchMedia("(pointer: fine)").matches) box.current?.focus();
+  }, [autoFocus]);
   const [dictating, setDictating] = useState(false);
   // what was typed before the mic went on; the spoken words go after it
   const typed = useRef("");
@@ -79,11 +86,12 @@ export function ChatComposer({
         value={chat.draft}
         readOnly={dictating}
         maxLength={CHAT_MESSAGE_MAX}
+        ref={box}
         rows={2}
-        autoFocus={autoFocus}
         onChange={(e) => chat.setDraft(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+          const touch = window.matchMedia("(pointer: coarse)").matches;
+          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && !touch) {
             e.preventDefault();
             submit();
           }
@@ -111,14 +119,13 @@ export function ChatComposer({
           variant="ghost"
           size="icon"
           className="size-11 md:size-9"
-          disabled={busy || photos.length + uploading >= CHAT_PHOTOS_MAX}
+          disabled={photos.length + uploading >= CHAT_PHOTOS_MAX}
           onClick={() => picker.current?.click()}
         >
           <ImagePlus className="size-4" aria-hidden="true" />
           <span className="sr-only">{t("attach")}</span>
         </Button>
         <ChatMic
-          disabled={busy}
           onWorking={(working) => {
             if (working) typed.current = chat.draft.trimEnd();
             setDictating(working);

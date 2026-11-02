@@ -138,7 +138,7 @@ function SelectionBar({
     <div
       role="region"
       aria-label={t("selectedCount", { count: chosen.length })}
-      // above the floating Snap button on phones, so it never covers the bar's buttons
+      // above the phone tab bar, so it never covers the bar's buttons
       className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 shadow-lg md:bottom-4"
     >
       <p className="px-2 text-sm font-medium max-md:w-full" aria-live="polite">
