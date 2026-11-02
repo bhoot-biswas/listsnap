@@ -6,7 +6,8 @@
  * 1. States are pending | running | done | failed, with a lock, attempts and last error.
  * 2. A done step returns its saved result without doing the work again.
  * 3. Work starts only after an atomic claim; a held lock answers "running". The lock is
- *    renewed while the work runs, so a slow call isn't started a second time.
+ *    renewed while the work runs, so a slow call isn't started a second time. The claim
+ *    is owned: a run that lost its lock anyway can't write over the run after it.
  * 4. An expired lock or a failure can be claimed again, up to maxAttempts; then the
  *    step stays failed until someone presses "Try again" (force).
  * 5. A failure that can't succeed on a retry (a refused request) uses up the attempts at
@@ -40,14 +41,20 @@ export interface StepStore {
   /**
    * Atomically moves the row to running with a fresh lock and attempts + 1, but only if
    * it is pending, failed, or running with an expired lock, and attempts < maxAttempts.
-   * Returns whether this caller won.
+   * Returns the winner's claim token, or null when another caller holds the step.
    */
-  claim(key: StepKey, lockMs: number, maxAttempts: number): Promise<boolean>;
-  /** Pushes a running row's lock lockMs past now; a row no longer running is left alone. */
-  renew(key: StepKey, lockMs: number): Promise<void>;
-  complete(key: StepKey, result: unknown): Promise<void>;
-  /** `exhaust` sets attempts to at least maxAttempts; `refund` takes this attempt back. */
-  fail(key: StepKey, error: string, adjust?: { exhaust: number } | { refund: true }): Promise<void>;
+  claim(key: StepKey, lockMs: number, maxAttempts: number): Promise<string | null>;
+  /** Pushes this claim's lock lockMs past now; a row claimed by someone else is left alone. */
+  renew(key: StepKey, token: string, lockMs: number): Promise<void>;
+  /** False when the claim was lost (a newer run took the step): nothing was written. */
+  complete(key: StepKey, token: string, result: unknown): Promise<boolean>;
+  /**
+   * `exhaust` sets attempts to at least maxAttempts; `refund` takes this attempt back.
+   * False when the claim was lost: nothing was written.
+   */
+  fail(key: StepKey, token: string, error: string, adjust?: { exhaust: number } | { refund: true }): Promise<boolean>;
+  /** Fails a row still running with an expired lock: a run that died without finishing. */
+  abandon(key: StepKey, error: string): Promise<void>;
   /** "Try again": a failed row goes back to pending with zero attempts; with `done`, a finished one too. */
   reset(key: StepKey, opts?: { done?: boolean }): Promise<void>;
 }
@@ -82,13 +89,14 @@ export async function runStep<T>(
   else if (before?.status === "done") return { state: "done", result: before.result as T, fresh: false };
   if (opts.force && before?.status === "failed") await store.reset(key);
 
-  if (!(await store.claim(key, opts.lockMs, maxAttempts))) {
+  const token = await store.claim(key, opts.lockMs, maxAttempts);
+  if (!token) {
     const row = await store.get(key);
     if (!row) throw new Error(`Step row vanished: ${key.step}/${key.target}`);
     if (row.status === "done") return { state: "done", result: row.result as T, fresh: false };
     if (row.status === "running" && row.lockValid) return { state: "running" };
     // Out of attempts. A run that died holding the lock still says "running"; record it.
-    if (row.status === "running") await store.fail(key, row.lastError ?? storedError("timedOut"));
+    if (row.status === "running") await store.abandon(key, row.lastError ?? storedError("timedOut"));
     return {
       state: "failed",
       error: row.lastError ?? storedError("timedOut"),
@@ -97,25 +105,46 @@ export async function runStep<T>(
     };
   }
 
-  const heartbeat = keepLocked(store, key, opts.lockMs);
+  const heartbeat = keepLocked(store, key, token, opts.lockMs);
   try {
     const result = await work();
-    await store.complete(key, result);
-    return { state: "done", result, fresh: true };
+    if (await store.complete(key, token, result)) return { state: "done", result, fresh: true };
+    return superseded(store, key, maxAttempts);
   } catch (err) {
     const error = describeError(err);
     const kind = failureKind(err);
-    await store.fail(
+    const recorded = await store.fail(
       key,
+      token,
       error,
       kind === "permanent" ? { exhaust: maxAttempts } : kind === "not_attempted" ? { refund: true } : undefined,
     );
+    if (!recorded) return superseded(store, key, maxAttempts);
     const row = await store.get(key);
     const attempts = row?.attempts ?? maxAttempts;
     return { state: "failed", error, attempts, exhausted: attempts >= maxAttempts };
   } finally {
     clearInterval(heartbeat);
   }
+}
+
+/**
+ * This run outlived its lock and a newer run claimed the step, so what it made is dropped
+ * (a second photo or draft may exist, but the step's result stays the newer run's). The
+ * caller is told what the step says now.
+ */
+async function superseded<T>(store: StepStore, key: StepKey, maxAttempts: number): Promise<StepOutcome<T>> {
+  console.warn(`[pipeline] ${key.step}/${key.target} finished after a newer run took it; result dropped`);
+  const row = await store.get(key);
+  if (row?.status === "done") return { state: "done", result: row.result as T, fresh: false };
+  if (row?.status === "failed")
+    return {
+      state: "failed",
+      error: row.lastError ?? GENERIC_STEP_ERROR,
+      attempts: row.attempts,
+      exhausted: row.attempts >= maxAttempts,
+    };
+  return { state: "running" };
 }
 
 /** How many lock lengths a step may hold on before it is treated as stuck. */
@@ -128,11 +157,11 @@ export const LOCK_RENEWALS = 4;
  * works the lock is renewed; if the process dies, renewals stop and the lock runs out as
  * before. Renewals end after LOCK_RENEWALS lock lengths, so a hung call still frees the step.
  */
-function keepLocked(store: StepStore, key: StepKey, lockMs: number): ReturnType<typeof setInterval> {
+function keepLocked(store: StepStore, key: StepKey, token: string, lockMs: number): ReturnType<typeof setInterval> {
   let renewals = LOCK_RENEWALS * 3;
   const timer = setInterval(() => {
     if (renewals-- <= 0) return clearInterval(timer);
-    store.renew(key, lockMs).catch((err) => console.error("[pipeline] lock renewal failed:", err));
+    store.renew(key, token, lockMs).catch((err) => console.error("[pipeline] lock renewal failed:", err));
   }, lockMs / 3);
   timer.unref?.();
   return timer;

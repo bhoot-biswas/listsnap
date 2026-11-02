@@ -36,11 +36,18 @@ describe.skipIf(!enabled)("job_steps lock SQL (MariaDB)", async () => {
   it("can reclaim once the lock has expired, by the database clock", async () => {
     const key = { jobId: job, step: "segment", target: "-" };
     await store.ensure(key);
-    expect(await store.claim(key, 1, 3)).toBe(true);
+    const first = await store.claim(key, 1, 3);
+    expect(first).toBeTruthy();
     await new Promise((r) => setTimeout(r, 20));
     expect((await store.get(key))?.lockValid).toBe(false);
-    expect(await store.claim(key, 45_000, 3)).toBe(true);
+    const second = await store.claim(key, 45_000, 3);
+    expect(second).toBeTruthy();
     expect((await store.get(key))?.attempts).toBe(2);
+    // the first run's claim is gone: it can't finish, fail or renew the step now
+    expect(await store.complete(key, first!, { from: "first" })).toBe(false);
+    expect(await store.fail(key, first!, "late")).toBe(false);
+    expect(await store.complete(key, second!, { from: "second" })).toBe(true);
+    expect(await store.get(key)).toMatchObject({ status: "done", result: { from: "second" } });
   });
 
   it("runs the work once across parallel runStep calls and saves the result", async () => {
@@ -75,7 +82,7 @@ describe.skipIf(!enabled)("job_steps lock SQL (MariaDB)", async () => {
       throw new PermanentError("HTTP 400");
     });
     expect(refused).toMatchObject({ state: "failed", attempts: 3, exhausted: true });
-    expect(await store.claim(refusedKey, 45_000, 3)).toBe(false);
+    expect(await store.claim(refusedKey, 45_000, 3)).toBeNull();
 
     const openKey = { jobId: job, step: "render", target: randomUUID() };
     for (let i = 0; i < 4; i++)

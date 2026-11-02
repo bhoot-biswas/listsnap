@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import type { StepKey, StepRow, StepStore } from "@/server/pipeline/run-step";
 import { execute, json, selectOne } from "./pool";
 
@@ -7,6 +8,10 @@ import { execute, json, selectOne } from "./pool";
  * (UTC_TIMESTAMP), so two app processes with drifting clocks still agree on who
  * holds a lock. Callers have already checked the job belongs to the workspace.
  *
+ * A claim writes a fresh token, and renewing, finishing or failing the step needs it: a
+ * run that outlived its lock (the next poll claimed the step again) can't overwrite the
+ * newer run's result, mark its finished work failed, or keep its lock alive.
+ *
  * `batch_steps` holds the few steps that belong to a whole bulk batch, like watching
  * the video its jobs come from; there the key's jobId is the batch's id.
  */
@@ -14,6 +19,7 @@ export function sqlStepStore(workspaceId: string, table: "job_steps" | "batch_st
   const owner = table === "job_steps" ? "job_id" : "batch_id";
   const where = `${owner} = ? AND step = ? AND target = ?`;
   const k = (key: StepKey) => [key.jobId, key.step, key.target];
+  const owned = `${where} AND status = 'running' AND claim_token = ?`;
 
   return {
     async ensure(key) {
@@ -45,32 +51,35 @@ export function sqlStepStore(workspaceId: string, table: "job_steps" | "batch_st
     },
 
     async claim(key, lockMs, maxAttempts) {
+      const token = randomUUID();
       const r = await execute(
         `UPDATE ${table}
             SET status = 'running', attempts = attempts + 1, started_at = UTC_TIMESTAMP(3),
-                locked_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND
+                locked_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND, claim_token = ?
           WHERE ${where} AND attempts < ?
             AND (status IN ('pending', 'failed') OR (status = 'running' AND locked_until < UTC_TIMESTAMP(3)))`,
-        [lockMs * 1000, ...k(key), maxAttempts],
+        [lockMs * 1000, token, ...k(key), maxAttempts],
+      );
+      return r.affectedRows === 1 ? token : null;
+    },
+
+    async renew(key, token, lockMs) {
+      await execute(`UPDATE ${table} SET locked_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND WHERE ${owned}`, [
+        lockMs * 1000,
+        ...k(key),
+        token,
+      ]);
+    },
+
+    async complete(key, token, result) {
+      const r = await execute(
+        `UPDATE ${table} SET status = 'done', result_json = ?, last_error = NULL, locked_until = NULL, claim_token = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${owned}`,
+        [json(result), ...k(key), token],
       );
       return r.affectedRows === 1;
     },
 
-    async renew(key, lockMs) {
-      await execute(
-        `UPDATE ${table} SET locked_until = UTC_TIMESTAMP(3) + INTERVAL ? MICROSECOND WHERE ${where} AND status = 'running'`,
-        [lockMs * 1000, ...k(key)],
-      );
-    },
-
-    async complete(key, result) {
-      await execute(
-        `UPDATE ${table} SET status = 'done', result_json = ?, last_error = NULL, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,
-        [json(result), ...k(key)],
-      );
-    },
-
-    async fail(key, error, adjust) {
+    async fail(key, token, error, adjust) {
       // a refused request uses the attempts up; one that never left (breaker open) gives its attempt back
       const attempts =
         adjust && "exhaust" in adjust
@@ -78,9 +87,19 @@ export function sqlStepStore(workspaceId: string, table: "job_steps" | "batch_st
           : adjust?.refund
             ? { sql: "GREATEST(attempts - 1, 0)", params: [] }
             : { sql: "attempts", params: [] };
+      const r = await execute(
+        `UPDATE ${table} SET status = 'failed', last_error = ?, attempts = ${attempts.sql}, locked_until = NULL, claim_token = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${owned}`,
+        [error.slice(0, 500), ...attempts.params, ...k(key), token],
+      );
+      return r.affectedRows === 1;
+    },
+
+    async abandon(key, error) {
+      // only a run that died holding the lock: nobody is working on it any more
       await execute(
-        `UPDATE ${table} SET status = 'failed', last_error = ?, attempts = ${attempts.sql}, locked_until = NULL, finished_at = UTC_TIMESTAMP(3) WHERE ${where}`,
-        [error.slice(0, 500), ...attempts.params, ...k(key)],
+        `UPDATE ${table} SET status = 'failed', last_error = ?, locked_until = NULL, claim_token = NULL, finished_at = UTC_TIMESTAMP(3)
+          WHERE ${where} AND status = 'running' AND locked_until < UTC_TIMESTAMP(3)`,
+        [error.slice(0, 500), ...k(key)],
       );
     },
 

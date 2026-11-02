@@ -13,7 +13,8 @@ import { parseStoredError, storedError } from "@/server/step-text";
 /** The same semantics as job_steps, in memory, with a clock the test controls. */
 function memoryStore() {
   let now = 0;
-  const rows = new Map<string, StepRow & { lockedUntil: number }>();
+  let claims = 0;
+  const rows = new Map<string, StepRow & { lockedUntil: number; token: string | null }>();
   const id = (k: StepKey) => `${k.jobId}|${k.step}|${k.target}`;
   const store: StepStore = {
     async ensure(k) {
@@ -25,6 +26,7 @@ function memoryStore() {
           result: null,
           lockValid: false,
           lockedUntil: 0,
+          token: null,
         });
     },
     async get(k) {
@@ -34,26 +36,37 @@ function memoryStore() {
     async claim(k, lockMs, max) {
       const r = rows.get(id(k))!;
       const free = r.status === "pending" || r.status === "failed" || (r.status === "running" && r.lockedUntil < now);
-      if (!free || r.attempts >= max) return false;
-      Object.assign(r, { status: "running", attempts: r.attempts + 1, lockedUntil: now + lockMs });
+      if (!free || r.attempts >= max) return null;
+      const token = `claim-${++claims}`;
+      Object.assign(r, { status: "running", attempts: r.attempts + 1, lockedUntil: now + lockMs, token });
+      return token;
+    },
+    async renew(k, token, lockMs) {
+      const r = rows.get(id(k))!;
+      if (r.status === "running" && r.token === token) r.lockedUntil = now + lockMs;
+    },
+    async complete(k, token, result) {
+      const r = rows.get(id(k))!;
+      if (r.status !== "running" || r.token !== token) return false;
+      Object.assign(r, { status: "done", result, lastError: null, lockedUntil: 0, token: null });
       return true;
     },
-    async renew(k, lockMs) {
+    async fail(k, token, error, adjust) {
       const r = rows.get(id(k))!;
-      if (r.status === "running") r.lockedUntil = now + lockMs;
-    },
-    async complete(k, result) {
-      Object.assign(rows.get(id(k))!, { status: "done", result, lastError: null, lockedUntil: 0 });
-    },
-    async fail(k, error, adjust) {
-      const r = rows.get(id(k))!;
+      if (r.status !== "running" || r.token !== token) return false;
       const attempts =
         adjust && "exhaust" in adjust
           ? Math.max(r.attempts, adjust.exhaust)
           : adjust?.refund
             ? Math.max(0, r.attempts - 1)
             : r.attempts;
-      Object.assign(r, { status: "failed", lastError: error, lockedUntil: 0, attempts });
+      Object.assign(r, { status: "failed", lastError: error, lockedUntil: 0, attempts, token: null });
+      return true;
+    },
+    async abandon(k, error) {
+      const r = rows.get(id(k))!;
+      if (r.status === "running" && r.lockedUntil < now)
+        Object.assign(r, { status: "failed", lastError: error, lockedUntil: 0, token: null });
     },
     async reset(k, o) {
       const r = rows.get(id(k))!;
@@ -106,6 +119,31 @@ describe("runStep step rules", () => {
       state: "done",
       result: "second try",
     });
+  });
+
+  it("drops what a run that lost its lock brings back late, keeping the newer run's result", async () => {
+    const { store, advance, row } = memoryStore();
+    let finishA!: (v: string) => void;
+    const slowA = runStep(store, key, opts, () => new Promise<string>((r) => (finishA = r)));
+    await vi.waitFor(() => expect(finishA).toBeDefined());
+    // A's call hangs past every renewal; the next poll claims the step again and finishes
+    advance(10 * 45_000);
+    expect(await runStep(store, key, opts, async () => "B")).toMatchObject({ state: "done", result: "B" });
+    finishA("A (late)");
+    expect(await slowA).toEqual({ state: "done", result: "B", fresh: false });
+    expect(row(key)).toMatchObject({ status: "done", result: "B" });
+  });
+
+  it("doesn't let a late failure from a lost run mark the newer run's work failed", async () => {
+    const { store, advance, row } = memoryStore();
+    let failA!: (e: Error) => void;
+    const slowA = runStep(store, key, opts, () => new Promise<string>((_, reject) => (failA = reject)));
+    await vi.waitFor(() => expect(failA).toBeDefined());
+    advance(10 * 45_000);
+    await runStep(store, key, opts, async () => "B");
+    failA(new StepError("photoMissing"));
+    expect(await slowA).toMatchObject({ state: "done", result: "B" });
+    expect(row(key)?.status).toBe("done");
   });
 
   it("keeps the lock while slow work runs, so a poll doesn't start it again", async () => {
