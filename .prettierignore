@@ -2,3 +2,5 @@ docs/
 pnpm-lock.yaml
 src/components/ui/
 .next/
+# the reel renders this page as it is; reformatting its markup could change the video
+src/server/reels/templates/

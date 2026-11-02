@@ -70,7 +70,12 @@ async function seedSample(ws: WorkspaceScope, s: DemoSample): Promise<void> {
   const segment: SegmentResult = {
     phrase: s.plan.sam_phrase,
     tried: [s.plan.sam_phrase],
-    instances: saved.map((x, i) => ({ itemId: itemIds[i]!, box: x.box, score: x.score, cutoutMediaId: x.cutoutMediaId })),
+    instances: saved.map((x, i) => ({
+      itemId: itemIds[i]!,
+      box: x.box,
+      score: x.score,
+      cutoutMediaId: x.cutoutMediaId,
+    })),
     check,
   };
   const group: GroupResult = { mode: s.mode, auto: s.mode === "single", colors: s.colors, reason: s.reason };

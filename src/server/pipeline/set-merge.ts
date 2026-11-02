@@ -18,8 +18,7 @@ export function mergeSetPieces(found: SegmentInstance[]): SegmentInstance[] {
   const parent = found.map((_, i) => i);
   const root = (i: number): number => (parent[i] === i ? i : (parent[i] = root(parent[i]!)));
   for (let i = 0; i < found.length; i++)
-    for (let j = i + 1; j < found.length; j++)
-      if (overlap(found[i]!.box, found[j]!.box) > 0) parent[root(j)] = root(i);
+    for (let j = i + 1; j < found.length; j++) if (overlap(found[i]!.box, found[j]!.box) > 0) parent[root(j)] = root(i);
 
   const groups = new Map<number, SegmentInstance[]>();
   found.forEach((inst, i) => groups.set(root(i), [...(groups.get(root(i)) ?? []), inst]));
