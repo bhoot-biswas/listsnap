@@ -108,3 +108,45 @@ describe("nextCalls", () => {
     ).toBe(true);
   });
 });
+
+describe("listings whose steps are out of attempts", () => {
+  const jobDone = [done("plan"), done("segment"), done("group")];
+  const used = (listingId: string) => failed("render", renderTarget(listingId, "studio"), 3);
+  const written = (listingId: string) => [done("write", listingId), done("translate", listingId)];
+
+  it("don't hold up the listings after them", () => {
+    // the day's AI photos ran out: the first two listings' photos failed for good
+    const input = {
+      ...base,
+      steps: [...jobDone, ...written("L1"), used("L1"), ...written("L2"), used("L2")],
+      listingIds: ["L1", "L2", "L3", "L4"],
+    };
+    expect(nextCalls(input)).toEqual([
+      { kind: "listing", step: "write", listingId: "L3" },
+      { kind: "listing", step: "render", listingId: "L3", scene: "studio" },
+      { kind: "listing", step: "write", listingId: "L4" },
+      { kind: "listing", step: "render", listingId: "L4", scene: "studio" },
+    ]);
+    expect(isSettled(input)).toBe(false);
+  });
+
+  it("settle the job once nothing else can run", () => {
+    const steps = [...jobDone, ...["L1", "L2", "L3"].flatMap((l) => [...written(l), used(l)])];
+    const input = { ...base, steps, listingIds: ["L1", "L2", "L3"] };
+    expect(nextCalls(input)).toEqual([]);
+    expect(isSettled(input)).toBe(true);
+  });
+
+  it("spend no photos on a listing whose writing gave up", () => {
+    const input = { ...base, steps: [...jobDone, failed("write", "L1", 3)], listingIds: ["L1", "L2"] };
+    expect(nextCalls(input)).toEqual([
+      { kind: "listing", step: "write", listingId: "L2" },
+      { kind: "listing", step: "render", listingId: "L2", scene: "studio" },
+    ]);
+    // Try again on the writing brings its photos back
+    expect(nextCalls({ ...base, steps: [...jobDone, failed("write", "L1", 0)], listingIds: ["L1"] })).toEqual([
+      { kind: "listing", step: "write", listingId: "L1" },
+      { kind: "listing", step: "render", listingId: "L1", scene: "studio" },
+    ]);
+  });
+});
