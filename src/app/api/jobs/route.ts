@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       const photo = await readPhotoFile(f);
       if (!photo) {
         await slot.release();
-        return unreadablePhoto();
+        return unreadablePhoto(f);
       }
       const media = await saveMedia(ws.id, "original", photo.data, {
         mime: "image/jpeg",

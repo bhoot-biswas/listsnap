@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Camera, ImagePlus, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { resizeForUpload } from "@/lib/resize-image";
+import { resizeForUpload, unreadableHeic } from "@/lib/resize-image";
 import { uploadBatch } from "@/lib/bulk-upload";
 import { cn } from "@/lib/utils";
 import { VoiceRecorder } from "./voice-recorder";
@@ -14,6 +14,8 @@ import { VideoUpload } from "./video-upload";
 
 const MAX = 5;
 const isPhoto = (f: File) => f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name);
+// image/* alone, so an iPhone sends its HEIC photos as JPEG; listing .heic would stop that
+const PHOTO_TYPES = "image/*";
 
 /** Picks photos (camera, files, drag and drop, paste), shrinks them, uploads, then opens the job. */
 export function SnapForm({ samples = [] }: { samples?: { url: string; label: string }[] }) {
@@ -28,30 +30,52 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [voice, setVoice] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
+  const [videoBusy, setVideoBusy] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<HTMLInputElement>(null);
 
-  const add = (list: FileList | File[]) => {
+  const add = async (list: FileList | File[]) => {
+    // a video on its way becomes the listings; photos dropped or pasted now would be lost
+    if (videoBusy) return;
     const incoming = Array.from(list);
     if (incoming.some((f) => !isPhoto(f))) toast.error(t("notPhoto"));
-    const photos = incoming.filter(isPhoto);
-    setFiles((cur) => {
-      if (cur.length + photos.length > MAX) toast.error(t("tooMany"));
-      return [...cur, ...photos.slice(0, MAX - cur.length).map((file) => ({ file, url: URL.createObjectURL(file) }))];
-    });
+    const heic = await Promise.all(incoming.filter(isPhoto).map(unreadableHeic));
+    const photos = incoming.filter(isPhoto).filter((_, i) => !heic[i]);
+    if (heic.some(Boolean)) toast.error(t("heic"));
+    if (!photos.length) return;
+    if (files.length + photos.length > MAX) toast.error(t("tooMany"));
+    setFiles((cur) => [
+      ...cur,
+      ...photos.slice(0, MAX - cur.length).map((file) => ({ file, url: URL.createObjectURL(file) })),
+    ]);
   };
 
-  const remove = (i: number) =>
+  // the voice note is about these photos, so it goes when they all do
+  const remove = (i: number) => {
+    if (files.length <= 1) setVoice(null);
     setFiles((cur) => {
       URL.revokeObjectURL(cur[i]!.url);
       return cur.filter((_, j) => j !== i);
     });
+  };
+
+  const clear = () => {
+    for (const f of files) URL.revokeObjectURL(f.url);
+    setFiles([]);
+    setVoice(null);
+  };
+
+  /** Lets the same file be picked again after it was removed. */
+  const picked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) void add(Array.from(e.target.files));
+    e.target.value = "";
+  };
 
   // paste a photo from the clipboard anywhere on the page (desktop)
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const pasted = Array.from(e.clipboardData?.files ?? []);
-      if (pasted.length) add(pasted);
+      if (pasted.length) void add(pasted);
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
@@ -125,7 +149,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          add(e.dataTransfer.files);
+          void add(e.dataTransfer.files);
         }}
         className={cn(
           "flex flex-col items-center gap-4 rounded-xl border-2 border-dashed bg-card px-4 py-10 text-center transition-colors",
@@ -133,7 +157,11 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
         )}
       >
         <div className="flex flex-wrap justify-center gap-3">
-          <Button size="lg" onClick={() => cameraRef.current?.click()} disabled={uploading || files.length >= MAX}>
+          <Button
+            size="lg"
+            onClick={() => cameraRef.current?.click()}
+            disabled={uploading || videoBusy || files.length >= MAX}
+          >
             <Camera />
             {t("take")}
           </Button>
@@ -141,34 +169,21 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
             size="lg"
             variant="outline"
             onClick={() => pickRef.current?.click()}
-            disabled={uploading || files.length >= MAX}
+            disabled={uploading || videoBusy || files.length >= MAX}
           >
             <ImagePlus />
             {t("upload")}
           </Button>
         </div>
         <p className="text-sm text-muted-foreground max-md:hidden">{t("drop")}</p>
-        <input
-          ref={cameraRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          hidden
-          onChange={(e) => e.target.files && add(e.target.files)}
-        />
-        <input
-          ref={pickRef}
-          type="file"
-          accept="image/*,.heic,.heif"
-          multiple
-          hidden
-          onChange={(e) => e.target.files && add(e.target.files)}
-        />
+        <input ref={cameraRef} type="file" accept={PHOTO_TYPES} capture="environment" hidden onChange={picked} />
+        <input ref={pickRef} type="file" accept={PHOTO_TYPES} multiple hidden onChange={picked} />
       </div>
 
-      {files.length === 0 && <VideoUpload disabled={uploading} />}
+      {/* kept mounted while a video uploads, so its progress never disappears */}
+      {(files.length === 0 || videoBusy) && <VideoUpload disabled={uploading} onBusy={setVideoBusy} />}
 
-      {samples.length > 0 && files.length === 0 && (
+      {samples.length > 0 && files.length === 0 && !videoBusy && (
         <div className="space-y-2">
           <p className="text-sm font-medium">{t("samplesTitle")}</p>
           <ul className="flex flex-wrap gap-3">
@@ -195,12 +210,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
             <p className="text-sm font-medium" aria-live="polite">
               {t("selected", { count: files.length })}
             </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => files.forEach((_, i) => remove(files.length - 1 - i))}
-              disabled={uploading}
-            >
+            <Button variant="ghost" size="sm" onClick={clear} disabled={uploading || recording}>
               {t("clear")}
             </Button>
           </div>
@@ -212,7 +222,7 @@ export function SnapForm({ samples = [] }: { samples?: { url: string; label: str
                 <button
                   type="button"
                   onClick={() => remove(i)}
-                  disabled={uploading}
+                  disabled={uploading || recording}
                   aria-label={`${t("clear")} ${file.name}`}
                   className="absolute top-1 right-1 flex size-11 items-center justify-center rounded-full bg-background/90 shadow md:size-8"
                 >

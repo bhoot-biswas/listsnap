@@ -25,4 +25,18 @@ export async function readPhotoFile(f: File): Promise<{ data: Buffer; width: num
   }
 }
 
-export const unreadablePhoto = () => fail(415, "unsupported_file", "unreadablePhoto");
+/**
+ * The answer for an upload that couldn't be read. An iPhone's HEIC photo holds HEVC, which
+ * the server's image library can't decode, so it gets its own words: how to send a JPG.
+ */
+export async function unreadablePhoto(f: File): Promise<Response> {
+  if (isHeic(Buffer.from(await f.slice(0, 64).arrayBuffer()))) return fail(415, "unsupported_file", "heicPhoto");
+  return fail(415, "unsupported_file", "unreadablePhoto");
+}
+
+/** An HEIF file whose brands name HEVC, read from its first ("ftyp") box. AVIF is fine. */
+export function isHeic(head: Buffer): boolean {
+  if (head.length < 12 || head.toString("latin1", 4, 8) !== "ftyp") return false;
+  const brands = head.toString("latin1", 8, Math.min(head.length, head.readUInt32BE(0)));
+  return /hei[cx]|hev[cx]/.test(brands);
+}
