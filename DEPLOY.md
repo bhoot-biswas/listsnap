@@ -93,6 +93,8 @@ install -m 755 /srv/listsnap/deploy/deploy.sh /usr/local/sbin/listsnap-deploy
 install -m 644 /srv/listsnap/deploy/listsnap.service /etc/systemd/system/listsnap.service
 install -m 755 /srv/listsnap/deploy/backup-db.sh /etc/cron.daily/listsnap-db
 install -m 755 /srv/listsnap/deploy/backup-media.sh /etc/cron.daily/listsnap-media
+install -m 755 /srv/listsnap/deploy/backup-offsite.sh /etc/cron.daily/listsnap-offsite
+install -m 755 /srv/listsnap/deploy/restore-drill.sh /usr/local/sbin/listsnap-restore-drill
 install -m 644 /srv/listsnap/deploy/listsnap-demo.cron /etc/cron.d/listsnap-demo
 touch /var/log/listsnap-demo.log && chown listsnap /var/log/listsnap-demo.log
 systemctl daemon-reload && systemctl enable listsnap
@@ -189,12 +191,63 @@ Step 5 installed the nightly jobs. Run them once to check:
 /etc/cron.daily/listsnap-db && /etc/cron.daily/listsnap-media && ls -lh /var/backups/listsnap /var/backups/listsnap/media
 ```
 
-Both databases are dumped every night and kept for 7 days. Seller media (`/var/lib/listsnap/media`) gets a snapshot every night, also kept for 7; files that didn't change are hard links to the night before, so each night costs only what's new. Both are on the same disk: they cover mistakes and bad deploys, and Hostinger's VPS snapshots cover losing the disk.
+Both databases are dumped every night and kept for 7 days. A dump that fails part-way is reported and never replaces a good one. Seller media (`/var/lib/listsnap/media`) gets a snapshot every night, also kept for 7; files that didn't change are hard links to the night before, so each night costs only what's new. Every deploy also dumps the databases just before it migrates (`db-predeploy-*.sql.gz`, kept 7 days). All of these are on this server's disk, so they cover mistakes and bad deploys but not losing the server: the off-site copy below does.
 
-Demo shops expire after a day. The `listsnap-demo` job deletes them every night after the backup, with their photos and their drafts in the demo store, and deletes cutouts no listing uses any more (left behind when a photo is cut out again). To see what it would delete:
+### Off-site backups (Cloudflare R2)
+
+`listsnap-offsite` runs after the two jobs above and copies `/var/backups/listsnap` to an R2 bucket with [restic](https://restic.net). restic encrypts on this server before sending, so the bucket only holds ciphertext, and it sends only what changed. It keeps 7 daily, 4 weekly and 6 monthly copies, and on Sundays reads back a sample to check them. Until it is set up, it prints that nothing was copied and stops.
+
+1. In Cloudflare: **R2 → Create bucket** (for example `listsnap-backups`). Then **R2 → Manage API tokens → Create API token** with **Object Read & Write** on that bucket only. Note the access key id, the secret, and your account id (shown in the bucket's S3 API address).
+2. On the server (`apt install restic` if it isn't there), write the settings with an editor, readable by root only:
+
+```bash
+install -m 600 /dev/null /etc/listsnap/offsite.env
+nano /etc/listsnap/offsite.env
+```
+
+```
+RESTIC_REPOSITORY=s3:https://ACCOUNT_ID.r2.cloudflarestorage.com/listsnap-backups
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=auto
+RESTIC_PASSWORD=a long random password (openssl rand -base64 32)
+```
+
+3. Run it once: `/etc/cron.daily/listsnap-offsite`. It makes the repository and sends the first copy.
+4. **Keep a copy of `RESTIC_PASSWORD` somewhere other than this server** (a password manager). Without it nobody can read the backups, you included.
+
+### Restoring
+
+`listsnap-restore-drill` loads a dump into scratch databases (`listsnap_drill`, `store_drill`), compares row counts with the live ones and drops them again; it refuses a dump that would write anywhere else, and the live databases are never touched. Run it after setting up a new server, after changing the backups, and every few months:
+
+```bash
+listsnap-restore-drill
+```
+
+For a dump from R2, restore it to a folder first (`restic snapshots` lists the copies):
+
+```bash
+set -a; . /etc/listsnap/offsite.env; set +a
+restic restore latest --target /tmp/restore --include /var/backups/listsnap/db-YYYY-MM-DD.sql.gz
+listsnap-restore-drill /tmp/restore/var/backups/listsnap/db-YYYY-MM-DD.sql.gz
+```
+
+To really restore, stop the app, load the dump as it is (it recreates both databases), put the media back from a snapshot, and start again. This replaces the live data, so read the commands before running them:
+
+```bash
+systemctl stop listsnap
+gzip -dc /var/backups/listsnap/db-YYYY-MM-DD.sql.gz | mariadb
+rsync -a --delete /var/backups/listsnap/media/YYYY-MM-DD/ /var/lib/listsnap/media/
+systemctl start listsnap && curl -s localhost:3000/api/health
+```
+
+### Nightly cleanup
+
+Demo shops expire after a day. The `listsnap-demo` job deletes them every night after the backup, with their photos and their drafts in the demo store, and deletes cutouts no listing uses any more (left behind when a photo is cut out again). Then `cleanup-old` deletes what no seller needs any more: videos 7 days after their listings were made (30 after a watch that failed), files no media row names, and old log rows (webhook ids after 30 days, per-visitor counts after 90, op runs with no undo left after 90, calls and events after a year). To see what either would delete:
 
 ```bash
 sudo -u listsnap sh -c 'cd /srv/listsnap-current && node --env-file=/etc/listsnap/env scripts/cleanup-demo.mjs --dry-run'
+sudo -u listsnap sh -c 'cd /srv/listsnap-current && node --env-file=/etc/listsnap/env scripts/cleanup-old.mjs --dry-run'
 ```
 
 ## 10. Lock down SSH
@@ -233,7 +286,7 @@ After merging to `main`:
 ssh root@YOUR_SERVER_IP listsnap-deploy
 ```
 
-New migrations run as part of it, before the switch, while the old release still serves. So a migration must leave the database usable by the release before it: add columns and tables, and rename or drop them only in a later deploy. The site keeps serving while the new release builds; it is away only for the few seconds of the restart.
+Only one deploy runs at a time; a second one stops and says so. Before new migrations run it dumps the databases (`db-predeploy-*.sql.gz`), and the migrations run before the switch, while the old release still serves. So a migration must leave the database usable by the release before it: add columns and tables, and rename or drop them only in a later deploy. The site keeps serving while the new release builds; it is away only for the few seconds of the restart.
 
 To go back to the release before:
 
@@ -254,6 +307,8 @@ install -m 755 /srv/listsnap/deploy/deploy.sh /usr/local/sbin/listsnap-deploy
 install -m 644 /srv/listsnap/deploy/listsnap.service /etc/systemd/system/listsnap.service
 install -m 755 /srv/listsnap/deploy/backup-db.sh /etc/cron.daily/listsnap-db
 install -m 755 /srv/listsnap/deploy/backup-media.sh /etc/cron.daily/listsnap-media
+install -m 755 /srv/listsnap/deploy/backup-offsite.sh /etc/cron.daily/listsnap-offsite
+install -m 755 /srv/listsnap/deploy/restore-drill.sh /usr/local/sbin/listsnap-restore-drill
 install -m 644 /srv/listsnap/deploy/listsnap-demo.cron /etc/cron.d/listsnap-demo
 # the build that is running now stands in as the release before, so a failed first deploy switches back to it
 ln -sfn /srv/listsnap /srv/listsnap-current
@@ -265,13 +320,14 @@ Until a second release exists, `--rollback` has nothing to go back to; to go bac
 
 ## When something's wrong
 
-| What          | Where to look                                                                                        |
-| ------------- | ---------------------------------------------------------------------------------------------------- |
-| The app       | `journalctl -u listsnap -n 100` (add `-f` to follow)                                                 |
-| Nginx         | `tail -n 50 /var/log/nginx/error.log`                                                                |
-| A deploy      | The output of `listsnap-deploy`; it stops at the step that failed, and the live release is untouched |
-| A bad release | `listsnap-deploy --rollback`                                                                         |
-| Is it up?     | `curl -s localhost:3000/api/health`                                                                  |
+| What            | Where to look                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
+| The app         | `journalctl -u listsnap -n 100` (add `-f` to follow)                                                 |
+| Nginx           | `tail -n 50 /var/log/nginx/error.log`                                                                |
+| A deploy        | The output of `listsnap-deploy`; it stops at the step that failed, and the live release is untouched |
+| A bad release   | `listsnap-deploy --rollback`                                                                         |
+| A bad migration | The deploy's own dump, `/var/backups/listsnap/db-predeploy-*.sql.gz` (see Restoring)                 |
+| Is it up?       | `curl -s localhost:3000/api/health`                                                                  |
 
 **Daily limits:** 20 listings and 60 AI photos per shop per day, reset at midnight UTC (6:00 AM in Bangladesh). Demo shops are also capped at 20 listings per visitor per day. A shop's limits are the `daily_listing_limit` and `daily_image_limit` columns on `workspaces`.
 

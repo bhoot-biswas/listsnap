@@ -66,8 +66,9 @@ try {
       console.warn(`[cleanup-demo] skipping workspace with an unexpected id: ${id}`);
       continue;
     }
+    // the drafts' own table: listings.wc_product_id is kept only for rolling back and will go
     const [products] = await db.query(
-      "SELECT wc_product_id AS pid FROM listings WHERE workspace_id = ? AND wc_product_id IS NOT NULL",
+      "SELECT product_ref AS pid FROM listing_store_products WHERE workspace_id = ? AND kind = 'woo'",
       [id],
     );
     if (dryRun) {

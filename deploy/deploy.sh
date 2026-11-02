@@ -37,7 +37,26 @@ ROOT_FILES=(
   "backup-db.sh:/etc/cron.daily/listsnap-db"
   "backup-media.sh:/etc/cron.daily/listsnap-media"
   "listsnap-demo.cron:/etc/cron.d/listsnap-demo"
+  "backup-offsite.sh:/etc/cron.daily/listsnap-offsite"
+  "restore-drill.sh:/usr/local/sbin/listsnap-restore-drill"
 )
+
+# anything else (a typo, --help) used to fall through to a real deploy
+case "${1:-}" in
+  "" | --rebuild | --rollback) ;;
+  *)
+    echo "Usage: $SELF [--rebuild | --rollback]" >&2
+    exit 2
+    ;;
+esac
+
+# One deploy at a time: two would race on the checkout, the migrations and the live link.
+# The lock goes with the process, so a deploy that died leaves nothing to clear.
+exec 9>/run/listsnap-deploy.lock
+if ! flock -n 9; then
+  echo "✗ Another deploy is running. Wait for it to finish, then deploy again." >&2
+  exit 1
+fi
 
 # everything but switching and restarting runs as the app's own user
 as_app() { sudo -u listsnap -H env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 bash -c "$*"; }
@@ -138,6 +157,18 @@ echo "→ Checking the reel browser"
 as_app "cd $REL && node node_modules/hyperframes/bin/hyperframes.mjs browser ensure"
 # Migrations run before the switch, while the old release still serves, so each one must
 # leave the database usable by the release before it (add, don't rename or drop).
+# A dump just before, so a migration (or the release after it) that goes wrong can be
+# undone from this moment rather than last night. Kept with the nightly ones for 7 days.
+echo "→ Saving the database"
+DUMP=/var/backups/listsnap/db-predeploy-$(date +%Y%m%d-%H%M%S).sql.gz
+mariadb-dump --single-transaction --routines --databases listsnap store | gzip >"$DUMP.partial"
+gzip -dc "$DUMP.partial" | tail -n 1 | grep -q '^-- Dump completed' || {
+  rm -f "$DUMP.partial"
+  echo "✗ The database dump didn't finish, so nothing was migrated." >&2
+  exit 1
+}
+mv "$DUMP.partial" "$DUMP"
+echo "  $DUMP"
 echo "→ Migrating the database"
 as_app "cd $REL && node --env-file=$ENV scripts/db-migrate.mjs"
 # The live release's build cache makes the build take seconds instead of a minute. It is
