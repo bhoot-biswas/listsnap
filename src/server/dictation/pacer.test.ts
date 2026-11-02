@@ -51,7 +51,8 @@ describe("dictation pacer", () => {
     const { ticks, last } = run(12_000, (to) => (prev = Math.max(prev, to + jitter[i++ % jitter.length])));
     expect(last.result.state).toBe("drained");
     expect(last.sentMs).toBe(12_000);
-    for (const t of ticks.filter((x) => x.now > 2000 && x.now < 11_000)) expect(sentIn(t.result)).toBeCloseTo(TICK_MS, 0);
+    for (const t of ticks.filter((x) => x.now > 2000 && x.now < 11_000))
+      expect(sentIn(t.result)).toBeCloseTo(TICK_MS, 0);
   });
 
   it("pads silence through a long gap, then catches up without a burst", () => {

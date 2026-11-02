@@ -48,7 +48,7 @@ export type TickResult =
 /** A phone upload is about 250 ms, so the phone can be up to that far ahead of the clock. */
 const BACKLOG_SLACK_MS = 300;
 
-const evenBytes =(ms: number) => Math.max(0, Math.floor(ms * BYTES_PER_MS) & ~1);
+const evenBytes = (ms: number) => Math.max(0, Math.floor(ms * BYTES_PER_MS) & ~1);
 
 export class Pacer {
   private readonly o: PacerOptions;
@@ -89,7 +89,8 @@ export class Pacer {
   }
 
   tick(now: number): TickResult {
-    if (this.origin === null) return this.finished ? { state: "drained", frames: [] } : { state: "sending", frames: [] };
+    if (this.origin === null)
+      return this.finished ? { state: "drained", frames: [] } : { state: "sending", frames: [] };
     const elapsed = now - this.origin;
     const bufferedMs = this.bufferedBytes / BYTES_PER_MS;
     if (bufferedMs > this.o.maxBufferMs) return { state: "lost", reason: "backlog" };

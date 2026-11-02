@@ -114,8 +114,7 @@ export async function photoCheck(photo: Buffer, boxes: Box[]): Promise<PhotoChec
   const full = boxes.some((b) => fillsFrame(b, W, H));
   if (full) hints.push("too_close");
   // a box on the photo's edge usually means the item goes on past it
-  else if (boxes.some((b) => b.x <= 1 || b.y <= 1 || b.x + b.w >= W - 1 || b.y + b.h >= H - 1))
-    hints.push("cut_off");
+  else if (boxes.some((b) => b.x <= 1 || b.y <= 1 || b.x + b.w >= W - 1 || b.y + b.h >= H - 1)) hints.push("cut_off");
   if (boxes.some((a, i) => boxes.slice(i + 1).some((b) => boxOverlap(a, b) >= OVERLAP_HINT))) hints.push("overlap");
   if (!isSharp) hints.push("blurry");
   if (exposure === "dark") hints.push("too_dark");

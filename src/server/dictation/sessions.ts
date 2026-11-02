@@ -39,10 +39,7 @@ export function hasRoom(workspaceId: string): boolean {
 export const newDictationId = () => randomBytes(16).toString("base64url");
 
 /** `onExpire` runs if the session outlives MAX_AGE_MS: a tab left recording, or a lost phone. */
-export function addDictation(
-  d: Omit<Dictation, "seq" | "timer">,
-  onExpire: () => void,
-): Dictation {
+export function addDictation(d: Omit<Dictation, "seq" | "timer">, onExpire: () => void): Dictation {
   const entry: Dictation = { ...d, seq: 0, timer: setTimeout(onExpire, MAX_AGE_MS) };
   sessions.set(d.id, entry);
   return entry;

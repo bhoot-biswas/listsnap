@@ -7,11 +7,7 @@ import { BYTES_PER_MS } from "@/server/dictation/pacer";
  * Live dictation without the socket: a word of the mock transcript appears for every
  * half second of audio, so the box fills as the seller talks, as it would live.
  */
-export function mockTranscribeLive(
-  ctx: CallContext,
-  transcript: string,
-  events: LiveEvents,
-): LiveTranscription {
+export function mockTranscribeLive(ctx: CallContext, transcript: string, events: LiveEvents): LiveTranscription {
   const words = transcript.split(" ");
   let bytes = 0;
   let shown = 0;
