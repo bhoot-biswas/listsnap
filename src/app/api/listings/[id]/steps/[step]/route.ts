@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiViewer } from "@/server/auth/session";
 import { executeListingStep } from "@/server/pipeline/execute";
 import { fail, notFound, stepResponse, unauthorized } from "@/server/http";
+import { clientIp } from "@/server/limits";
 
 const Step = z.enum(["write", "translate", "render"]);
 
@@ -16,6 +17,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
   const r = await executeListingStep(viewer.workspace, id, parsed.data, {
     scene: params.get("scene") ?? undefined,
     force: params.get("retry") === "1",
+    ip: clientIp(request),
   });
   if (!r.found) return notFound();
   // the only request a listing step turns down is a scene that doesn't exist

@@ -1,8 +1,11 @@
 import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
-import { fail, ok, unauthorized } from "@/server/http";
+import { fail, failWords, ok, unauthorized } from "@/server/http";
+import { clientIp, takeDemoAllowance } from "@/server/limits";
 import { normaliseVoice, SHOP_WORDS, unreadableVoice, voiceFileProblem } from "@/server/media/voice";
+import { StepError } from "@/server/pipeline/run-step";
 import { meta } from "@/server/providers";
+import { errorWords, requestLocale } from "@/server/step-text";
 
 /** A minute each, so this is hours of talking; past it the box is still there to type in. */
 const PER_DAY = 100;
@@ -29,8 +32,19 @@ export async function POST(request: Request) {
 
   const ws = forWorkspace(viewer.workspace.id);
   if ((await ws.dictationsToday()) >= PER_DAY) return fail(429, "limit", "dictateLimit");
+  const release = await takeDemoAllowance(viewer.workspace, clientIp(request), "ai_calls");
+  if (!release) return fail(429, "limit", "dictateLimit");
   const note = await normaliseVoice(Buffer.from(await file.arrayBuffer()));
-  if (!note) return unreadableVoice();
-  const heard = await meta().transcribe({ workspaceId: ws.id, jobId: null, step: "dictate" }, note.data, SHOP_WORDS);
-  return ok({ text: heard.text });
+  if (!note) {
+    await release();
+    return unreadableVoice();
+  }
+  try {
+    const heard = await meta().transcribe({ workspaceId: ws.id, jobId: null, step: "dictate" }, note.data, SHOP_WORDS);
+    return ok({ text: heard.text });
+  } catch (err) {
+    // busy or switched off for a moment: the box says so and the seller can type instead
+    if (err instanceof StepError) return failWords(503, "busy", errorWords(err, await requestLocale()));
+    throw err;
+  }
 }

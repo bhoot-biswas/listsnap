@@ -2,6 +2,7 @@ import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { brandVoice } from "@/server/db/workspaces";
 import { fail, failWords, notFound, ok, unauthorized } from "@/server/http";
+import { clientIp, takeDemoAllowance } from "@/server/limits";
 import { StepError } from "@/server/pipeline/run-step";
 import { meta } from "@/server/providers";
 import { AssistRequest } from "@/lib/schemas/assist";
@@ -26,6 +27,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/listings/[i
   const en = ListingText.safeParse(listing?.fields_json?.en);
   if (!listing || !en.success) return notFound();
   if ((await ws.assistsToday()) >= DAILY_ASSISTS) return fail(429, "limit_reached", "assistLimit");
+  if (!(await takeDemoAllowance(viewer.workspace, clientIp(request), "ai_calls")))
+    return fail(429, "limit_reached", "assistLimit");
 
   try {
     const text = await meta().assist(

@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { isIPv6 } from "node:net";
 import { execute, selectOne } from "./pool";
 
 /**
@@ -19,7 +20,7 @@ export const REELS_PER_DAY = 10;
  */
 export const DEFAULT_LIMITS = { listings: 20, images: 60, reels: REELS_PER_DAY } as const;
 
-async function reserve(table: "usage_daily" | "ip_daily", key: string, counter: Counter, limit: number) {
+async function reserve(table: "usage_daily" | "ip_daily", key: string, counter: Counter | IpCounter, limit: number) {
   const keyColumn = table === "usage_daily" ? "workspace_id" : "ip_hash";
   await execute(`INSERT IGNORE INTO ${table} (${keyColumn}, date) VALUES (?, UTC_DATE())`, [key]);
   const r = await execute(
@@ -87,19 +88,55 @@ export function limitQueries(ws: string) {
   };
 }
 
+/** What a visitor can use each day across all their demo shops, per counter in ip_daily. */
+export const DEMO_PER_IP = {
+  listings: 20,
+  /** Each video is stored (up to 200 MB) and watched by a paid model before any listing. */
+  videos: 2,
+  /** One shop's worth of AI photos: a new demo shop must not mean another sixty. */
+  images: 60,
+  /** Chat messages, dictations and field assists, each a paid model call or more. */
+  ai_calls: 100,
+} as const;
+
 /** Listings a visitor can start each day across all their demo shops. */
-export const DEMO_LISTINGS_PER_IP = 20;
+export const DEMO_LISTINGS_PER_IP = DEMO_PER_IP.listings;
+
+export type IpCounter = keyof typeof DEMO_PER_IP;
 
 /**
- * The one count that isn't per shop: demo shops are free to make, so a visitor's demo
- * listings are also capped per address. Only a salted hash is stored, never the address.
+ * The address a limit counts by. One IPv6 connection is usually handed a whole /64, so
+ * counting full addresses would let a visitor take a fresh allowance per address.
+ */
+export function visitorKey(ip: string): string {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
+  if (mapped) return mapped[1]!;
+  if (!isIPv6(ip)) return ip;
+  const [head, tail = ""] = ip.toLowerCase().split("::");
+  const front = head ? head.split(":") : [];
+  const back = ip.includes("::") ? (tail ? tail.split(":") : []) : [];
+  const groups = [...front, ...Array(8 - front.length - back.length).fill("0"), ...back];
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.replace(/^0+(?=.)/, ""))
+    .join(":")}::/64`;
+}
+
+/**
+ * The counts that aren't per shop: demo shops are free to make, so what a visitor uses is
+ * also capped per address. Only a salted hash is stored, never the address.
  */
 export const demoIpLimit = {
-  hash: (ip: string, salt: string) => createHash("sha256").update(`${salt}:${ip}`).digest("hex"),
-  reserve: (ipHash: string) => reserve("ip_daily", ipHash, "listings", DEMO_LISTINGS_PER_IP),
-  async release(ipHash: string) {
-    await execute("UPDATE ip_daily SET listings = GREATEST(listings - 1, 0) WHERE ip_hash = ? AND date = UTC_DATE()", [
-      ipHash,
-    ]);
+  hash: (ip: string, salt: string) =>
+    createHash("sha256")
+      .update(`${salt}:${visitorKey(ip)}`)
+      .digest("hex"),
+  reserve: (ipHash: string, counter: IpCounter = "listings") =>
+    reserve("ip_daily", ipHash, counter, DEMO_PER_IP[counter]),
+  async release(ipHash: string, counter: IpCounter = "listings") {
+    await execute(
+      `UPDATE ip_daily SET ${counter} = GREATEST(${counter} - 1, 0) WHERE ip_hash = ? AND date = UTC_DATE()`,
+      [ipHash],
+    );
   },
 };

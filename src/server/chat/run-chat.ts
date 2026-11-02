@@ -6,6 +6,7 @@ import { meta } from "@/server/providers";
 import { photoDataUrl } from "@/server/providers/meta/spark";
 import { readMedia } from "@/server/media/store";
 import { StepError } from "@/server/pipeline/run-step";
+import { takeDemoAllowance } from "@/server/limits";
 import type { ChatEvent, ChatMessage, ChatRequest, ToolCall } from "@/lib/schemas/chat";
 import { chatSystem } from "./prompt";
 import { changesListing, chatTools, checkArgs, makesMedia, needsApproval, runTool, type ChatScope } from "./tools";
@@ -100,6 +101,8 @@ export async function runChat(
 
     if ("message" in req) {
       if ((await ws.chatCallsToday()) >= CHAT_CALLS_PER_DAY) return emit({ type: "error", code: "limit" });
+      // one per message: a new demo shop must not bring a fresh day of chat with it
+      if (!(await takeDemoAllowance(workspace, clientIp, "ai_calls"))) return emit({ type: "error", code: "limit" });
       const photoIds = [...new Set(req.photoIds)];
       if ((await ws.chatPhotos(photoIds)).length !== photoIds.length) return emit({ type: "error", code: "generic" });
       if (!chatId || req.newChat) {

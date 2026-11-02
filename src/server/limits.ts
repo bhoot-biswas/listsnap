@@ -1,6 +1,6 @@
 import "server-only";
 import { env } from "@/server/env";
-import { demoIpLimit } from "@/server/db/limits";
+import { demoIpLimit, type IpCounter } from "@/server/db/limits";
 import type { WorkspaceScope } from "@/server/db/scope";
 import type { Workspace } from "@/server/db/workspaces";
 import { fail } from "@/server/http";
@@ -44,6 +44,22 @@ export async function takeListingSlot(
     await ws.releaseListing();
     await demoIpLimit.release(ipHash);
   };
+}
+
+/**
+ * One unit of a demo visitor's daily allowance (a video, an AI photo, a chat or assist
+ * call), taken before the work is paid for. A real shop has only its own limits, so it
+ * always gets a no-op release; null means the visitor has used today's allowance.
+ */
+export async function takeDemoAllowance(
+  workspace: Workspace,
+  ip: string | undefined,
+  counter: Exclude<IpCounter, "listings">,
+): Promise<(() => Promise<void>) | null> {
+  if (!workspace.isDemo) return async () => {};
+  const ipHash = demoIpLimit.hash(ip || "unknown", env().authSecret);
+  if (!(await demoIpLimit.reserve(ipHash, counter))) return null;
+  return () => demoIpLimit.release(ipHash, counter);
 }
 
 /** The page shows its own translated card for this code; the message is the fallback. */
