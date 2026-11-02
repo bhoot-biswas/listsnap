@@ -103,7 +103,9 @@ try {
     `SELECT m.id, m.path FROM media m
       WHERE m.kind IN ('main', 'cutout') AND m.listing_id IS NULL
         AND m.created_at < UTC_TIMESTAMP(3) - INTERVAL 1 DAY
-        AND NOT EXISTS (SELECT 1 FROM items i WHERE i.cutout_media_id = m.id OR i.cutout_png_media_id = m.id)
+        -- two checks rather than one with OR, so each uses its own index
+        AND NOT EXISTS (SELECT 1 FROM items i WHERE i.cutout_media_id = m.id)
+        AND NOT EXISTS (SELECT 1 FROM items i WHERE i.cutout_png_media_id = m.id)
         AND NOT EXISTS (SELECT 1 FROM media d WHERE d.from_media_id = m.id)
       LIMIT ${BATCH * 5}`,
   );
