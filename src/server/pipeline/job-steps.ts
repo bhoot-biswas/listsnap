@@ -143,7 +143,8 @@ export async function groupStep(ctx: JobStepContext): Promise<GroupResult> {
     const mode = plan.multi_kind === "pair" ? "pair" : items.length <= 1 ? "single" : "identical";
     const groups =
       mode === "identical" ? [{ itemIds: [ids[0]!], stockQty: items.length }] : [{ itemIds: ids, stockQty: null }];
-    await ctx.ws.createListings(ctx.jobId, groups);
+    const [listingId] = await ctx.ws.createListings(ctx.jobId, groups);
+    if (listingId) await attachAngles(ctx.ws, ctx.jobId, listingId);
     await ctx.ws.updateJob(ctx.jobId, { groupMode: mode });
     return {
       mode,
@@ -162,4 +163,28 @@ export async function groupStep(ctx: JobStepContext): Promise<GroupResult> {
   await ctx.ws.setItemColors(items.map((it, i) => ({ itemId: it.id, color: suggestion.colors[i] ?? "" })));
   await ctx.ws.updateJob(ctx.jobId, { groupMode: suggestion.mode, status: "awaiting_choice" });
   return { mode: suggestion.mode, auto: false, colors: suggestion.colors, reason: suggestion.reason };
+}
+
+/**
+ * Photos after the first show the same product from other angles. The pipeline works
+ * from the first, so the others join the listing as they are, after the generated photos:
+ * the seller sees them in Review and they go to the store unless untaken.
+ */
+export async function attachAngles(ws: WorkspaceScope, jobId: string, listingId: string): Promise<void> {
+  const [, ...others] = await ws.photos(jobId);
+  if (!others.length) return;
+  // a retried step must not add them twice
+  if ((await ws.listingMedia([listingId])).some((m) => m.kind === "angle")) return;
+  for (const [i, photo] of others.entries()) {
+    const file = await readMedia(ws.id, photo.media_id);
+    if (!file) continue;
+    await saveMedia(ws.id, "angle", file.data, {
+      mime: file.mime,
+      width: photo.width,
+      height: photo.height,
+      listingId,
+      sort: 10 + i,
+      fromMediaId: photo.media_id,
+    });
+  }
 }

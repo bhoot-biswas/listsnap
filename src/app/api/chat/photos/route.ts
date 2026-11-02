@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   const ws = forWorkspace(viewer.workspace.id);
   if ((await ws.loosePhotosToday()) >= LOOSE_PER_DAY) return fail(429, "limit", "chatPhotoLimit");
   const photo = await readPhotoFile(file);
-  if (!photo) return unreadablePhoto();
+  if (!photo) return unreadablePhoto(file);
   const media = await saveMedia(ws.id, "original", photo.data, {
     mime: "image/jpeg",
     width: photo.width,

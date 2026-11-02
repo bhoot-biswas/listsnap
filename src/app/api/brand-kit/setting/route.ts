@@ -1,6 +1,7 @@
 import { apiViewer } from "@/server/auth/session";
 import { forWorkspace } from "@/server/db/scope";
 import { mediaUrl, normalisePhoto, saveMedia } from "@/server/media/store";
+import { isHeic } from "@/server/media/upload";
 import { fail, ok, unauthorized } from "@/server/http";
 import { BRAND_PHOTO_MAX_BYTES } from "@/lib/schemas/brand-kit";
 
@@ -38,7 +39,9 @@ export async function POST(request: Request) {
   try {
     photo = await normalisePhoto(Buffer.from(await file.arrayBuffer()));
   } catch {
-    return fail(415, "unsupported_file", "shopPhotoUnreadable");
+    return isHeic(Buffer.from(await file.slice(0, 64).arrayBuffer()))
+      ? fail(415, "unsupported_file", "heicPhoto")
+      : fail(415, "unsupported_file", "shopPhotoUnreadable");
   }
   const media = await saveMedia(viewer.workspace.id, "brand", photo.data, {
     mime: "image/jpeg",

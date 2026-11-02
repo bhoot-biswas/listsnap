@@ -148,7 +148,7 @@ export function BrandKitForm({ initial }: { initial: BrandKitValues }) {
             ref={fileRef}
             id="brand-setting"
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            accept="image/jpeg,image/png,image/webp"
             aria-describedby="brand-setting-hint"
             className="sr-only"
             onChange={(e) => void upload(e.target.files?.[0])}

@@ -25,7 +25,9 @@ export type MediaKind =
   // the seller's voice note, a mono WAV
   | "voice"
   // a video of the seller's products, which a bulk batch is made from
-  | "video";
+  | "video"
+  // another of the seller's own photos of the product, from a different angle
+  | "angle";
 
 export interface MediaRecord {
   id: string;

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { MAX_BULK } from "@/lib/batch-state";
 import { bulkCost } from "@/lib/bulk-cost";
 import { uploadBatch } from "@/lib/bulk-upload";
+import { unreadableHeic } from "@/lib/resize-image";
 
 /**
  * Picks up to `max` photos (20, or fewer near the daily limit), shows what they will use
@@ -27,13 +28,18 @@ export function BulkUploadButton({
 }) {
   const t = useTranslations("bulk");
   const tLimits = useTranslations("limits");
+  const tSnap = useTranslations("snap");
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [picked, setPicked] = useState<File[] | null>(null);
 
-  const pick = (list: FileList | null) => {
-    const files = Array.from(list ?? []).filter((f) => f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name));
+  const pick = async (list: FileList | null) => {
+    const all = Array.from(list ?? []).filter((f) => f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name));
+    // HEIC this browser can't open would only fail on the server after a long upload
+    const heic = await Promise.all(all.map(unreadableHeic));
+    const files = all.filter((_, i) => !heic[i]);
+    if (heic.some(Boolean)) toast.error(tSnap("heic"));
     if (!files.length) return;
     if (files.length > max)
       return toast.error(max < MAX_BULK ? tLimits("left", { count: max }) : t("tooMany", { max: MAX_BULK }));
@@ -67,11 +73,12 @@ export function BulkUploadButton({
       <input
         ref={input}
         type="file"
-        accept="image/*,.heic,.heif"
+        // image/* alone, so an iPhone sends its HEIC photos as JPEG
+        accept="image/*"
         multiple
         hidden
         onChange={(e) => {
-          pick(e.target.files);
+          void pick(e.target.files);
           e.target.value = "";
         }}
       />
