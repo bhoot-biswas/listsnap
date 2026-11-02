@@ -43,14 +43,16 @@ export async function POST(request: Request) {
     const problem = voiceFileProblem(voice);
     if (problem) return problem;
   }
-  // read before the slot is taken, so a bad recording costs the seller nothing
-  const note = voice ? await normaliseVoice(Buffer.from(await voice.arrayBuffer())) : null;
-  if (voice && !note) return unreadableVoice();
-
-  // the slot is taken before any work, and given back if the photo never becomes a job
+  // the slot is taken before any work, decoding the voice note included, and given back
+  // if the photo never becomes a job, so a bad recording still costs the seller nothing
   const slot = await reserveListingSlot(ws, viewer.workspace, request);
   if (!slot.ok) return slot.response;
   try {
+    const note = voice ? await normaliseVoice(Buffer.from(await voice.arrayBuffer())) : null;
+    if (voice && !note) {
+      await slot.release();
+      return unreadableVoice();
+    }
     const saved: { mediaId: string; width: number; height: number }[] = [];
     for (const f of files) {
       const photo = await readPhotoFile(f);
