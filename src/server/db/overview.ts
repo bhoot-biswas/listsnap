@@ -194,12 +194,13 @@ export function overviewQueries(ws: string) {
              FROM listings WHERE workspace_id = ?`,
           [ws],
         ),
-        // photo in to listing written: the job's steps before the seller's own review and save
+        // photo in to listing written. Only the pipeline's own steps: store saves, reels, posts,
+        // catalog and look-again run whenever the seller asks, days later, and would stretch the span
         selectOne<{ s: number | null }>(
           `SELECT AVG(span) AS s FROM (
              SELECT TIMESTAMPDIFF(MICROSECOND, MIN(js.started_at), MAX(js.finished_at)) / 1e6 AS span
                FROM job_steps js JOIN jobs j ON j.id = js.job_id
-              WHERE js.workspace_id = ? AND j.status = 'ready' AND js.step NOT LIKE 'store:%'
+              WHERE js.workspace_id = ? AND j.status = 'ready' AND js.step IN ('plan', 'segment', 'group', 'listen', 'write', 'translate', 'render')
                 AND j.created_at >= UTC_TIMESTAMP() - INTERVAL 7 DAY
               GROUP BY js.job_id HAVING COUNT(*) = SUM(js.status = 'done')) t`,
           [ws],
