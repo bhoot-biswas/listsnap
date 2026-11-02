@@ -11,9 +11,12 @@ import { ShopifySettings } from "@/lib/shopify-connection";
 
 /**
  * Which Shopify store a shop saves to, with a token that works now. Shopify's offline
- * tokens expire after about an hour and each refresh spends the refresh token, so a
- * refresh happens with the connection's row held: a second save waiting on it then
- * finds the new token instead of spending the old refresh token again.
+ * tokens expire after about an hour and each refresh spends the refresh token, so two
+ * saves must never refresh at once. In this process, saves that need a refresh share one
+ * (they wait on it without holding a database connection: a row lock held across the
+ * call to Shopify once stalled every request in the app). The new token is saved only if
+ * the old one is still there, so another process that refreshed first wins and its token
+ * is used.
  */
 
 const Token = z.object({
@@ -38,6 +41,9 @@ export const shopBaseUrl = (shop: string) => `https://${shop}`;
 
 let demoToken: ShopifyToken | null = null;
 
+/** The refresh in flight for each shop, which every save that needs one waits on. */
+const refreshing = new Map<string, Promise<string>>();
+
 /** Our own demo store: its app's keys get a 24-hour token, kept in memory until it's nearly up. */
 export async function demoShopifyStore(ctx: CallContext): Promise<ShopifyStore> {
   const demo = env().demoShopify;
@@ -47,6 +53,28 @@ export async function demoShopifyStore(ctx: CallContext): Promise<ShopifyStore> 
   }
   if (!demoToken || stale(demoToken)) demoToken = await shopify().appToken(ctx, demo.shop, demo);
   return { shop: demo.shop, accessToken: demoToken.accessToken };
+}
+
+/** One refresh of a shop's token, read fresh in case another save or process just did it. */
+async function refreshToken(workspace: Workspace, shop: string, ctx: CallContext): Promise<string> {
+  const ws = forWorkspace(workspace.id);
+  const enc = (await ws.storeConnection("shopify"))?.credentials_enc ?? null;
+  const now = readToken(enc);
+  if (!enc || !now) throw new StepError("connectStore");
+  if (!stale(now)) return now.accessToken;
+  if (!now.refreshToken) throw new StepError("shopifyReconnect");
+  let fresh: ShopifyToken;
+  try {
+    fresh = await shopify().refresh(ctx, shop, now.refreshToken);
+  } catch (err) {
+    // another process spent the refresh token first: its new token is the one to use
+    const theirs = readToken((await ws.storeConnection("shopify"))?.credentials_enc ?? null);
+    if (theirs && !stale(theirs)) return theirs.accessToken;
+    throw err;
+  }
+  if (await ws.swapCredentials("shopify", enc, encryptShopifyToken(fresh))) return fresh.accessToken;
+  const theirs = readToken((await ws.storeConnection("shopify"))?.credentials_enc ?? null);
+  return theirs && !stale(theirs) ? theirs.accessToken : fresh.accessToken;
 }
 
 export async function shopifySettings(workspace: Workspace): Promise<ShopifySettings> {
@@ -70,16 +98,12 @@ export async function resolveShopifyStore(
   const saved = readToken(c.credentials_enc);
   if (saved && !stale(saved)) return { store: { shop, accessToken: saved.accessToken }, settings };
   try {
-    const accessToken = await ws.rotateCredentials("shopify", async (enc) => {
-      const now = readToken(enc);
-      if (!now) throw new StepError("connectStore");
-      // another save refreshed it while this one waited for the row
-      if (!stale(now)) return { save: null, value: now.accessToken };
-      if (!now.refreshToken) throw new StepError("shopifyReconnect");
-      const fresh = await shopify().refresh(ctx, shop, now.refreshToken);
-      return { save: encryptShopifyToken(fresh), value: fresh.accessToken };
-    });
-    return { store: { shop, accessToken }, settings };
+    let refresh = refreshing.get(workspace.id);
+    if (!refresh) {
+      refresh = refreshToken(workspace, shop, ctx).finally(() => refreshing.delete(workspace.id));
+      refreshing.set(workspace.id, refresh);
+    }
+    return { store: { shop, accessToken: await refresh }, settings };
   } catch (err) {
     // only connecting again helps; the Connections page and dashboard say so
     if (err instanceof StepError && err.key === "shopifyReconnect")

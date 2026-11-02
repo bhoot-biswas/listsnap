@@ -1,6 +1,8 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { execute, select, selectOne, transaction } from "./pool";
+import { z } from "zod";
+import { VideoProduct } from "@/lib/schemas/video";
+import { execute, json, select, selectOne, transaction } from "./pool";
 import { LISTING_COLUMNS, type ListingRow } from "./listings";
 import type { ItemRow, JobRow, PhotoRow, StepRowView } from "./scope";
 
@@ -90,6 +92,20 @@ export function batchQueries(ws: string) {
         [ws],
       );
       return Number(row?.n ?? 0);
+    },
+
+    /** What a video's watch found, kept before its jobs are made so a stopped watch can carry on. */
+    saveBatchProducts: (id: string, products: VideoProduct[]) =>
+      execute("UPDATE batches SET products_json = ? WHERE id = ? AND workspace_id = ?", [json(products), id, ws]),
+
+    /** The products saved for a video batch; null before its watch found them (or for older batches). */
+    async batchProducts(id: string): Promise<VideoProduct[] | null> {
+      const row = await selectOne<{ products_json: unknown }>(
+        "SELECT products_json FROM batches WHERE id = ? AND workspace_id = ?",
+        [id, ws],
+      );
+      const parsed = z.array(VideoProduct).safeParse(row?.products_json);
+      return parsed.success ? parsed.data : null;
     },
 
     setBatchTotal: (id: string, total: number) =>
