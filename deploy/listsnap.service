@@ -32,5 +32,13 @@ ReadWritePaths=/var/lib/listsnap
 CacheDirectory=listsnap
 BindPaths=/var/cache/listsnap:/srv/listsnap-current/.next/cache
 
+# The app, its reel browsers and ffmpeg share an 8 GB server with MariaDB and another
+# site. The app sits near 300 MB and a reel adds under 900 MB; past MemoryHigh the kernel
+# reclaims from this service first, and a runaway render or video is stopped at MemoryMax
+# here, instead of the out-of-memory killer picking the database.
+MemoryHigh=2G
+MemoryMax=3G
+MemorySwapMax=0
+
 [Install]
 WantedBy=multi-user.target
