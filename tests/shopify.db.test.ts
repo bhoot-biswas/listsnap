@@ -158,17 +158,22 @@ describe.skipIf(!enabled)("Shopify and two stores (MariaDB)", async () => {
     expect((await A.storeConnection("shopify"))!.status).toBe("connected");
   });
 
+  /** Puts a token on A's Shopify connection, as an earlier connect or refresh would have. */
+  const setToken = async (enc: string) => {
+    const now = (await A.storeConnection("shopify"))!.credentials_enc!;
+    expect(await A.swapCredentials("shopify", now, enc)).toBe(true);
+  };
+
   it("refreshes an expired token once, even for two saves at the same moment", async () => {
-    await A.rotateCredentials("shopify", async () => ({
-      save: encryptShopifyToken({
+    await setToken(
+      encryptShopifyToken({
         accessToken: "old",
         scope: "write_products,read_locations,write_inventory",
         expiresAt: Date.now() - 1_000,
         refreshToken: "mock-refresh-1",
         refreshExpiresAt: Date.now() + 86_400_000,
       }),
-      value: null,
-    }));
+    );
     const refresh = vi.spyOn(mockShopify, "refresh");
     const ctx = { workspaceId: a.workspace.id, jobId: null, step: "store" };
     // resolveShopifyStore skips mock mode only in the store step; here it runs for real
@@ -180,16 +185,15 @@ describe.skipIf(!enabled)("Shopify and two stores (MariaDB)", async () => {
   });
 
   it("marks the connection broken when the refresh token is refused", async () => {
-    await A.rotateCredentials("shopify", async () => ({
-      save: encryptShopifyToken({
+    await setToken(
+      encryptShopifyToken({
         accessToken: "old",
         scope: "",
         expiresAt: Date.now() - 1_000,
         refreshToken: "mock-revoked",
         refreshExpiresAt: null,
       }),
-      value: null,
-    }));
+    );
     await expect(
       resolveShopifyStore(a.workspace, { workspaceId: a.workspace.id, jobId: null, step: "store" }),
     ).rejects.toMatchObject({ key: "shopifyReconnect" });

@@ -121,29 +121,16 @@ export function connectionQueries(ws: string) {
       ),
 
     /**
-     * Swaps a connection's credentials while holding its row, for tokens that rotate:
-     * `fn` gets what is saved now and returns what to save (null keeps it). Two saves
-     * refreshing at once would otherwise both spend the same refresh token.
+     * Replaces a connection's credentials only if they are still `from`, for tokens that
+     * rotate: false means another process saved new ones first, so the caller reads those.
+     * Nothing is held while the caller talks to the store, so no database connection waits on it.
      */
-    async rotateCredentials<T>(
-      kind: ConnectionKind,
-      fn: (credentialsEnc: string | null) => Promise<{ save: string | null; value: T }>,
-    ): Promise<T> {
-      return transaction(async (conn) => {
-        const [rows] = await conn.query(
-          "SELECT credentials_enc FROM store_connections WHERE workspace_id = ? AND kind = ? FOR UPDATE",
-          [ws, kind],
-        );
-        const current = (rows as { credentials_enc: string | null }[])[0]?.credentials_enc ?? null;
-        const { save, value } = await fn(current);
-        if (save !== null)
-          await conn.query("UPDATE store_connections SET credentials_enc = ? WHERE workspace_id = ? AND kind = ?", [
-            save,
-            ws,
-            kind,
-          ]);
-        return value;
-      });
+    async swapCredentials(kind: ConnectionKind, from: string, to: string): Promise<boolean> {
+      const r = await execute(
+        "UPDATE store_connections SET credentials_enc = ? WHERE workspace_id = ? AND kind = ? AND credentials_enc = ?",
+        [to, ws, kind, from],
+      );
+      return r.affectedRows === 1;
     },
 
     /** Another shop already connected to this store address, if any. */
