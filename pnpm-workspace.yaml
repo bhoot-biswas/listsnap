@@ -8,3 +8,6 @@ allowBuilds:
   unrs-resolver: false
 minimumReleaseAgeExclude:
   - hyperframes@0.8.217
+# hyperframes pins an undici with known TLS and DoS advisories; every copy gets the fixed one
+overrides:
+  undici@<7.30.1: 7.30.1
