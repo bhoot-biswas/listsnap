@@ -57,6 +57,8 @@ export interface ListingListRow {
   behind: StoreKind[];
   /** The seller marked it as posted on Facebook Marketplace. */
   marketplace: boolean;
+  /** Saved to the shop's Facebook catalog. */
+  catalog: boolean;
 }
 
 export interface AttentionRow {
@@ -133,10 +135,11 @@ export function overviewQueries(ws: string) {
       const filter = where.join(" AND ");
       const [rows, total] = await Promise.all([
         select<
-          Omit<ListingListRow, "stores" | "behind" | "marketplace"> & {
+          Omit<ListingListRow, "stores" | "behind" | "marketplace" | "catalog"> & {
             stores: string | null;
             behind: string | null;
             marketplace: number;
+            catalog: number;
           }
         >(
           `SELECT l.id, l.job_id, l.status, l.price_bdt, l.confidence, l.created_at, ${TITLE} AS title, ${TITLE_BN} AS title_bn,
@@ -148,7 +151,9 @@ export function overviewQueries(ws: string) {
                   (SELECT GROUP_CONCAT(sp.kind ORDER BY sp.kind) FROM listing_store_products sp
                     WHERE sp.listing_id = l.id AND sp.workspace_id = l.workspace_id) AS stores,
                   (SELECT GROUP_CONCAT(sp.kind ORDER BY sp.kind) ${BEHIND_IN}) AS behind,
-                  l.marketplace_posted_at IS NOT NULL AS marketplace
+                  l.marketplace_posted_at IS NOT NULL AS marketplace,
+                  EXISTS (SELECT 1 FROM job_steps cs WHERE cs.workspace_id = l.workspace_id AND cs.job_id = l.job_id
+                            AND cs.step = 'catalog' AND cs.target = l.id AND cs.status = 'done') AS catalog
              FROM listings l JOIN jobs j ON j.id = l.job_id
             WHERE ${filter}
             ORDER BY ${ORDER[opts.sort ?? "newest"]} LIMIT ? OFFSET ?`,
@@ -162,6 +167,7 @@ export function overviewQueries(ws: string) {
           stores: (r.stores?.split(",") ?? []).filter((k): k is StoreKind => StoreKind.safeParse(k).success),
           behind: (r.behind?.split(",") ?? []).filter((k): k is StoreKind => StoreKind.safeParse(k).success),
           marketplace: !!Number(r.marketplace),
+          catalog: !!Number(r.catalog),
         })),
         total: Number(total?.n ?? 0),
       };

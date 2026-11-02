@@ -227,6 +227,7 @@
     "behindShort": "ড্রাফট পুরোনো",
     "behindIn": "{stores}-এ পুরোনো",
     "onMarketplace": "মার্কেটপ্লেসে আছে",
+    "inCatalog": "Facebook ক্যাটালগে আছে",
     "selectAll": "এই পাতার সব বাছুন",
     "selectRow": "{title} বাছুন",
     "selectedCount": "{count, number}টি বাছা হয়েছে",
@@ -1146,7 +1147,11 @@
       },
       "openConnections": "কানেকশনস খুলুন",
       "openSettings": "সেটিংস খুলুন",
-      "reconnectBy": "ফেসবুকের ক্যাটালগ অনুমতি {date}-এ শেষ হবে; তার আগে আবার যুক্ত করুন।"
+      "reconnectBy": "ফেসবুকের ক্যাটালগ অনুমতি {date}-এ শেষ হবে; তার আগে আবার যুক্ত করুন।",
+      "checkAgain": "আবার দেখুন",
+      "someRefused": "{count, plural, other {#টি আইটেমের}} মধ্যে {saved, number}টি সেভ হয়েছে",
+      "metaSaid": "Meta একটি নেয়নি: {message}",
+      "behind": "ক্যাটালগে পুরোনো তথ্য আছে। আপনার পরিবর্তন পাঠাতে আপডেট করুন।"
     },
     "marketplace": {
       "title": "ফেসবুক মার্কেটপ্লেস",

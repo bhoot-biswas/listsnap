@@ -43,7 +43,10 @@ export const mockFacebook: FacebookProvider = {
       ctx,
       { provider: "facebook", model: "graph-api (mock)", endpoint: "catalog items_batch", mode: "mock" },
       async () => `mock-handle-${input.items.length}`,
-      () => ({ summary: `${input.items.length} items`, costUsd: 0 }),
+      () => ({
+        summary: `${input.items.length} items${input.removeIds?.length ? `, ${input.removeIds.length} removed` : ""}`,
+        costUsd: 0,
+      }),
     ),
   catalogBatch: (ctx) =>
     logged(

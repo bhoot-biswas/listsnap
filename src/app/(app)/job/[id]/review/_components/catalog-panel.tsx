@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useFormatter, useTranslations } from "next-intl";
-import { Check, LayoutGrid, Loader2 } from "lucide-react";
+import { Check, LayoutGrid, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface CatalogState {
@@ -14,7 +14,14 @@ export interface CatalogState {
   blocked: "connect" | "expired" | "choose" | "website" | null;
   /** The seller's Facebook login ends within two weeks (ISO time); null otherwise. */
   reconnectBy: string | null;
-  saved: { items: number; checked: boolean } | null;
+  saved: {
+    items: number;
+    checked: boolean;
+    /** Items Meta refused while the rest were saved. */
+    refused: { id: string; message: string }[];
+    /** The listing changed since it was saved to the catalog. */
+    behind: boolean;
+  } | null;
 }
 
 type Sending = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message: string };
@@ -38,6 +45,18 @@ export function CatalogPanel({
   const router = useRouter();
   const format = useFormatter();
   const [state, setState] = useState<Sending>({ kind: "idle" });
+  const [checking, setChecking] = useState(false);
+
+  /** Asks Meta again about a save it hadn't finished checking. */
+  async function check() {
+    setChecking(true);
+    const res = await fetch(`/api/listings/${listingId}/catalog?check=1`, { method: "POST" }).catch(() => null);
+    const body = (await res?.json().catch(() => null)) as { error?: { message?: string } | string } | null;
+    setChecking(false);
+    if (res?.ok) return router.refresh();
+    const message = typeof body?.error === "string" ? body.error : body?.error?.message;
+    setState({ kind: "failed", message: message ?? t("failed") });
+  }
 
   async function save() {
     setState({ kind: "sending" });
@@ -101,13 +120,44 @@ export function CatalogPanel({
             </div>
           )}
           {catalog.saved && (
-            <p className="flex flex-wrap items-center gap-1.5 text-sm">
-              <Check className="size-4 text-success" aria-hidden="true" />
-              <span className="font-medium text-success">{t("saved", { catalog: catalog.catalogName ?? "" })}</span>
-              <span className="text-muted-foreground">
-                {catalog.saved.checked ? t("items", { count: catalog.saved.items }) : t("checking")}
-              </span>
-            </p>
+            <div className="space-y-1">
+              <p className="flex flex-wrap items-center gap-1.5 text-sm">
+                <Check className="size-4 text-success" aria-hidden="true" />
+                <span className="font-medium text-success">{t("saved", { catalog: catalog.catalogName ?? "" })}</span>
+                <span className="text-muted-foreground">
+                  {!catalog.saved.checked
+                    ? t("checking")
+                    : catalog.saved.refused.length
+                      ? t("someRefused", {
+                          saved: catalog.saved.items - catalog.saved.refused.length,
+                          count: catalog.saved.items,
+                        })
+                      : t("items", { count: catalog.saved.items })}
+                </span>
+              </p>
+              {catalog.saved.refused.length > 0 && (
+                <p className="text-sm text-destructive">
+                  {t("metaSaid", { message: catalog.saved.refused[0]!.message })}
+                </p>
+              )}
+              {catalog.saved.behind && <p className="text-sm font-medium text-warning">{t("behind")}</p>}
+              {!catalog.saved.checked && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-11 px-2 md:h-8"
+                  disabled={checking || busy}
+                  onClick={() => void check()}
+                >
+                  {checking ? (
+                    <Loader2 className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <RefreshCw aria-hidden="true" />
+                  )}
+                  {t("checkAgain")}
+                </Button>
+              )}
+            </div>
           )}
           <Button
             type="button"

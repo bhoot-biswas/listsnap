@@ -32,6 +32,7 @@ function catalogState(
   meta: Awaited<ReturnType<typeof metaConnection>>,
   website: string | null,
   saved: unknown,
+  editedAt: Date | null,
 ): CatalogState {
   const catalog = meta?.settings.catalogs.find((c) => c.id === meta.settings.catalogId) ?? null;
   const result = CatalogSaved.safeParse(saved);
@@ -49,11 +50,26 @@ function catalogState(
             : !website
               ? "website"
               : null,
-    saved: result.success && result.data.catalogId === catalog?.id ? result.data : null,
+    saved:
+      result.success && result.data.catalogId === catalog?.id
+        ? {
+            items: result.data.items,
+            checked: result.data.checked,
+            refused: result.data.refused ?? [],
+            // saved before it was last changed: the catalog has the older text or price
+            behind: !!editedAt && !!result.data.savedAt && editedAt > new Date(result.data.savedAt),
+          }
+        : null,
   };
 }
 
-const CatalogSaved = z.object({ catalogId: z.string(), items: z.number(), checked: z.boolean() });
+const CatalogSaved = z.object({
+  catalogId: z.string(),
+  items: z.number(),
+  checked: z.boolean(),
+  refused: z.array(z.object({ id: z.string(), message: z.string() })).optional(),
+  savedAt: z.string().optional(),
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getTranslations("review"))("title") };
@@ -237,7 +253,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/j
             ? { at: listing.marketplace_posted_at.toISOString(), url: listing.marketplace_url }
             : null,
         }}
-        catalog={catalogState(meta, viewer.workspace.settings.website, savedCatalog)}
+        catalog={catalogState(meta, viewer.workspace.settings.website, savedCatalog, listing.edited_at)}
         chat={{
           items: chatItems(history),
           revision: chatRevision(history),

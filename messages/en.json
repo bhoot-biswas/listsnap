@@ -227,6 +227,7 @@
     "behindShort": "Draft out of date",
     "behindIn": "Out of date in {stores}",
     "onMarketplace": "On Marketplace",
+    "inCatalog": "In Facebook catalog",
     "selectAll": "Select all on this page",
     "selectRow": "Select {title}",
     "selectedCount": "{count, plural, one {# selected} other {# selected}}",
@@ -1146,7 +1147,11 @@
       },
       "openConnections": "Open Connections",
       "openSettings": "Open Settings",
-      "reconnectBy": "Facebook's catalog access ends on {date}; connect again before then."
+      "reconnectBy": "Facebook's catalog access ends on {date}; connect again before then.",
+      "checkAgain": "Check again",
+      "someRefused": "{saved, number} of {count, plural, one {# item} other {# items}} saved",
+      "metaSaid": "Meta refused one: {message}",
+      "behind": "Out of date in the catalog. Update it to send your changes."
     },
     "marketplace": {
       "title": "Facebook Marketplace",
