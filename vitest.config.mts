@@ -17,5 +17,13 @@ export default defineConfig({
     // suite's listing can pass the 10 s hook default
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    // `pnpm test:coverage` (CI): just under where it stands, so coverage can only go up
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.ts", "src/components/ui/**"],
+      reporter: ["text-summary", "html"],
+      thresholds: { statements: 45, branches: 35, functions: 41, lines: 45 },
+    },
   },
 });
