@@ -49,7 +49,8 @@ export async function watchStep(ctx: WatchContext): Promise<WatchResult> {
   const video = await openVideo(file.data);
   try {
     const seconds = await video.seconds();
-    if (!seconds) throw new StepError("videoUnreadable");
+    // watching again finds the same: these use up the attempts at once instead of three runs
+    if (!seconds) throw new StepError("videoUnreadable", { permanent: true });
     const [sound, small] = await Promise.all([video.sound(), video.small()]);
     const heard = sound ? await meta().transcribe(call, sound, SHOP_WORDS, true) : null;
     const timed = (heard?.turns ?? [])
@@ -57,7 +58,7 @@ export async function watchStep(ctx: WatchContext): Promise<WatchResult> {
       .map((t) => `[${time(t.startMs)}–${time(t.endMs)} s] ${t.text}`)
       .join("\n");
     const products = await baseten().watch(call, small, timed);
-    if (!products.length) throw new StepError("noProductsInVideo");
+    if (!products.length) throw new StepError("noProductsInVideo", { permanent: true });
 
     // photos first, so a failure here leaves no half-made batch behind
     const photos = [];

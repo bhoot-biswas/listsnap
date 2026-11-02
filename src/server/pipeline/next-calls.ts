@@ -7,7 +7,8 @@ import { MAX_ATTEMPTS } from "./run-step";
  *
  * Order: plan → segment → group, one at a time. Then per listing: write, then
  * translate; renders need only the cutout, so they run beside write. At most two
- * listings are worked on at once to stay under Muse Image's rate limit.
+ * listings are worked on at once to stay under Muse Image's rate limit; one whose steps
+ * are all out of attempts isn't counted, and one whose text gave up gets no renders.
  *
  * A job with a voice note has a `listen` step row too. It needs nothing before it, so it
  * runs beside plan; write waits for it, unless it is out of attempts, when the listing
@@ -77,8 +78,10 @@ export function nextCalls(input: NextInput): NextCall[] {
     let unfinished = false;
 
     if (!isDone("write", listingId)) {
+      // its text gave up, so the listing failed: no photos are spent on it until Try again
+      if (!listening && !callable("write", listingId)) continue;
       unfinished = true;
-      if (!listening && callable("write", listingId)) pending.push({ kind: "listing", step: "write", listingId });
+      if (!listening) pending.push({ kind: "listing", step: "write", listingId });
     } else if (input.translate && !isDone("translate", listingId)) {
       unfinished = true;
       if (callable("translate", listingId)) pending.push({ kind: "listing", step: "translate", listingId });
@@ -90,7 +93,9 @@ export function nextCalls(input: NextInput): NextCall[] {
       if (callable("render", target)) pending.push({ kind: "listing", step: "render", listingId, scene });
     }
 
-    if (!unfinished) continue;
+    // a listing with nothing left it can run (photos out of attempts) isn't being worked
+    // on, so it doesn't keep a later listing from starting
+    if (!unfinished || !pending.length) continue;
     calls.push(...pending);
     if (++active >= (input.listingsAtOnce ?? 2)) break;
   }

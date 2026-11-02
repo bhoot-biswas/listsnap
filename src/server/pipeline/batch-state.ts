@@ -17,6 +17,8 @@ import type { Locale } from "@/i18n/request";
  * second tab picks up where the batch stopped. The rows of every job are read together,
  * one query per table, since the page asks again every couple of seconds.
  */
+
+const STOPS_A_LISTING = new Set(["plan", "segment", "group", "write"]);
 export async function loadBatchState(
   workspace: Workspace,
   batchId: string,
@@ -68,7 +70,9 @@ export async function loadBatchState(
             }
           : null,
       listingCount: state.listings.length,
-      stuck: state.steps.some((s) => s.exhausted),
+      // a photo that ran out of attempts leaves a usable listing; only the job or its text stops it
+      stuck: state.steps.some((s) => s.exhausted && STOPS_A_LISTING.has(s.step)),
+      photosMissing: state.steps.filter((s) => s.exhausted && s.step === "render").length,
       next: state.next,
     });
   }
