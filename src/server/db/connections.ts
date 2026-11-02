@@ -48,11 +48,20 @@ export function connectionQueries(ws: string) {
         [ws, kind],
       ),
 
-    /** One row per kind: connecting again replaces the address, keys, checks and settings. */
+    /**
+     * One row per kind: connecting again replaces the address, keys, checks and settings.
+     * Connecting a different store (another address, or the demo store and back) forgets
+     * which products the old one holds: their ids mean nothing in the new store.
+     */
     async saveConnection(
       kind: ConnectionKind,
       c: { baseUrl: string | null; credentialsEnc: string | null; checks: unknown; settings: unknown },
     ) {
+      const before = await selectOne<{ base_url: string | null }>(
+        "SELECT base_url FROM store_connections WHERE workspace_id = ? AND kind = ?",
+        [ws, kind],
+      );
+      if (before && before.base_url !== c.baseUrl && isStoreKind(kind)) await forgetStoreProducts(ws, kind);
       await execute(
         `INSERT INTO store_connections (id, workspace_id, kind, base_url, credentials_enc, status, checks_json, settings_json, last_checked_at)
          VALUES (UUID(), ?, ?, ?, ?, 'connected', ?, ?, UTC_TIMESTAMP(3))
@@ -181,11 +190,36 @@ export async function disconnectShopifyStore(baseUrl: string): Promise<void> {
 
 /** shop/redact: forget the store entirely, including which listings went to it. */
 export async function forgetShopifyStore(baseUrl: string): Promise<void> {
-  await execute(
-    `DELETE p FROM listing_store_products p
-       JOIN store_connections c ON c.workspace_id = p.workspace_id AND c.kind = 'shopify' AND c.base_url = ?
-      WHERE p.kind = 'shopify'`,
+  const rows = await select<{ workspace_id: string }>(
+    "SELECT workspace_id FROM store_connections WHERE kind = 'shopify' AND base_url = ?",
     [baseUrl],
   );
+  for (const { workspace_id } of rows) await forgetStoreProducts(workspace_id, "shopify");
   await execute("DELETE FROM store_connections WHERE kind = 'shopify' AND base_url = ?", [baseUrl]);
+}
+
+const isStoreKind = (kind: ConnectionKind): kind is StoreKind => kind === "woo" || kind === "shopify";
+
+/**
+ * A shop's listings no longer have products in one store, and their saves to it count
+ * as not done, so the next save makes a new draft there. A listing left in no store
+ * goes back to Ready, so Listings and the Dashboard stop calling it In store; a posted
+ * one stays Posted, since its reel is still out.
+ */
+async function forgetStoreProducts(ws: string, kind: StoreKind): Promise<void> {
+  await transaction(async (conn) => {
+    await conn.query("DELETE FROM listing_store_products WHERE workspace_id = ? AND kind = ?", [ws, kind]);
+    // a finished save answers with its saved result, which points into the old store
+    await conn.query(
+      "UPDATE job_steps SET status = 'pending', attempts = 0 WHERE workspace_id = ? AND step = ? AND status = 'done'",
+      [ws, storeStep(kind)],
+    );
+    await conn.query(
+      `UPDATE listings l SET l.status = IF(l.status = 'in_store', 'ready', l.status), l.sent_at = NULL
+        WHERE l.workspace_id = ? AND (l.status = 'in_store' OR l.sent_at IS NOT NULL)
+          AND NOT EXISTS (SELECT 1 FROM listing_store_products p WHERE p.workspace_id = l.workspace_id AND p.listing_id = l.id)`,
+      [ws],
+    );
+    if (kind === "woo") await conn.query("UPDATE listings SET wc_product_id = NULL WHERE workspace_id = ?", [ws]);
+  });
 }

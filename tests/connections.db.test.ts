@@ -149,4 +149,60 @@ describe.skipIf(!enabled)("Connections overview (MariaDB)", async () => {
       expect((await statuses(workspace)).woo).toBe("broken");
     });
   });
+
+  describe("switching to another store", () => {
+    const d = createTestWorkspace();
+    const ui = { via: "ui" as const, confirmed: true };
+    afterAll(async () => (await d).remove());
+
+    const connect = (baseUrl: string | null) =>
+      d.then(({ workspace }) =>
+        forWorkspace(workspace.id).saveConnection("woo", { baseUrl, credentialsEnc: null, checks: [], settings: {} }),
+      );
+
+    it("forgets the old store's products, so the next save makes a new draft", async () => {
+      const { workspace } = await d;
+      const D = forWorkspace(workspace.id);
+      await connect("https://first.example");
+      const jobId = await createTestJob(workspace.id, await samplePhoto("saree.jpg"));
+      const listingId = (await runJob(workspace, jobId)).listings[0]!.id;
+      await ops.saveDraftToStore.call(workspace, { listingId }, ui);
+      const ref = (await D.storeProducts([listingId])).get(listingId)?.woo;
+      expect(ref).toBeTruthy();
+      expect((await D.getListing(listingId))?.status).toBe("in_store");
+
+      // new keys for the same store keep its products
+      await connect("https://first.example");
+      expect((await D.storeProducts([listingId])).get(listingId)?.woo).toBe(ref);
+
+      await connect("https://second.example");
+      expect((await D.storeProducts([listingId])).get(listingId)).toBeUndefined();
+      const listing = await D.getListing(listingId);
+      expect(listing).toMatchObject({ status: "ready", sent_at: null, wc_product_id: null });
+      expect((await storeActivity(workspace, "woo", "en")).saves).toEqual([]);
+
+      const save = vi.spyOn(mockWoo, "saveDraft");
+      try {
+        await ops.saveDraftToStore.call(workspace, { listingId }, ui);
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(save.mock.calls[0]![2]).toMatchObject({ productRef: null });
+      } finally {
+        save.mockRestore();
+      }
+      expect((await D.getListing(listingId))?.status).toBe("in_store");
+    });
+
+    it("counts the demo store as another store", async () => {
+      const { workspace } = await d;
+      const D = forWorkspace(workspace.id);
+      const [[row]] = (await getPool().query(
+        "SELECT listing_id FROM listing_store_products WHERE workspace_id = ? AND kind = 'woo'",
+        [workspace.id],
+      )) as unknown as [{ listing_id: string }[]];
+      expect(row).toBeTruthy();
+      await connect(null);
+      expect((await D.storeProducts([row!.listing_id])).get(row!.listing_id)).toBeUndefined();
+      expect((await D.getListing(row!.listing_id))?.status).toBe("ready");
+    });
+  });
 });
