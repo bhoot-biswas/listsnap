@@ -332,6 +332,8 @@ export interface FacebookProvider {
   ): Promise<CatalogBatch>;
   /** Posts a reel to the seller's Page from a public video URL. */
   postReel(ctx: CallContext, input: { page: SocialAccount; videoUrl: string; caption: string }): Promise<SocialPost>;
+  /** Whether Meta still accepts a token. Throws when Meta couldn't be asked. */
+  checkToken(ctx: CallContext, token: string): Promise<"ok" | "refused">;
 }
 
 export interface ReelPhotoFiles {

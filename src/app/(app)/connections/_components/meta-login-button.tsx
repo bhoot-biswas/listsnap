@@ -5,7 +5,7 @@ import { PendingButton } from "@/components/app/form-buttons";
  * the browser itself must follow the redirects to Facebook and back, so the one-time
  * state cookie is spent by that one visit.
  */
-export function MetaLoginButton({ label, variant }: { label: string; variant?: "outline" }) {
+export function MetaLoginButton({ label, variant }: { label: string; variant?: "default" | "outline" }) {
   return (
     <form method="get" action="/api/meta/install">
       <PendingButton size="lg" variant={variant}>

@@ -33,7 +33,11 @@ const bare = (url: string | null) => url?.replace(/^https?:\/\//, "") ?? null;
 export async function connectionsOverview(workspace: Workspace): Promise<ConnectionsOverview> {
   const ws = forWorkspace(workspace.id);
   // demo shops always save to our WooCommerce test store and can't connect another
-  const [stores, meta] = await Promise.all([workspace.isDemo ? [] : ws.liveStoreConnections(), metaConnection(ws)]);
+  const [stores, meta, metaRow] = await Promise.all([
+    workspace.isDemo ? [] : ws.liveStoreConnections(),
+    metaConnection(ws),
+    ws.storeConnection("meta"),
+  ]);
 
   const services = SERVICES.flatMap((service): ServiceOverview[] => {
     const group = SERVICE_GROUP[service];
@@ -43,10 +47,10 @@ export async function connectionsOverview(workspace: Workspace): Promise<Connect
         {
           service,
           group,
-          status: !s ? "none" : s.test ? "test" : "connected",
+          status: !s ? "none" : s.test ? "test" : meta.broken ? "broken" : "connected",
           address: s?.pageName ?? null,
           saveDrafts: null,
-          checkedAt: null,
+          checkedAt: s ? (metaRow?.last_checked_at ?? null) : null,
         },
       ];
     }

@@ -12,6 +12,12 @@ import { catalogAccess } from "@/lib/meta-access";
  */
 export interface MetaConnection {
   settings: MetaSettings;
+  /**
+   * Meta refused the Page's token on the last call or check (password changed, access
+   * removed). Posting still tries, since Meta may take it again, but Connections asks to
+   * connect again.
+   */
+  broken: boolean;
   /** The account each destination posts as; null when that destination isn't linked. */
   account: (destination: Destination) => SocialAccount | null;
   /**
@@ -38,12 +44,13 @@ function pageToken(enc: string, pageId: string): string | null {
 export async function metaConnection(ws: WorkspaceScope): Promise<MetaConnection | null> {
   const row = await ws.storeConnection("meta");
   const settings = MetaSettings.safeParse(row?.settings_json);
-  if (!row || row.status !== "connected" || !row.credentials_enc || !settings.success) return null;
+  if (!row || row.status === "disconnected" || !row.credentials_enc || !settings.success) return null;
   const s = settings.data;
   const enc = row.credentials_enc;
   const token = () => pageToken(enc, s.pageId);
   return {
     settings: s,
+    broken: row.status === "broken",
     userToken: () => (s.test ? null : pageToken(enc, USER_KEY)),
     account: (destination) => {
       const t = token();

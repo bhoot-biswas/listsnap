@@ -9,6 +9,7 @@ import { storeActivity } from "@/server/connections/activity";
 import { requestLocale } from "@/server/step-text";
 import { forWorkspace } from "@/server/db/scope";
 import { metaConnection } from "@/server/social/connection";
+import { metaChecks } from "@/server/social/meta-health";
 import { Service } from "@/lib/connectors";
 import { WooDetail } from "../_components/woo-detail";
 import { ShopifyDetail } from "../_components/shopify-detail";
@@ -49,6 +50,7 @@ export default async function ServicePage({ params, searchParams }: PageProps<"/
 
   const ws = forWorkspace(viewer.workspace.id);
   const meta = service === "meta" ? (await metaConnection(ws))?.settings : null;
+  const metaRow = meta ? await ws.storeConnection("meta") : null;
   const activity = service === "meta" ? null : await storeActivity(viewer.workspace, service, await requestLocale());
 
   return (
@@ -59,7 +61,7 @@ export default async function ServicePage({ params, searchParams }: PageProps<"/
         {service === "shopify" && <ShopifyNotice value={notice} />}
         {service === "meta" && <MetaNotice value={metaNotice} />}
         {meta ? (
-          <MetaDetail s={s} meta={meta} />
+          <MetaDetail s={s} meta={meta} checks={metaChecks(metaRow?.checks_json)} />
         ) : service === "woo" ? (
           <WooDetail
             s={s}

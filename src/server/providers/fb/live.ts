@@ -162,6 +162,23 @@ export function makeLiveFacebook(wait = realWait): FacebookProvider {
       };
     },
 
+    async checkToken(ctx, token) {
+      try {
+        await graph(ctx, {
+          provider: "facebook",
+          endpoint: "me",
+          method: "GET",
+          path: "/me",
+          params: { fields: "id" },
+          token,
+        });
+        return "ok";
+      } catch (err) {
+        if (err instanceof GraphError && err.key === "metaAuth") return "refused";
+        throw err;
+      }
+    },
+
     async postReel(ctx, { page, videoUrl, caption }) {
       const start = await graph<{ video_id: string; upload_url: string }>(ctx, {
         provider: "facebook",

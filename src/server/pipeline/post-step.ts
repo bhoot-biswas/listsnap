@@ -5,6 +5,7 @@ import { env } from "@/server/env";
 import { signedMediaUrl } from "@/server/media/signed";
 import { facebook, instagram } from "@/server/providers";
 import { metaConnection } from "@/server/social/connection";
+import { metaPageWorks, metaRefusal, metaRefused } from "@/server/social/meta-health";
 import { ReelResult } from "@/lib/schemas/reels";
 import type { PostRequest, PostResult } from "@/lib/schemas/social";
 
@@ -30,10 +31,18 @@ export async function postStep(ctx: ListingStepContext, req: PostRequest): Promi
 
   const call = { workspaceId: ws.id, jobId: listing.job_id, step: "post" };
   const videoUrl = signedMediaUrl(ws.id, reel.data.mediaId, "video/mp4", VIDEO_LINK_TTL_S);
-  const post =
-    req.destination === "facebook"
-      ? await facebook().postReel(call, { page: account, videoUrl, caption: req.caption })
-      : await instagram().postReel(call, { account, videoUrl, caption: req.caption });
+  let post;
+  try {
+    post =
+      req.destination === "facebook"
+        ? await facebook().postReel(call, { page: account, videoUrl, caption: req.caption })
+        : await instagram().postReel(call, { account, videoUrl, caption: req.caption });
+  } catch (err) {
+    // Instagram posts with the Page's login too, so either refusal means it has stopped working
+    if (metaRefusal(err)) await metaRefused(ws, "page");
+    throw err;
+  }
+  if (conn.broken) await metaPageWorks(ws);
 
   // nothing reached Facebook or Instagram, so the listing isn't Posted and isn't counted
   const test = conn.settings.test || !live;

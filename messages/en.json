@@ -125,6 +125,7 @@
     "storeMissing": "No store connected yet",
     "storeDemo": "Demo store",
     "storeBroken": "Your WooCommerce store isn't connecting. New listings can't be saved to it.",
+    "facebookBroken": "Facebook stopped accepting ListSnap's access, so reels can't be posted. Connect it again.",
     "fixConnection": "Fix connection",
     "recent": "Recent listings",
     "allListings": "All listings",
@@ -830,6 +831,17 @@
         "ok": "Catalog access lasts until {date}. Facebook asks you to connect again after that; posting reels isn't affected.",
         "soon": "Catalog access ends on {date}. Press Connect again before then to keep saving to the catalog.",
         "expired": "Catalog access ended on {date}. Press Connect again to save to the catalog."
+      },
+      "broken": "Facebook stopped accepting ListSnap's access to {name}, so reels can't be posted. Press Connect again below.",
+      "checks": {
+        "page": {
+          "pass": "Page login works: reels can be posted",
+          "fail": "Facebook refused the Page login: connect again"
+        },
+        "user": {
+          "pass": "Catalog login works",
+          "fail": "Facebook refused the catalog login: connect again"
+        }
       }
     },
     "disconnectConfirm": "Disconnect your store? ListSnap can’t save drafts to it until you connect it again.",

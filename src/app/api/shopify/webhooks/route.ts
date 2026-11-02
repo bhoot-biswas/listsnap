@@ -1,4 +1,9 @@
-import { disconnectShopifyStore, firstWebhookDelivery, forgetShopifyStore } from "@/server/db/connections";
+import {
+  disconnectShopifyStore,
+  firstWebhookDelivery,
+  forgetShopifyStore,
+  webhookDelivered,
+} from "@/server/db/connections";
 import { verifyWebhookHmac } from "@/server/providers/shopify/oauth";
 import { appSecret } from "@/server/stores/shopify-connect";
 import { shopBaseUrl } from "@/server/stores/shopify-store";
@@ -17,12 +22,13 @@ export async function POST(request: Request) {
   const shop = request.headers.get("x-shopify-shop-domain") ?? "";
   const id = request.headers.get("x-shopify-webhook-id") ?? "";
   if (!SHOP_DOMAIN.test(shop) || !id) return new Response(null, { status: 400 });
-  if (!(await firstWebhookDelivery(id.slice(0, 64), topic.slice(0, 64), shop)))
-    return new Response(null, { status: 200 });
-
+  // both handlers can run twice harmlessly, so a delivery is recorded only once it was
+  // handled: one that failed answers 500 and Shopify's retry does the work
+  if (await webhookDelivered(id.slice(0, 64))) return new Response(null, { status: 200 });
   if (topic === "app/uninstalled") await disconnectShopifyStore(shopBaseUrl(shop));
   else if (topic === "shop/redact") await forgetShopifyStore(shopBaseUrl(shop));
   // customers/data_request and customers/redact: ListSnap keeps no Shopify customer data,
-  // so there is nothing to send or delete; the delivery id above is the record of the request
+  // so there is nothing to send or delete; the delivery id is the record of the request
+  await firstWebhookDelivery(id.slice(0, 64), topic.slice(0, 64), shop);
   return new Response(null, { status: 200 });
 }

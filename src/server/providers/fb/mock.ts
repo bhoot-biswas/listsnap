@@ -62,4 +62,11 @@ export const mockFacebook: FacebookProvider = {
       },
       (r) => ({ summary: `reel to ${input.page.name} · ${input.caption.length} chars · ${r.postId}`, costUsd: 0 }),
     ),
+  checkToken: (ctx) =>
+    logged(
+      ctx,
+      { provider: "facebook", model: "graph-api (mock)", endpoint: "me", mode: "mock" },
+      async () => "ok" as const,
+      () => ({ summary: "token works", costUsd: 0 }),
+    ),
 };

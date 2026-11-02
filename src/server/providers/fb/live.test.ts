@@ -84,6 +84,20 @@ describe("Facebook login", () => {
   });
 });
 
+describe("Facebook token check", () => {
+  it("says whether Meta still accepts a token", async () => {
+    answers = [() => json({ id: "1" }), () => json({ error: { message: "Session expired", code: 190 } }, 400)];
+    expect(await fb.checkToken(ctx, "t")).toBe("ok");
+    expect(await fb.checkToken(ctx, "t")).toBe("refused");
+    expect(sent[0]!.url).toContain("/me?fields=id");
+  });
+
+  it("throws when Meta couldn't be asked, so nothing is marked", async () => {
+    answers = [() => json({ error: { message: "Service unavailable", code: 2 } }, 503)];
+    await expect(fb.checkToken(ctx, "t")).rejects.toMatchObject({ key: "metaSaid" });
+  });
+});
+
 describe("Facebook reel", () => {
   const page = { id: "P", name: "Rupkotha", token: "pt" };
 
