@@ -112,6 +112,59 @@ describe("Facebook reel", () => {
     });
   });
 
+  it("counts the reel as posted when a status read fails after publishing", async () => {
+    answers = [
+      () => json({ video_id: "V", upload_url: "https://rupload.facebook.com/video-upload/v24.0/V" }),
+      () => json({ success: true }),
+      () => json({ success: true }),
+      () => json({ status: { video_status: "processing", publishing_phase: { status: "in_progress" } } }),
+      () => json({ error: { message: "Please reduce the amount of data", code: 1 } }, 500),
+    ];
+    const post = await fb.postReel(ctx, { page, videoUrl: "https://x", caption: "c" });
+    expect(post).toEqual({ postId: "V", permalink: "https://www.facebook.com/reel/V" });
+    expect(sent).toHaveLength(5);
+  });
+
+  it("counts the reel as posted when publishing got no answer but Facebook took it", async () => {
+    answers = [
+      () => json({ video_id: "V", upload_url: "https://rupload.facebook.com/video-upload/v24.0/V" }),
+      () => json({ success: true }),
+      () => {
+        throw new Error("socket hang up");
+      },
+      () => json({ status: { video_status: "processing", publishing_phase: { status: "in_progress" } } }),
+      () => json({ status: { video_status: "ready", publishing_phase: { status: "complete" } } }),
+    ];
+    const post = await fb.postReel(ctx, { page, videoUrl: "https://x", caption: "c" });
+    expect(post.postId).toBe("V");
+  });
+
+  it("fails when publishing got no answer and Facebook didn't take it", async () => {
+    answers = [
+      () => json({ video_id: "V", upload_url: "https://rupload.facebook.com/video-upload/v24.0/V" }),
+      () => json({ success: true }),
+      () => {
+        throw new Error("socket hang up");
+      },
+      () => json({ status: { video_status: "processing", publishing_phase: { status: "not_started" } } }),
+    ];
+    await expect(fb.postReel(ctx, { page, videoUrl: "https://x", caption: "c" })).rejects.toMatchObject({
+      key: "metaNoAnswer",
+    });
+  });
+
+  it("fails when Facebook refuses to publish", async () => {
+    answers = [
+      () => json({ video_id: "V", upload_url: "https://rupload.facebook.com/video-upload/v24.0/V" }),
+      () => json({ success: true }),
+      () => json({ error: { message: "Caption too long", code: 100 } }, 400),
+    ];
+    await expect(fb.postReel(ctx, { page, videoUrl: "https://x", caption: "c" })).rejects.toMatchObject({
+      key: "metaSaid",
+    });
+    expect(sent).toHaveLength(3);
+  });
+
   it("asks to reconnect when the token no longer works", async () => {
     answers = [() => json({ error: { message: "Session expired", code: 190 } }, 400)];
     await expect(fb.postReel(ctx, { page, videoUrl: "https://x", caption: "c" })).rejects.toMatchObject({

@@ -176,36 +176,67 @@ export function makeLiveFacebook(wait = realWait): FacebookProvider {
         headers: { file_url: videoUrl },
         timeoutMs: 60_000,
       });
-      await graph(ctx, {
-        provider: "facebook",
-        endpoint: "video_reels finish",
-        method: "POST",
-        path: `/${page.id}/video_reels`,
-        params: { upload_phase: "finish", video_id: start.video_id, video_state: "PUBLISHED", description: caption },
-        token: page.token,
-      });
+      try {
+        await graph(ctx, {
+          provider: "facebook",
+          endpoint: "video_reels finish",
+          method: "POST",
+          path: `/${page.id}/video_reels`,
+          params: { upload_phase: "finish", video_id: start.video_id, video_state: "PUBLISHED", description: caption },
+          token: page.token,
+        });
+      } catch (err) {
+        // with no answer, or a server error, Facebook may have published it anyway: trying
+        // again would post a second reel, so its status decides
+        if (!(err instanceof GraphError && (err.status === 0 || err.status >= 500))) throw err;
+        if (!(await reelStarted(ctx, page.token, start.video_id))) throw err;
+      }
       await watchReel(ctx, page.token, start.video_id, wait);
       return { postId: start.video_id, permalink: `https://www.facebook.com/reel/${start.video_id}` };
     },
   };
 }
 
-/** Waits until Facebook has published the reel or said why not. Still busy at the end counts as posted. */
+type PostContext = Parameters<FacebookProvider["postReel"]>[0];
+
+const reelStatus = (ctx: PostContext, token: string, videoId: string) =>
+  graph<ReelStatus>(ctx, {
+    provider: "facebook",
+    endpoint: "video status",
+    method: "GET",
+    path: `/${videoId}`,
+    params: { fields: "status" },
+    token,
+  });
+
+/** Whether Facebook took the publish, for a finish call whose answer was lost. Unknown counts as no. */
+async function reelStarted(ctx: PostContext, token: string, videoId: string): Promise<boolean> {
+  try {
+    const { status } = await reelStatus(ctx, token, videoId);
+    return ["in_progress", "complete"].includes(status?.publishing_phase?.status ?? "");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Waits until Facebook has published the reel or said why not. The reel is out once
+ * finish is accepted, so still busy at the end counts as posted, and so does a status
+ * read that fails: failing the post would have the seller post it a second time.
+ */
 async function watchReel(
-  ctx: Parameters<FacebookProvider["postReel"]>[0],
+  ctx: PostContext,
   token: string,
   videoId: string,
   wait: (ms: number) => Promise<unknown>,
 ): Promise<void> {
   for (let i = 0; i < STATUS_TRIES; i++) {
-    const { status } = await graph<ReelStatus>(ctx, {
-      provider: "facebook",
-      endpoint: "video status",
-      method: "GET",
-      path: `/${videoId}`,
-      params: { fields: "status" },
-      token,
-    });
+    let status: ReelStatus["status"];
+    try {
+      ({ status } = await reelStatus(ctx, token, videoId));
+    } catch {
+      return;
+    }
     const failed = [status?.processing_phase, status?.publishing_phase].find((p) => p?.status === "error");
     if (failed || status?.video_status === "error") {
       const message = failed?.errors?.[0]?.message?.slice(0, 200);
