@@ -1214,6 +1214,7 @@
     "waiting": "Waiting",
     "needsChoice": "Needs your choice",
     "stuck": "Failed, try again",
+    "photosMissing": "{count, plural, one {# photo missing} other {# photos missing}}",
     "moreListings": "+{count} more",
     "edited": "Saved",
     "cost": {

@@ -89,7 +89,17 @@ function RowStatus({ row, active }: { row: BatchRow; active: boolean }) {
         {t("stuck")}
       </Link>
     );
-  if (row.listing && row.listing.status !== "processing") return <StatusBadge status={row.listing.status} />;
+  if (row.listing && row.listing.status !== "processing")
+    return (
+      <span className="flex flex-col items-start gap-0.5">
+        <StatusBadge status={row.listing.status} />
+        {row.photosMissing > 0 && (
+          <Link href={`/job/${row.jobId}`} className="text-xs text-muted-foreground underline-offset-4 hover:underline">
+            {t("photosMissing", { count: row.photosMissing })}
+          </Link>
+        )}
+      </span>
+    );
   return (
     <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
       {active && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}

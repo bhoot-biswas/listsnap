@@ -1214,6 +1214,7 @@
     "waiting": "অপেক্ষায়",
     "needsChoice": "আপনার বাছাই দরকার",
     "stuck": "হয়নি, আবার চেষ্টা করুন",
+    "photosMissing": "{count, plural, one {#টি ছবি হয়নি} other {#টি ছবি হয়নি}}",
     "moreListings": "আরও {count, number}টি",
     "edited": "সেভ হয়েছে",
     "cost": {

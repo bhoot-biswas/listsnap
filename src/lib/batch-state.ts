@@ -22,6 +22,8 @@ export interface BatchRow {
   listingCount: number;
   /** A step ran out of attempts and waits for "Try again" on the job page. */
   stuck: boolean;
+  /** Photos (studio, banner, scene) that ran out of attempts; the listing is still usable. */
+  photosMissing: number;
   next: NextCallView[];
 }
 
