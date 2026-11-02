@@ -1,0 +1,20 @@
+# Weekly pull requests for outdated packages and actions. Security updates arrive as soon
+# as an advisory is published, whatever the schedule. pnpm's minimumReleaseAge still applies
+# to anything that is installed.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Dhaka
+    open-pull-requests-limit: 5
+    groups:
+      # the small ones together, so one review covers them
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

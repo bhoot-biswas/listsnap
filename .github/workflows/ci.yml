@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# a newer push to the same branch makes the older run pointless
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-24.04
@@ -42,12 +47,31 @@ jobs:
       - name: Lint
         if: ${{ !cancelled() }}
         run: pnpm lint
+      - name: Format
+        if: ${{ !cancelled() }}
+        run: pnpm format:check
+      # a known high or critical hole in a package the app runs fails the check, so the next
+      # advisory like the Next.js and undici ones doesn't sit unnoticed in production
+      - name: Audit
+        if: ${{ !cancelled() }}
+        run: pnpm audit --prod --audit-level high
       - name: Migrate
         if: ${{ !cancelled() }}
         run: node scripts/db-migrate.mjs
       - name: Test
         if: ${{ !cancelled() }}
-        run: pnpm test
+        run: pnpm test:coverage
       - name: Build
         if: ${{ !cancelled() }}
         run: pnpm build
+      # the seller's main path in a phone-sized browser, every outside service mocked
+      - name: Smoke test
+        if: ${{ !cancelled() }}
+        run: pnpm exec playwright install --with-deps chromium && pnpm e2e
+      - name: Smoke test report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
