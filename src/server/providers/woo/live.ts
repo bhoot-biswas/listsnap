@@ -133,21 +133,25 @@ export const editUrl = (store: WooStore, productId: number) =>
 
 /**
  * The product to update: the one saved before, unless it has since been deleted or
- * trashed. With no saved id, a draft that carries this listing's id is looked for
- * too, in case an earlier save reached the store but its answer was lost: by SKU, which
- * still matches after the seller edits the title, then by title for drafts made before SKUs.
+ * trashed, or isn't this listing's at all. A saved id names a product in the store it
+ * was saved to, and in another store the same number is some other product of the
+ * seller's, so it is used only when the product carries this listing's id. Otherwise a
+ * draft with this listing's id is looked for, in case an earlier save reached the store
+ * but its answer was lost: by SKU, which still matches after the seller edits the title,
+ * then by title for drafts made before SKUs.
  */
 export async function findProduct(api: WooApi, input: WooDraftInput): Promise<Product | null> {
+  const ours = (p: Product) => p.meta_data.some((m) => m.key === LISTING_META_KEY && m.value === input.listingId);
   if (input.productRef) {
     try {
       const p = await api.get<Product>(`products/${Number(input.productRef)}`);
-      if (p.status !== "trash") return p;
+      if (p.status === "trash") return null;
+      if (ours(p)) return p;
     } catch (err) {
       if (!(err instanceof WooHttpError && err.status === 404)) throw err;
+      return null;
     }
-    return null;
   }
-  const ours = (p: Product) => p.meta_data.some((m) => m.key === LISTING_META_KEY && m.value === input.listingId);
   const bySku = await api.get<Product[]>("products", { sku: listingSku(input.listingId) });
   const match = bySku.find((p) => p.status !== "trash" && ours(p));
   if (match) return match;

@@ -62,3 +62,47 @@ describe("findProduct after a lost answer", () => {
     expect(await findProduct(api, input)).toBeNull();
   });
 });
+
+describe("findProduct with a saved id", () => {
+  const input = { listingId: "L1", productRef: "1234", title: "Red saree" } as WooDraftInput;
+  const product = (id: number, meta: { key: string; value: unknown }[], status = "draft") => ({
+    id,
+    status,
+    images: [],
+    meta_data: meta,
+  });
+  const store = (saved: unknown, bySku: unknown[] = [], byTitle: unknown[] = []) => {
+    const get = vi.fn(async (path: string, query: Record<string, unknown> = {}) =>
+      path === "products/1234" ? saved : query.sku ? bySku : byTitle,
+    );
+    return { api: { get } as unknown as WooApi, get };
+  };
+
+  it("updates the saved product when it is this listing's", async () => {
+    const { api, get } = store(product(1234, [{ key: LISTING_META_KEY, value: "L1" }]));
+    expect(await findProduct(api, input)).toMatchObject({ id: 1234 });
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves another product with the same id alone, as in a store the seller switched to", async () => {
+    const { api } = store(product(1234, [{ key: "_seller_note", value: "lamp" }]));
+    expect(await findProduct(api, input)).toBeNull();
+  });
+
+  it("leaves a product another listing made alone", async () => {
+    const { api } = store(product(1234, [{ key: LISTING_META_KEY, value: "L9" }]));
+    expect(await findProduct(api, input)).toBeNull();
+  });
+
+  it("finds this listing's draft by SKU when the saved id is someone else's", async () => {
+    const mine = product(88, [{ key: LISTING_META_KEY, value: "L1" }]);
+    const { api } = store(product(1234, []), [mine]);
+    expect(await findProduct(api, input)).toMatchObject({ id: 88 });
+  });
+
+  it("makes a new draft when the saved product was trashed", async () => {
+    const { api, get } = store(product(1234, [{ key: LISTING_META_KEY, value: "L1" }], "trash"));
+    expect(await findProduct(api, input)).toBeNull();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+});
