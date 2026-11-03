@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CHAT_MESSAGE_MAX, type ChatItem } from "@/lib/schemas/chat";
 import { useChat } from "@/hooks/use-chat";
+import { takeAsk } from "@/lib/ask-handoff";
 import { ChatComposer } from "@/components/app/chat-composer";
 import { ChatThread } from "@/components/app/chat-thread";
 
@@ -43,15 +44,17 @@ export function AssistantChat({
     onStarted: (id) => window.history.pushState(null, "", `/assistant/${id}`),
   });
 
-  // once only, even when React runs effects twice; dropped from the address first, so
-  // going back to the start screen doesn't send it again
+  // a question from the Dashboard's ask box (or an old ?ask= link); once only, even when
+  // React runs effects twice, and taken first, so going back doesn't send it again
   const asked = useRef(false);
   useEffect(() => {
-    if (!ask || asked.current) return;
+    if (asked.current || chatId) return;
+    const question = takeAsk() ?? ask;
+    if (!question) return;
     asked.current = true;
-    window.history.replaceState(null, "", "/assistant");
-    chat.send(ask.slice(0, CHAT_MESSAGE_MAX), true);
-  }, [ask, chat]);
+    if (ask) window.history.replaceState(null, "", "/assistant");
+    chat.send(question.slice(0, CHAT_MESSAGE_MAX), true);
+  }, [ask, chat, chatId]);
 
   if (chat.items.length === 0 && !chatId)
     return (
@@ -82,7 +85,11 @@ export function AssistantChat({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
-      <ChatThread chat={chat} className="flex-1 px-4 py-6" />
+      <ChatThread
+        chat={chat}
+        className="flex-1 px-4 py-6"
+        newMessagesAt="bottom-[calc(9.5rem+env(safe-area-inset-bottom))]"
+      />
       <div className="sticky bottom-0 bg-background px-4 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <ChatComposer chat={chat} placeholder={t("replyPlaceholder")} newChat={false} />
       </div>

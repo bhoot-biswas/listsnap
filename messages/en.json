@@ -45,7 +45,11 @@
     "openMenu": "Open menu",
     "snap": "Snap",
     "demoSeller": "Demo seller",
-    "assistant": "Assistant"
+    "assistant": "Assistant",
+    "home": "Home",
+    "more": "More",
+    "phoneNav": "Main",
+    "needsReview": "need review"
   },
   "status": {
     "processing": "Processing",
@@ -1398,7 +1402,8 @@
       "writing": "Writing down what you said…",
       "notHeard": "We couldn't make out any words. Try again, or type it.",
       "failed": "That recording didn't work. Try again, or type it."
-    }
+    },
+    "newMessages": "New messages"
   },
   "stepText": {
     "errors": {

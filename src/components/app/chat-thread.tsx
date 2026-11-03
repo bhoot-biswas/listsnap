@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronRight, Loader2, RotateCw, Square } from "lucide-react";
+import { ArrowDown, Check, ChevronRight, Loader2, RotateCw, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChatItem } from "@/lib/schemas/chat";
@@ -20,8 +20,11 @@ export function ChatThread({
   chat,
   visible = true,
   className,
+  newMessagesAt = "bottom-2",
 }: {
   chat: Chat;
+  /** Where "New messages" sits as the thread scrolls: above a message box that covers the page's bottom. */
+  newMessagesAt?: string;
   /** Scrolls to the latest message again when a hidden panel opens. */
   visible?: boolean;
   className?: string;
@@ -29,15 +32,46 @@ export function ChatThread({
   const t = useTranslations("chat");
   const end = useRef<HTMLDivElement>(null);
   const { items, busy, status, error } = chat;
+  // the end of the conversation is on screen; scrolled up, the seller is reading
+  const atEnd = useRef(true);
+  const [unseen, setUnseen] = useState(false);
+  const toEnd = () => {
+    // braces matter, since newer browsers return a promise from scrollIntoView
+    end.current?.scrollIntoView({ block: "end" });
+  };
 
   useEffect(() => {
-    // a panel's content mounts as it opens, so wait a frame for it to exist; braces
-    // matter, since newer browsers return a promise from scrollIntoView
+    const el = end.current;
+    if (!el) return;
+    const watch = new IntersectionObserver(
+      ([e]) => {
+        atEnd.current = !!e?.isIntersecting;
+        if (atEnd.current) setUnseen(false);
+      },
+      { rootMargin: "0px 0px 120px 0px" },
+    );
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
+
+  // a panel opens at the latest message: its content mounts as it opens, so wait a frame
+  useEffect(() => {
+    const frame = requestAnimationFrame(toEnd);
+    return () => cancelAnimationFrame(frame);
+  }, [visible]);
+
+  // new lines follow the seller down only when they're at the end, or just sent one;
+  // otherwise a button says there's more, instead of yanking them away from what they read
+  const seen = useRef(items.length);
+  useEffect(() => {
+    const sent = items.length > seen.current && items.at(-1)?.kind === "user";
+    seen.current = items.length;
     const frame = requestAnimationFrame(() => {
-      end.current?.scrollIntoView({ block: "end" });
+      if (atEnd.current || sent) toEnd();
+      else setUnseen(true);
     });
     return () => cancelAnimationFrame(frame);
-  }, [items, status, visible]);
+  }, [items, status]);
 
   const groups: (ChatItem | ToolItem[])[] = [];
   for (const item of items) {
@@ -89,6 +123,14 @@ export function ChatThread({
               {t("sendAgain")}
             </Button>
           )}
+        </div>
+      )}
+      {unseen && (
+        <div className={cn("sticky z-10 flex justify-center", newMessagesAt)}>
+          <Button type="button" variant="outline" className="h-11 rounded-full shadow-md md:h-9" onClick={toEnd}>
+            <ArrowDown aria-hidden="true" />
+            {t("newMessages")}
+          </Button>
         </div>
       )}
       <div ref={end} />
