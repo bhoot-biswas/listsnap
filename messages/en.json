@@ -606,6 +606,7 @@
       "record": "Record a voice note",
       "stop": "Stop recording",
       "recording": "Recording… {time} of {max}",
+      "heard": "What we heard",
       "stopFirst": "Stop the recording first, then make the listing.",
       "delete": "Delete the voice note"
     },
