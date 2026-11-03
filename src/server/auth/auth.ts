@@ -1,7 +1,7 @@
 import "server-only";
 import { betterAuth } from "better-auth";
-import { nextCookies } from "better-auth/next-js";
 import { APIError } from "better-auth/api";
+import { nextCookies } from "better-auth/next-js";
 import { anonymous, magicLink } from "better-auth/plugins";
 import { env } from "@/server/env";
 import { getPool } from "@/server/db/pool";
@@ -13,144 +13,110 @@ import { sendMagicLinkMail } from "./mail";
 import { checkUserWrite } from "./profile-fields";
 
 /**
- * Better Auth, following the SOHOZ TOOLS setup (README → pre-existing code):
+ * Better Auth, on our own MySQL pool. Three ways in:
  *
- * - **Google** (main button) shows only when its client is configured, and the **magic
- *   link** only when mail can be sent (signInOptions). No passwords, so no reset flow.
- * - **"Try the demo"** is Better Auth's anonymous sign-in. The user.create hook gives
- *   that user a demo shop that expires in 24 hours. Signing in with Google from the
- *   demo deletes the anonymous user (and its membership) and starts a real account.
- * - **Rate limits live in the database**: Hostinger restarts the process on deploys and
- *   idle, and an in-memory counter would hand out a fresh allowance each time.
- * - **Account linking keeps its safe default**: Google joins an existing account only
- *   when that email is verified, which magic-link sign-in always is.
- * - **Deleting an account** deletes the shop with it, rows and photos. It needs a session
- *   signed in within the last day; an older one is asked to sign in again first. A demo
- *   has nothing to delete: it expires, and its drafts are in our shared test store.
+ * - **Email link** (magic-link plugin): the mail links to /sign-in/confirm, not to the
+ *   verify endpoint, because mail scanners open every link and the token works once.
+ * - **Google**, offered only once its keys are set.
+ * - **Try the demo shop** (anonymous plugin): the new user gets a demo shop that expires
+ *   in a day. Signing in for real from the demo drops the anonymous user, which the plugin
+ *   does by default, and the seller starts a shop of their own.
+ *
+ * Every new user gets a workspace in the user-create hook, so the DAL can rely on one.
  */
+
+/** Must match the prefix src/proxy.ts looks for. */
 export const COOKIE_PREFIX = "listsnap";
-const HOUR = 60 * 60;
-const DAY = 24 * HOUR;
 
-/** Expired sessions and spent links don't delete themselves; prune at most hourly, on sign-in. */
-let lastPrune = 0;
-async function prune(now = Date.now()): Promise<void> {
-  if (now - lastPrune < HOUR * 1000) return;
-  lastPrune = now;
-  const pool = getPool();
-  try {
-    await pool.query("DELETE FROM `session` WHERE `expiresAt` < UTC_TIMESTAMP(3)");
-    await pool.query("DELETE FROM `verification` WHERE `expiresAt` < UTC_TIMESTAMP(3)");
-    await pool.query("DELETE FROM `rateLimit` WHERE `lastRequest` < ?", [now - DAY * 1000]);
-  } catch (err) {
-    console.error("[auth] prune failed:", err instanceof Error ? err.message : err);
-  }
-}
-
-/** A user write with its extra fields checked and trimmed; refused when one isn't allowed. */
-function checked(user: Record<string, unknown>) {
-  const fields = checkUserWrite(user);
-  if (!fields) throw new APIError("BAD_REQUEST", { message: "Invalid profile field" });
-  return fields;
-}
+const MINUTE = 60;
+const DAY = 24 * 60 * MINUTE;
+// the sign-in page and the mail both promise 15 minutes
+const LINK_MINUTES = 15;
 
 function build() {
   const e = env();
-  if (e.authSecret.length < 32) {
-    throw new Error("BETTER_AUTH_SECRET must be at least 32 characters (openssl rand -base64 32).");
-  }
-
   return betterAuth({
     appName: "ListSnap",
     baseURL: e.authUrl,
     secret: e.authSecret,
     database: getPool(),
-    trustedOrigins: [e.authUrl, ...(e.prod ? [] : ["http://localhost:*"])],
-
     socialProviders: e.google
       ? { google: { clientId: e.google.clientId, clientSecret: e.google.clientSecret, prompt: "select_account" } }
       : {},
-
     user: {
       additionalFields: {
-        uiLang: { type: "string", required: false, input: true },
-        theme: { type: "string", required: false, input: true },
-        phone: { type: "string", required: false, input: true },
+        uiLang: { type: "string", required: false },
+        theme: { type: "string", required: false },
+        phone: { type: "string", required: false },
       },
       deleteUser: {
         enabled: true,
+        // a shop only this seller belongs to goes with them; its files after its rows
         beforeDelete: async (user) => {
-          if ((user as { isAnonymous?: boolean }).isAnonymous) throw new APIError("BAD_REQUEST");
-          for (const id of await deleteSoleWorkspaces(user.id)) await removeWorkspaceMedia(id);
+          const ids = await deleteSoleWorkspaces(user.id);
+          await Promise.all(ids.map((id) => removeWorkspaceMedia(id)));
         },
       },
     },
-
-    session: {
-      expiresIn: 30 * DAY,
-      updateAge: DAY,
-      cookieCache: { enabled: true, maxAge: 5 * 60 },
-    },
-
+    // deleting an account needs a sign-in from the last day, so an old stolen session can't
+    session: { freshAge: DAY },
     rateLimit: {
-      enabled: true,
       storage: "database",
-      window: 60,
-      max: 100,
       customRules: {
-        "/sign-in/magic-link": { window: 10 * 60, max: 5 },
-        "/sign-in/anonymous": { window: 10 * 60, max: 10 },
-        "/sign-in/social": { window: 60, max: 10 },
+        // each demo seeds a shop with photos; a script mustn't be able to fill the disk
+        "/sign-in/anonymous": { window: 10 * MINUTE, max: 10 },
+        "/sign-in/magic-link": { window: 10 * MINUTE, max: 5 },
       },
     },
-
     advanced: {
-      useSecureCookies: e.prod,
       cookiePrefix: COOKIE_PREFIX,
       ipAddress: { ipAddressHeaders: [e.ipHeader] },
     },
-
     databaseHooks: {
       user: {
-        // the extra fields can come straight from the browser through /update-user
-        update: { before: async (user) => ({ data: { ...user, ...checked(user) } }) },
         create: {
-          before: async (user) => ({ data: { ...user, ...checked(user) } }),
+          before: async (user) => {
+            if (!checkUserWrite(user)) throw new APIError("BAD_REQUEST", { message: "Invalid profile field" });
+          },
           after: async (user) => {
             const demo = !!(user as { isAnonymous?: boolean }).isAnonymous;
             const workspaceId = await createWorkspaceForUser(user.id, { demo });
-            // an empty demo is still a working demo, so a seeding problem never blocks sign-in
+            // an empty demo still works, so a seeding problem must not stop the sign-in
             if (demo) await seedDemoWorkspace(workspaceId).catch((err) => console.error("[demo] seeding failed:", err));
           },
         },
+        update: {
+          // /update-user takes these fields straight from the browser
+          before: async (data) => {
+            if (!checkUserWrite(data)) throw new APIError("BAD_REQUEST", { message: "Invalid profile field" });
+          },
+        },
       },
-      session: { create: { after: async () => void prune() } },
     },
-
     plugins: [
       magicLink({
-        expiresIn: 15 * 60,
-        // mail scanners open links, and the token works once: send them to a page with a button instead
+        expiresIn: LINK_MINUTES * MINUTE,
         sendMagicLink: async ({ email, url }) => {
-          const confirm = new URL(url);
-          confirm.pathname = "/sign-in/confirm";
+          const confirm = new URL("/sign-in/confirm", e.siteUrl);
+          confirm.search = new URL(url).search;
           sendMagicLinkMail(email, confirm.toString(), await requestLocale());
         },
       }),
       anonymous({ emailDomainName: "demo.listsnap.invalid", generateName: () => "Demo seller" }),
-      // must stay last: lets Server Actions set the session cookie
+      // keep last: it sets cookies from Server Actions too
       nextCookies(),
     ],
   });
 }
 
 type Auth = ReturnType<typeof build>;
-const g = globalThis as unknown as { __listsnapAuth?: Auth };
 
-/** The auth instance, built once per process on first use. */
+let auth: Auth | undefined;
+
+/** Built on first use, so importing this module never reads env or opens the pool. */
 export function getAuth(): Auth {
-  g.__listsnapAuth ??= build();
-  return g.__listsnapAuth;
+  auth ??= build();
+  return auth;
 }
 
 export type AuthSession = Auth["$Infer"]["Session"];

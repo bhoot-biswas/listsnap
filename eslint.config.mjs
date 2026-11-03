@@ -6,7 +6,7 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   // A helper left below a `return` still type-checks, and the minifier drops it as dead
-  // code; the page then breaks at runtime when that branch renders (seen in SOHOZ TOOLS).
+  // code; the page then breaks at runtime when that branch renders.
   { rules: { "no-unreachable": "error" } },
   globalIgnores([
     ".next/**",

@@ -94,16 +94,6 @@ To run it on a server, follow [DEPLOY.md](DEPLOY.md). `GET /api/health` reports 
 
 Next.js 16 (App Router) · React 19 · TypeScript · MariaDB/MySQL via `mysql2` · Better Auth (Google, magic link, demo) · shadcn/ui (Base UI) · Tailwind CSS v4 · next-intl (English and Bangla) · sharp · HyperFrames and GSAP for reels · Vitest.
 
-## Pre-existing code
-
-A few setup files are adapted from my earlier project, SOHOZ TOOLS, which lives in its own private repository; none of its code history is in this one:
-
-- the migration runner (`scripts/db-migrate.mjs`), mostly as it was
-- parts of the Better Auth setup (`src/server/auth/auth.ts`): the session and token cleanup, and some of the options
-- the SMTP sender and parts of the email layout (`src/server/auth/mail.ts`)
-
-Everything else, including the database pool, the pipeline, the providers and every Meta model integration, was written during the hackathon, from October 27, 2026.
-
 ## License
 
 [MIT](LICENSE)
