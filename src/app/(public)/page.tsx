@@ -1,27 +1,33 @@
-import { getTranslations } from "next-intl/server";
-import { ArrowRight } from "lucide-react";
-import { ButtonLink } from "@/components/app/button-link";
 import { optionalViewer } from "@/server/auth/session";
+import { ClosingCta } from "./_components/closing-cta";
+import { Hero } from "./_components/hero";
+import { HowItWorks } from "./_components/how-it-works";
+import { Outcomes } from "./_components/outcomes";
 import { PublicHeader } from "./_components/public-header";
+import { SiteFooter } from "./_components/site-footer";
 
-/** S0 Landing, Phase 1 stub: the pitch and the way in. The full page comes in Phase 7. */
+/**
+ * S0 Landing: four sections and a footer. The hero band is dark in both themes
+ * (the `dark` class switches its tokens) so the white studio photo stands out.
+ */
 export default async function LandingPage() {
-  const t = await getTranslations("landing");
-  const viewer = await optionalViewer();
+  const signedIn = !!(await optionalViewer());
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-3xl flex-col px-4 py-6">
-      <PublicHeader />
-      <section className="flex flex-1 flex-col justify-center gap-6 py-16">
-        <h1 className="text-4xl leading-tight font-bold md:text-5xl">{t("title")}</h1>
-        <p className="max-w-2xl text-lg text-muted-foreground">{t("body")}</p>
-        <p className="font-mono text-sm text-primary">{t("steps")}</p>
-        <div>
-          <ButtonLink href={viewer ? "/dashboard" : "/sign-in"} size="lg">
-            {viewer ? t("openShop") : t("start")}
-            <ArrowRight />
-          </ButtonLink>
+    <>
+      <div className="dark bg-background text-foreground">
+        <div className="mx-auto max-w-6xl px-4 pt-4 md:px-6 md:pt-6">
+          <PublicHeader />
         </div>
-      </section>
-    </main>
+      </div>
+      <main>
+        <div className="dark relative isolate overflow-hidden bg-background text-foreground">
+          <Hero signedIn={signedIn} />
+        </div>
+        <Outcomes />
+        <HowItWorks />
+        <ClosingCta signedIn={signedIn} />
+      </main>
+      <SiteFooter />
+    </>
   );
 }
