@@ -113,17 +113,21 @@ export function opRunQueries(ws: string) {
       return r.affectedRows === 1;
     },
 
-    /** Autosave makes a snapshot every few seconds; only the newest ones are worth keeping. */
+    /**
+     * Autosave makes a snapshot every few seconds; only the newest ones are worth keeping.
+     * The cutoff is read on its own first: as a subquery of the UPDATE it took shared locks
+     * on the shop's other op rows, and deadlocked with an op of the same shop finishing.
+     */
     async trimUndo(listingId: string) {
+      const keep = await selectOne<{ id: number }>(
+        `SELECT id FROM op_runs WHERE workspace_id = ? AND listing_id = ? AND undo_json IS NOT NULL
+          ORDER BY id DESC LIMIT 1 OFFSET ?`,
+        [ws, listingId, UNDO_KEEP - 1],
+      );
+      if (!keep) return;
       await execute(
-        `UPDATE op_runs SET undo_json = NULL
-          WHERE workspace_id = ? AND listing_id = ? AND undo_json IS NOT NULL AND id < (
-            SELECT id FROM (
-              SELECT id FROM op_runs WHERE workspace_id = ? AND listing_id = ? AND undo_json IS NOT NULL
-               ORDER BY id DESC LIMIT 1 OFFSET ?
-            ) AS keep
-          )`,
-        [ws, listingId, ws, listingId, UNDO_KEEP - 1],
+        "UPDATE op_runs SET undo_json = NULL WHERE workspace_id = ? AND listing_id = ? AND id < ? AND undo_json IS NOT NULL",
+        [ws, listingId, keep.id],
       );
     },
 
