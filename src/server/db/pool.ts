@@ -3,43 +3,31 @@ import { createPool, type Pool, type PoolConnection, type ResultSetHeader, type 
 import { env } from "@/server/env";
 
 /**
- * One pool per process, kept on globalThis so dev hot reloads don't open a new one on
- * every edit. Hostinger's shared MySQL caps connections per user, so 5 is the default.
- * `timezone: "Z"` makes mysql2 read and write DATETIME/TIMESTAMP as UTC, which Better
- * Auth requires and which keeps lock expiry comparisons honest on a Dhaka-time laptop.
+ * One mysql2 pool for the app, and the few helpers every query in src/server/db goes
+ * through. Values always travel as `?` parameters; nothing is spliced into SQL text.
  */
-const g = globalThis as unknown as { __listsnapPool?: Pool };
+
+// what mysql2 accepts as query values (its own type isn't exported)
+type Params = (NonNullable<unknown> | null | undefined)[];
+
+// dev reloads re-run this module; one pool across them keeps connections from piling up
+const g = globalThis as { __listsnapPool?: Pool };
 
 export function getPool(): Pool {
-  const { databaseUrl, poolSize } = env();
-  if (!databaseUrl) throw new Error("DATABASE_URL is not set. Copy .env.example to .env.local (see README).");
-  if (!g.__listsnapPool) {
-    g.__listsnapPool = createPool({
-      uri: databaseUrl,
-      timezone: "Z",
-      connectionLimit: poolSize,
-      waitForConnections: true,
-      charset: "utf8mb4",
-      // DECIMAL as numbers: costs and confidence are small
-      decimalNumbers: true,
-      // MySQL and MariaDB 11 send JSON columns typed as JSON, which mysql2 parses. Older
-      // MariaDB sends them as text, so every column named *_json is parsed here as well.
-      typeCast(field, next) {
-        if (
-          field.name.endsWith("_json") &&
-          (field.type === "BLOB" || field.type === "VAR_STRING" || field.type === "STRING")
-        ) {
-          const text = field.string("utf8");
-          return text === null ? null : JSON.parse(text);
-        }
-        return next();
-      },
-    });
-  }
+  g.__listsnapPool ??= createPool({
+    uri: env().databaseUrl,
+    connectionLimit: env().poolSize,
+    // every timestamp is stored and read as UTC; the UI turns it into Dhaka time
+    timezone: "Z",
+    charset: "utf8mb4_unicode_ci",
+    // scores and costs are small DECIMALs; numbers are what the code does arithmetic on
+    decimalNumbers: true,
+    // a DATE is a calendar day, not an instant: as a Date it would shift with the time zone
+    dateStrings: ["DATE"],
+    enableKeepAlive: true,
+  });
   return g.__listsnapPool;
 }
-
-type Params = (string | number | boolean | Date | null | Buffer)[];
 
 export async function select<T>(sql: string, params: Params = []): Promise<T[]> {
   const [rows] = await getPool().query<RowDataPacket[]>(sql, params);
@@ -55,21 +43,21 @@ export async function execute(sql: string, params: Params = []): Promise<ResultS
   return result;
 }
 
-/** Runs `fn` in a transaction on one connection; rolls back if it throws. */
+/** Runs `fn` on one connection inside a transaction: committed if it returns, rolled back if it throws. */
 export async function transaction<T>(fn: (conn: PoolConnection) => Promise<T>): Promise<T> {
   const conn = await getPool().getConnection();
   try {
     await conn.beginTransaction();
-    const out = await fn(conn);
+    const result = await fn(conn);
     await conn.commit();
-    return out;
+    return result;
   } catch (err) {
-    await conn.rollback();
+    await conn.rollback().catch(() => {});
     throw err;
   } finally {
     conn.release();
   }
 }
 
-/** JSON columns: mysql2 parses them on read; on write they go in as strings. */
+/** For JSON columns: MariaDB stores them as text, so values go in as a JSON string. */
 export const json = (value: unknown): string => JSON.stringify(value ?? null);
