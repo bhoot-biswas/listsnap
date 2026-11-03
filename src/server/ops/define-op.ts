@@ -110,7 +110,11 @@ export function defineOp<S extends z.ZodType, T>(def: OpDefinition<S, T>): Op<S,
         listingId: result.listingId ?? null,
         summary: result.summary ?? null,
       });
-      if (result.undo !== undefined && result.listingId) await ctx.ws.trimUndo(result.listingId);
+      // housekeeping: the change is saved, so a failed trim must not report it failed
+      if (result.undo !== undefined && result.listingId)
+        await ctx.ws
+          .trimUndo(result.listingId)
+          .catch((err) => console.error("[ops] trimming undo history failed:", err));
       return { ok: true, value: result.value, replayed: false };
     },
   };
